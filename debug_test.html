@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestBack Debug Test</title>
+</head>
+<body>
+    <h1>TestBack 调试测试</h1>
+    <p>请打开浏览器开发者工具的控制台，查看是否有JavaScript错误。</p>
+    
+    <h2>测试步骤：</h2>
+    <ol>
+        <li>访问 <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+        <li>点击"我的策略"标签页</li>
+        <li>点击"简单均线策略"的"回测"按钮</li>
+        <li>查看控制台是否有错误信息</li>
+    </ol>
+    
+    <h2>可能的问题：</h2>
+    <ul>
+        <li>JavaScript函数未定义错误</li>
+        <li>React组件渲染错误</li>
+        <li>状态管理问题</li>
+        <li>API调用失败</li>
+    </ul>
+    
+    <script>
+        console.log('调试页面已加载');
+        
+        // 测试策略数据格式
+        const testStrategyData = {
+            nodes: [
+                {
+                    id: 'condition1',
+                    type: 'condition',
+                    data: { type: 'ma', period: 5, threshold: 0, operator: '>' }
+                }
+            ],
+            edges: [],
+            start_date: '2023-01-01',
+            end_date: '2023-12-31',
+            initial_capital: 100000.0,
+            commission_rate: 0.001
+        };
+        
+        console.log('测试策略数据:', testStrategyData);
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+import requests
+import json
+
+# 模拟前端发送的数据格式
+frontend_data = {
+    "strategy": {
+        "nodes": [
+            {
+                "id": "condition1",
+                "type": "condition",
+                "position": {"x": 100, "y": 100},
+                "data": {
+                    "type": "ma",
+                    "period": 20,
+                    "threshold": 50.0,
+                    "operator": ">"
+                }
+            },
+            {
+                "id": "action1",
+                "type": "action",
+                "position": {"x": 300, "y": 100},
+                "data": {
+                    "type": "buy",
+                    "quantity": 100,
+                    "price_type": "market"
+                }
+            }
+        ],
+        "edges": [
+            {
+                "id": "e1-2",
+                "source": "condition1",
+                "target": "action1"
+            }
+        ],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+        "initial_capital": 100000.0,
+        "commission_rate": 0.001
+    }
+}
+
+def test_frontend_integration():
+    try:
+        print("🔍 测试前端集成...")
+        
+        # 测试健康检查
+        response = requests.get("http://localhost:8000/api/v1/health")
+        print(f"健康检查状态: {response.status_code}")
+        
+        if response.status_code != 200:
+            print("❌ 后端服务不可用")
+            return
+        
+        print("✅ 后端服务正常")
+        
+        # 测试回测接口
+        print("🚀 测试回测接口...")
+        response = requests.post(
+            "http://localhost:8000/api/v1/backtest",
+            headers={"Content-Type": "application/json"},
+            json=frontend_data
+        )
+        
+        print(f"回测接口状态: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            print("✅ 回测成功!")
+            print(f"总收益率: {result['metrics']['total_return']:.2%}")
+            print(f"年化收益率: {result['metrics']['annual_return']:.2%}")
+            print(f"最大回撤: {result['metrics']['max_drawdown']:.2%}")
+            print(f"夏普比率: {result['metrics']['sharpe_ratio']:.2f}")
+            print(f"胜率: {result['metrics']['win_rate']:.2%}")
+            print(f"盈亏比: {result['metrics']['profit_loss_ratio']:.2f}")
+            print(f"总交易次数: {result['metrics']['total_trades']}")
+            print(f"最终资金: {result['final_equity']:.2f}")
+            print(f"资金曲线数据点: {len(result['equity_curve'])}")
+            print(f"交易记录数: {len(result['trades'])}")
+            
+            # 保存结果到文件供前端测试
+            with open('test_result.json', 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            print("📁 结果已保存到 test_result.json")
+            
+        else:
+            print("❌ 回测失败!")
+            print(f"错误信息: {response.text}")
+            
+    except Exception as e:
+        print(f"❌ 测试失败: {e}")
+
+if __name__ == "__main__":
+    test_frontend_integration()
