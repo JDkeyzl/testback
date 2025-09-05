@@ -125,41 +125,22 @@ export function ParameterPanel() {
 
   if (!selectedNodeId) {
     return (
-      <Card className="w-80 h-full">
-        <CardHeader>
-          <CardTitle className="text-sm">参数配置</CardTitle>
-          <CardDescription className="text-xs">
-            选择一个节点来配置参数
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {renderStrategyParams()}
-          <div className="mt-4 pt-4 border-t border-border">
-            <div className="text-center text-muted-foreground text-sm">
-              点击节点开始配置
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="p-4">
+        <div className="text-center text-muted-foreground text-sm">
+          点击画布中的节点来配置参数
+        </div>
+      </div>
     )
   }
 
   const nodeParams = getNodeParams(selectedNodeId)
   if (!nodeParams) {
     return (
-      <Card className="w-80 h-full">
-        <CardHeader>
-          <CardTitle className="text-sm">参数配置</CardTitle>
-          <CardDescription className="text-xs">
-            节点参数未找到
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center text-muted-foreground text-sm">
-            请重新选择节点
-          </div>
-        </CardContent>
-      </Card>
+      <div className="p-4">
+        <div className="text-center text-muted-foreground text-sm">
+          请重新选择节点
+        </div>
+      </div>
     )
   }
 
@@ -1254,31 +1235,21 @@ export function ParameterPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* 节点参数配置 */}
-      <Card className="flex-1 m-4 shadow-sm border border-border/50 bg-card/80 backdrop-blur-sm">
+    <div className="p-4">
+      <Card className="shadow-sm border border-border/50 bg-card/80 backdrop-blur-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
             <Settings className="h-4 w-4" />
             {getNodeTitle()}
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            {selectedNodeId ? `节点ID: ${selectedNodeId}` : '请选择一个节点进行配置'}
+            节点ID: {selectedNodeId}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 overflow-y-auto">
-          {selectedNodeId ? (
-            <>
-              {nodeType === 'condition' && renderConditionParams()}
-              {nodeType === 'logic' && renderLogicParams()}
-              {nodeType === 'action' && renderActionParams()}
-            </>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">点击画布中的节点来配置参数</p>
-            </div>
-          )}
+        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+          {nodeType === 'condition' && renderConditionParams()}
+          {nodeType === 'logic' && renderLogicParams()}
+          {nodeType === 'action' && renderActionParams()}
         </CardContent>
       </Card>
     </div>

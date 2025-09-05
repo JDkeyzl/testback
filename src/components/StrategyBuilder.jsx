@@ -43,6 +43,11 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   const { strategies, getStrategy } = useStrategyListStore()
   const [toasts, setToasts] = useState([])
   const [isLoadingStrategy, setIsLoadingStrategy] = useState(false)
+  const [strategyParams, setStrategyParams] = useState({
+    startDate: '2024-01-01',
+    endDate: '2024-12-31',
+    initialCapital: 100000
+  })
   
   // Toast管理函数
   const addToast = (message, type = 'info', duration = 3000) => {
@@ -449,7 +454,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   return (
     <div className="h-full flex flex-col">
       {/* 工具栏区域 */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gradient-to-r from-background to-muted/20">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gradient-to-r from-background to-muted/20 flex-shrink-0">
         <NodeToolbar 
           onAddNode={addNode}
           onClearAll={clearAll}
@@ -460,135 +465,108 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
 
       {/* 主要内容区域：左右布局 */}
       <div className="flex-1 flex min-h-0">
-        {/* 左侧：画布 + 参数配置 (70%) */}
-        <div className="flex-1 flex flex-col min-h-0" style={{ width: '70%' }}>
+        {/* 左侧：画布和策略参数区域 */}
+        <div 
+          className={`flex flex-col min-h-0 transition-all duration-300 ${
+            nodeParams && Object.keys(nodeParams).length > 0 
+              ? 'w-2/3' 
+              : 'w-full'
+          }`}
+        >
           {/* 画布区域 */}
           <div className="flex-1 relative min-h-0">
             <ReactFlowProvider>
               <div className="h-full w-full" ref={reactFlowWrapper}>
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onInit={setReactFlowInstance}
-                  onDrop={onDrop}
-                  onDragOver={onDragOver}
-                  onNodeClick={handleNodeClick}
-                  onPaneClick={handlePaneClick}
-                  nodeTypes={nodeTypes}
-                  fitView
-                  attributionPosition="top-right"
-                  proOptions={{ hideAttribution: true }}
-                  style={{ width: '100%', height: '100%' }}
-                >
-                  <Controls />
-                  <Background variant="dots" gap={12} size={1} />
-                  
-                  {/* 策略验证提示框 - 固定在画布右上角 */}
-                  <div className="absolute top-4 right-4 z-50">
-                    <StrategyValidationTooltip 
-                      strategy={{ nodes, edges }}
-                      onAutoFix={(fixedStrategy) => {
-                        console.log('自动修复策略:', fixedStrategy)
-                        
-                        // 更新React Flow的节点和边
-                        if (fixedStrategy.nodes) {
-                          setNodes(fixedStrategy.nodes)
-                        }
-                        if (fixedStrategy.edges) {
-                          setEdges(fixedStrategy.edges)
-                        }
-                        
-                        // 显示修复成功提示
-                        addToast('策略已自动修复！已添加缺失的节点和连接。', 'success', 4000)
-                      }}
-                    />
-                  </div>
-                </ReactFlow>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onInit={setReactFlowInstance}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onNodeClick={handleNodeClick}
+                onPaneClick={handlePaneClick}
+                nodeTypes={nodeTypes}
+                fitView
+                attributionPosition="top-right"
+                proOptions={{ hideAttribution: true }}
+                style={{ width: '100%', height: '100%' }}
+              >
+                <Controls />
+                <Background variant="dots" gap={12} size={1} />
+                
+                {/* 策略验证提示框 - 固定在画布右上角 */}
+                <div className="absolute top-4 right-4 z-50">
+                  <StrategyValidationTooltip 
+                    strategy={{ nodes, edges }}
+                    onAutoFix={(fixedStrategy) => {
+                      console.log('自动修复策略:', fixedStrategy)
+                      
+                      // 更新React Flow的节点和边
+                      if (fixedStrategy.nodes) {
+                        setNodes(fixedStrategy.nodes)
+                      }
+                      if (fixedStrategy.edges) {
+                        setEdges(fixedStrategy.edges)
+                      }
+                      
+                      // 显示修复成功提示
+                      addToast('策略已自动修复！已添加缺失的节点和连接。', 'success', 4000)
+                    }}
+                  />
+                </div>
+              </ReactFlow>
               </div>
             </ReactFlowProvider>
           </div>
-
-          {/* 策略参数配置区域 */}
-          <div className="border-t border-border bg-background/95 backdrop-blur-sm">
-            <div className="p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                策略参数配置
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-foreground mb-1 block">回测开始时间</label>
-                  <Input
-                    type="date"
-                    className="w-full text-xs"
-                    defaultValue="2024-01-01"
-                    onChange={(e) => {
-                      const strategyParams = JSON.parse(localStorage.getItem('strategyParams') || '{}')
-                      strategyParams.startDate = e.target.value
-                      localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-foreground mb-1 block">回测结束时间</label>
-                  <Input
-                    type="date"
-                    className="w-full text-xs"
-                    defaultValue="2024-12-31"
-                    onChange={(e) => {
-                      const strategyParams = JSON.parse(localStorage.getItem('strategyParams') || '{}')
-                      strategyParams.endDate = e.target.value
-                      localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-foreground mb-1 block">初始资金</label>
-                  <Input
-                    type="number"
-                    className="w-full text-xs"
-                    placeholder="100000"
-                    defaultValue="100000"
-                    onChange={(e) => {
-                      const strategyParams = JSON.parse(localStorage.getItem('strategyParams') || '{}')
-                      strategyParams.initialCapital = parseInt(e.target.value)
-                      localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-foreground mb-1 block">时间周期</label>
-                  <Select
-                    defaultValue="5m"
-                    onValueChange={(value) => {
-                      const strategyParams = JSON.parse(localStorage.getItem('strategyParams') || '{}')
-                      strategyParams.timeframe = value
-                      localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
-                    }}
-                  >
-                    <SelectTrigger className="w-full text-xs">
-                      <SelectValue placeholder="选择时间周期" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5m">5分钟</SelectItem>
-                      <SelectItem value="15m">15分钟</SelectItem>
-                      <SelectItem value="1h">1小时</SelectItem>
-                      <SelectItem value="1d">1天</SelectItem>
-                    </SelectContent>
-                  </Select>
+          
+          {/* 策略参数配置区域 - 与画布同宽度 */}
+          <div className="bg-card border-t border-border p-4 flex-shrink-0" style={{ height: '120px' }}>
+            <div className="max-w-6xl mx-auto h-full flex items-center">
+              <div className="w-full">
+                <h3 className="text-sm font-semibold mb-3 text-foreground/80">策略参数配置</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">回测开始时间</label>
+                    <Input
+                      type="date"
+                      value={strategyParams.startDate}
+                      onChange={(e) => setStrategyParams(prev => ({ ...prev, startDate: e.target.value }))}
+                      className="w-full h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">回测结束时间</label>
+                    <Input
+                      type="date"
+                      value={strategyParams.endDate}
+                      onChange={(e) => setStrategyParams(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="w-full h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">初始资金</label>
+                    <Input
+                      type="number"
+                      value={strategyParams.initialCapital}
+                      onChange={(e) => setStrategyParams(prev => ({ ...prev, initialCapital: Number(e.target.value) }))}
+                      className="w-full h-8 text-xs"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 右侧：节点编辑面板 (30%) */}
-        <div className="w-80 border-l border-border bg-muted/30 flex flex-col">
-          <ParameterPanel />
-        </div>
+        {/* 右侧：节点编辑面板 - 只在选中节点时显示 */}
+        {nodeParams && Object.keys(nodeParams).length > 0 && (
+          <div className="w-1/3 border-l border-border bg-muted/30 flex flex-col">
+            <ParameterPanel />
+          </div>
+        )}
       </div>
       
       {/* Toast通知 */}
