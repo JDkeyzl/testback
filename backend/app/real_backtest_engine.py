@@ -257,13 +257,15 @@ class RealBacktestEngine:
         
         for node in nodes:
             node_data = node.get("data", {})
-            node_type = node_data.get("type", "")
+            # 使用顶层 node.type 判断节点大类（condition/logic/action）
+            node_category = node.get("type", "")
             
-            if node_type == "condition":
+            if node_category == "condition":
                 condition_nodes.append(node)
-            elif node_type == "logic":
+            elif node_category == "logic":
                 logic_nodes.append(node)
-            elif node_type == "action":
+                
+            elif node_category == "action":
                 action_nodes.append(node)
         
         logger.info(f"条件节点: {len(condition_nodes)}, 逻辑节点: {len(logic_nodes)}, 动作节点: {len(action_nodes)}")
@@ -296,7 +298,8 @@ class RealBacktestEngine:
         # 获取第一个条件节点的参数
         first_node = condition_nodes[0]
         node_data = first_node.get("data", {})
-        sub_type = node_data.get("subType", "ma")
+        # 使用 data.subType 识别策略子类型（ma/rsi/bollinger/vwap/volume）
+        sub_type = node_data.get("subType", node_data.get("type", "ma"))
         
         logger.info(f"执行条件策略: {sub_type}")
         

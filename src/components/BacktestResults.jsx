@@ -350,11 +350,14 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
   const formatEquityCurve = (equityCurve) => {
     if (!equityCurve) return []
     
-    return equityCurve.map(point => ({
-      date: point.date,
-      value: point.equity,
-      returns: (point.returns * 100).toFixed(2)
-    }))
+    return equityCurve.map(point => {
+      const dateStr = point.date || (point.timestamp ? String(point.timestamp).split(' ')[0] : '')
+      return {
+        date: dateStr,
+        value: point.equity,
+        returns: (Number(point.returns || 0) * 100).toFixed(2)
+      }
+    })
   }
 
   // 格式化交易记录 - 修复盈亏逻辑
@@ -422,7 +425,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
     })
   }
 
-  const equityData = formatEquityCurve(backtestResult?.equity_curve)
+  const equityData = formatEquityCurve(backtestResult?.equityCurve)
   const tradesData = formatTrades(backtestResult?.trades)
 
   return (

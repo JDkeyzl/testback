@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import random
+from .real_backtest_engine import run_real_backtest
 
 # 内联数据模型定义
 class WorkingStrategyDefinition(BaseModel):
@@ -381,6 +382,35 @@ async def run_backtest(request: WorkingBacktestRequest) -> WorkingBacktestResult
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"回测执行失败: {str(e)}")
+
+@app.post("/api/v1/backtest/real")
+async def real_backtest(request: Dict[str, Any]):
+    """
+    真实数据回测接口
+    使用真实股票数据进行策略回测
+    """
+    try:
+        # 提取请求参数
+        strategy = request.get("strategy", {})
+        symbol = request.get("symbol", "002130")
+        timeframe = request.get("timeframe", "5m")
+        start_date = request.get("startDate", "2024-01-01")
+        end_date = request.get("endDate", "2024-12-31")
+        initial_capital = request.get("initialCapital", 100000.0)
+
+        # 执行真实数据回测
+        result = run_real_backtest(
+            strategy=strategy,
+            symbol=symbol,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital
+        )
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"真实数据回测执行失败: {str(e)}")
 
 @app.get("/api/v1/health")
 async def health_check() -> Dict[str, str]:
