@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Activity, Calendar, Clock, BarChart3, List } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Activity, Calendar, Clock, BarChart3, List, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStrategyListStore } from '../store/strategyListStore'
 
 export function BacktestResultPage() {
@@ -61,15 +61,35 @@ export function BacktestResultPage() {
     losingTrades: metrics.losingTrades ?? 0
   }
 
-  // 格式化资金曲线数据
+  // 格式化资金曲线数据（后端曲线）
   const formatEquityCurve = (equityCurve) => {
     if (!equityCurve) return []
     
-    return equityCurve.map(point => ({
-      date: point.date,
-      value: point.equity,
-      returns: (point.returns * 100).toFixed(2)
-    }))
+    return equityCurve.map(point => {
+      const dateStr = point.date || (point.timestamp ? String(point.timestamp).split(' ')[0] : '')
+      return {
+        date: dateStr,
+        value: point.equity,
+        returns: (Number(point.returns || 0) * 100).toFixed(2),
+        price: Number(point.price || 0)
+      }
+    })
+  }
+
+  // 从交易记录构建资金曲线（以交易记录为准，保持一致性）
+  const buildEquityFromTrades = (tradesRows) => {
+    if (!tradesRows || tradesRows.length === 0) return []
+    let prev = null
+    return tradesRows.map(row => {
+      const curr = Number(row.totalAssets)
+      const ret = prev ? (((curr - prev) / prev) * 100).toFixed(2) : 0
+      prev = curr
+      return {
+        date: row.date || row.time || '',
+        value: curr,
+        returns: ret
+      }
+    })
   }
 
   // 格式化交易记录 - 修复盈亏逻辑
@@ -142,6 +162,7 @@ export function BacktestResultPage() {
         amount: tradeAmount.toFixed(2), // 使用计算出的正确金额
         pnl: pnlDisplay,
         pnlClass: pnlClass,
+        pnlValue: trade.action === 'sell' ? Number((trade.price - avgCost) * trade.quantity) : null,
         balance: currentBalance.toFixed(2), // 可用资金
         position: position, // 持仓数量
         securityValue: securityValue.toFixed(2), // 证券价值
@@ -151,8 +172,95 @@ export function BacktestResultPage() {
     })
   }
 
-  const equityData = formatEquityCurve(backtestResult?.equity_curve)
   const tradesData = formatTrades(backtestResult?.trades)
+  const equityData = tradesData.length > 0
+    ? buildEquityFromTrades(tradesData)
+    : formatEquityCurve(backtestResult?.equityCurve)
+
+  // 将5分钟价格序列聚合为日线收盘价折线
+  const buildDailyPriceData = (series) => {
+    if (!series) return []
+    const dailyMap = new Map()
+    for (const p of series) {
+      const ts = p.timestamp || p.date || ''
+      const dateStr = String(ts).split(' ')[0]
+      const close = Number(p.close)
+      // 直接覆盖，假设序列按时间升序，最后一次为当日收盘
+      dailyMap.set(dateStr, close)
+    }
+    const result = []
+    for (const [date, close] of dailyMap.entries()) {
+      result.push({ date, close })
+    }
+    return result
+  }
+  const dailyPriceData = buildDailyPriceData(backtestResult?.priceSeries)
+
+  // 策略 vs 标的 收益对比（最后一天）
+  const initialCap = backtestParams?.initialCapital || 100000
+  const strategyLast = equityData.length > 0 ? Number(equityData[equityData.length - 1].value) : initialCap
+  const strategyRet = initialCap > 0 ? (strategyLast - initialCap) / initialCap : 0
+  const firstClose = dailyPriceData.length > 0 ? dailyPriceData[0].close : (equityData[0]?.price || 0)
+  const lastClose = dailyPriceData.length > 0 ? dailyPriceData[dailyPriceData.length - 1].close : (equityData[equityData.length - 1]?.price || firstClose)
+  const stockRet = firstClose > 0 ? (lastClose - firstClose) / firstClose : 0
+  const outperformDiff = strategyRet - stockRet
+  const outperformText = outperformDiff >= 0 ? '跑赢' : '跑输'
+
+  // 从交易记录计算概览指标（与交易记录保持一致）
+  const computeMaxDrawdown = (values) => {
+    if (!values || values.length === 0) return 0
+    let peak = values[0]
+    let maxDd = 0
+    for (let i = 1; i < values.length; i++) {
+      const v = values[i]
+      if (v > peak) peak = v
+      const dd = peak > 0 ? (peak - v) / peak : 0
+      if (dd > maxDd) maxDd = dd
+    }
+    return maxDd
+  }
+
+  const computeMetricsFromTrades = (rows) => {
+    if (!rows || rows.length === 0) {
+      return {
+        totalReturn: safeMetrics.totalReturn,
+        maxDrawdown: safeMetrics.maxDrawdown,
+        winRate: safeMetrics.winRate,
+        totalTrades: safeMetrics.totalTrades,
+        winningTrades: safeMetrics.winningTrades,
+        losingTrades: safeMetrics.losingTrades,
+      }
+    }
+    const initial = backtestParams?.initialCapital || 100000
+    const assets = rows.map(r => Number(r.totalAssets))
+    const last = assets[assets.length - 1]
+    const totalReturn = initial > 0 ? (last - initial) / initial : 0
+    const maxDrawdown = computeMaxDrawdown(assets)
+    const sellRows = rows.filter(r => r.action === 'sell' && r.pnlValue !== null && r.pnlValue !== undefined)
+    const wins = sellRows.filter(r => r.pnlValue > 0).length
+    const losses = sellRows.filter(r => r.pnlValue < 0).length
+    const totalSell = sellRows.length
+    const winRate = totalSell > 0 ? wins / totalSell : 0
+    return {
+      totalReturn,
+      maxDrawdown,
+      winRate,
+      totalTrades: rows.length,
+      winningTrades: wins,
+      losingTrades: losses,
+    }
+  }
+
+  const displayMetrics = computeMetricsFromTrades(tradesData)
+
+  // 交易记录页滚动控制（页面级）
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const scrollToBottom = () => {
+    const height = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)
+    window.scrollTo({ top: height, behavior: 'smooth' })
+  }
 
   // 运行回测
   const runBacktest = useCallback(async () => {
@@ -215,6 +323,7 @@ export function BacktestResultPage() {
             losingTrades: Math.round((1 - (result.win_rate || 0)) * (result.total_trades || 0))
           },
           equityCurve: result.equity_curve || [],
+          priceSeries: result.price_series || [],
           trades: result.trades || [],
           dataInfo: result.data_info || null
         }
@@ -399,8 +508,8 @@ export function BacktestResultPage() {
                   <div className="flex items-center space-x-2">
                     <DollarSign className="h-5 w-5 text-green-600" />
                     <div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {safeMetrics.totalReturn > 0 ? '+' : ''}{(safeMetrics.totalReturn * 100).toFixed(2)}%
+                      <div className={`text-2xl font-bold ${displayMetrics.totalReturn > 0 ? 'text-red-600' : (displayMetrics.totalReturn < 0 ? 'text-green-600' : 'text-muted-foreground')}`}>
+                        {displayMetrics.totalReturn > 0 ? '+' : ''}{(displayMetrics.totalReturn * 100).toFixed(2)}%
                       </div>
                       <div className="text-sm text-muted-foreground">总收益率</div>
                     </div>
@@ -411,10 +520,10 @@ export function BacktestResultPage() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2">
-                    <TrendingDown className="h-5 w-5 text-red-600" />
+                    <TrendingDown className="h-5 w-5 text-green-600" />
                     <div>
-                      <div className="text-2xl font-bold text-red-600">
-                        {(safeMetrics.maxDrawdown * 100).toFixed(2)}%
+                      <div className="text-2xl font-bold text-green-600">
+                        {(displayMetrics.maxDrawdown * 100).toFixed(2)}%
                       </div>
                       <div className="text-sm text-muted-foreground">最大回撤</div>
                     </div>
@@ -428,7 +537,7 @@ export function BacktestResultPage() {
                     <Activity className="h-5 w-5 text-blue-600" />
                     <div>
                       <div className="text-2xl font-bold text-blue-600">
-                        {(safeMetrics.winRate * 100).toFixed(2)}%
+                        {(displayMetrics.winRate * 100).toFixed(2)}%
                       </div>
                       <div className="text-sm text-muted-foreground">胜率</div>
                     </div>
@@ -442,7 +551,7 @@ export function BacktestResultPage() {
                     <TrendingUp className="h-5 w-5 text-purple-600" />
                     <div>
                       <div className="text-2xl font-bold text-purple-600">
-                        {safeMetrics.totalTrades}
+                        {displayMetrics.totalTrades}
                       </div>
                       <div className="text-sm text-muted-foreground">总交易次数</div>
                     </div>
@@ -466,11 +575,11 @@ export function BacktestResultPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">盈利交易</span>
-                      <span className="font-medium text-green-600">{safeMetrics.winningTrades}</span>
+                      <span className="font-medium text-green-600">{displayMetrics.winningTrades}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">亏损交易</span>
-                      <span className="font-medium text-red-600">{safeMetrics.losingTrades}</span>
+                      <span className="font-medium text-red-600">{displayMetrics.losingTrades}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -516,7 +625,7 @@ export function BacktestResultPage() {
             <Card>
               <CardHeader>
                 <CardTitle>资金曲线</CardTitle>
-                <CardDescription>策略净值变化趋势</CardDescription>
+                <CardDescription>总资产变化趋势</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-64">
@@ -527,7 +636,7 @@ export function BacktestResultPage() {
                         <XAxis dataKey="date" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value) => [`¥${Number(value).toLocaleString()}`, '净值']}
+                          formatter={(value) => [`¥${Number(value).toLocaleString()}`, '总资产']}
                           labelFormatter={(label) => `日期: ${label}`}
                         />
                         <Line 
@@ -544,6 +653,78 @@ export function BacktestResultPage() {
                       {isRunning ? '正在生成图表...' : '暂无数据'}
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 股票价格折线图（日线） */}
+            <Card>
+              <CardHeader>
+                <CardTitle>价格折线图（按日）</CardTitle>
+                <CardDescription>5分钟数据聚合为日线收盘价</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-48">
+                  {dailyPriceData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={dailyPriceData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value) => [`¥${Number(value).toFixed(2)}`, '收盘价']} 
+                          labelFormatter={(label) => `日期: ${label}`}
+                        />
+                        <Line type="monotone" dataKey="close" stroke="#ef4444" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      {isRunning ? '正在生成图表...' : '暂无数据'}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground space-y-1">
+                  <div>说明：</div>
+                  <div>- 总资产来源：以交易记录计算（可用资金 + 持仓价值）。</div>
+                  <div>- 价格来源：回测原始CSV数据（5分钟K线聚合为日收盘价折线）。</div>
+                  <div>- 回撤、收益率、胜率等概览指标均以交易记录为准。</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 区间表现对比 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>区间表现对比</CardTitle>
+                <CardDescription>策略资金区间表现</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
+                    <span className="w-28 md:w-32 text-right">策略区间收益</span>
+                    <span className="text-center">：</span>
+                    <span className={strategyRet >= 0 ? 'text-red-600' : 'text-green-600'}>
+                      {(strategyRet * 100).toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
+                    <span className="w-28 md:w-32 text-right">结果</span>
+                    <span className="text-center">：</span>
+                    <span className={outperformDiff >= 0 ? 'text-red-600' : 'text-green-600'}>
+                      {outperformText} {(Math.abs(outperformDiff) * 100).toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
+                    <span className="w-28 md:w-32 text-right">期初资金/价格</span>
+                    <span className="text-center">：</span>
+                    <span>¥{initialCap.toLocaleString()} / ¥{firstClose?.toFixed(2)}</span>
+                  </div>
+                  <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
+                    <span className="w-28 md:w-32 text-right">最新资金/价格</span>
+                    <span className="text-center">：</span>
+                    <span>¥{strategyLast.toLocaleString()} / ¥{lastClose?.toFixed(2)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -592,21 +773,28 @@ export function BacktestResultPage() {
               <CardDescription>详细的买卖交易历史</CardDescription>
             </CardHeader>
             <CardContent>
+              {/* 右侧垂直居中的 Top/Bottom 按钮 */}
+              <div className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col space-y-2 z-50">
+                <Button variant="secondary" size="sm" onClick={scrollToTop} aria-label="Scroll to top">
+                  <ArrowUp className="h-4 w-4 mr-1" /> Top
+                </Button>
+                <Button variant="secondary" size="sm" onClick={scrollToBottom} aria-label="Scroll to bottom">
+                  <ArrowDown className="h-4 w-4 mr-1" /> Bottom
+                </Button>
+              </div>
               {tradesData.length > 0 ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-9 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <div className="grid grid-cols-7 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
                     <div>时间</div>
                     <div>类型</div>
                     <div>价格</div>
                     <div>数量</div>
-                    <div>金额</div>
                     <div>盈亏</div>
                     <div>持仓</div>
-                    <div>证券价值</div>
-                    <div>可用资金</div>
+                    <div>总资产</div>
                   </div>
                   {tradesData.map((trade, index) => (
-                    <div key={index} className="grid grid-cols-9 gap-4 text-sm py-2 border-b hover:bg-muted/50">
+                    <div key={index} className="grid grid-cols-7 gap-4 text-sm py-2 border-b hover:bg-muted/50">
                       <div className="text-xs">
                         <div>{trade.time}</div>
                       </div>
@@ -615,13 +803,11 @@ export function BacktestResultPage() {
                       </div>
                       <div>¥{trade.price}</div>
                       <div>{trade.quantity}</div>
-                      <div>¥{trade.amount}</div>
                       <div className={trade.pnlClass}>
                         {trade.pnl}
                       </div>
                       <div className="font-medium">{trade.position}</div>
-                      <div className="font-medium">¥{trade.securityValue}</div>
-                      <div className="font-medium">¥{trade.balance}</div>
+                      <div className="font-medium">¥{trade.totalAssets}</div>
                     </div>
                   ))}
                 </div>

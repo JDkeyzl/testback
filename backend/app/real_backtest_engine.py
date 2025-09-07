@@ -25,8 +25,43 @@ class RealBacktestEngine:
         """
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
+    
+    def calculate_position_size(self, current_capital: float, current_price: float, 
+                              position_management: str = 'full') -> int:
+        """
+        根据仓位管理策略计算买入股数
         
-    def run_backtest(self, strategy: Dict[str, Any], symbol: str = "002130", timeframe: str = "5m") -> Dict[str, Any]:
+        Args:
+            current_capital: 当前可用资金
+            current_price: 当前股价
+            position_management: 仓位管理策略 ('full', 'half', 'third', 'quarter')
+            
+        Returns:
+            int: 买入股数（100的整数倍）
+        """
+        # 根据仓位管理策略计算可用资金比例
+        if position_management == 'full':
+            available_ratio = 1.0
+        elif position_management == 'half':
+            available_ratio = 0.5
+        elif position_management == 'third':
+            available_ratio = 1.0 / 3.0
+        elif position_management == 'quarter':
+            available_ratio = 0.25
+        else:
+            available_ratio = 1.0  # 默认全仓
+        
+        # 计算可用资金
+        available_capital = current_capital * available_ratio
+        
+        # 计算可买股数（向下取整到100的整数倍）
+        max_shares = int(available_capital / current_price)
+        shares_to_buy = (max_shares // 100) * 100  # 确保是100的整数倍
+        
+        return max(0, shares_to_buy)
+        
+    def run_backtest(self, strategy: Dict[str, Any], symbol: str = "002130", timeframe: str = "5m", 
+                    position_management: str = "full") -> Dict[str, Any]:
         """
         运行回测
         
@@ -34,6 +69,7 @@ class RealBacktestEngine:
             strategy: 策略定义
             symbol: 股票代码
             timeframe: 时间周期
+            position_management: 仓位管理策略
             
         Returns:
             Dict: 回测结果
@@ -48,7 +84,7 @@ class RealBacktestEngine:
                 raise ValueError("数据量不足，至少需要50条记录")
             
             # 运行回测
-            result = self._execute_backtest(data, strategy)
+            result = self._execute_backtest(data, strategy, position_management)
             
             # 添加数据信息
             result["data_info"] = {
@@ -70,13 +106,15 @@ class RealBacktestEngine:
             logger.error(f"回测执行失败: {str(e)}")
             raise
     
-    def _execute_backtest(self, data: pd.DataFrame, strategy: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_backtest(self, data: pd.DataFrame, strategy: Dict[str, Any], 
+                         position_management: str = "full") -> Dict[str, Any]:
         """
         执行回测逻辑
         
         Args:
             data: 股票数据
             strategy: 策略定义
+            position_management: 仓位管理策略
             
         Returns:
             Dict: 回测结果
@@ -96,13 +134,14 @@ class RealBacktestEngine:
         # 根据节点数量判断策略类型
         if len(nodes) == 0:
             # 没有节点时使用默认简单移动平均策略
-            return self._run_simple_ma_strategy(data, current_capital, position, trades, equity_curve)
+            return self._run_simple_ma_strategy(data, current_capital, position, trades, equity_curve, position_management)
         else:
             # 有节点时使用自定义策略
-            return self._run_custom_strategy(data, strategy, current_capital, position, trades, equity_curve)
+            return self._run_custom_strategy(data, strategy, current_capital, position, trades, equity_curve, position_management)
     
     def _run_simple_ma_strategy(self, data: pd.DataFrame, current_capital: float, 
-                               position: int, trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                               position: int, trades: List[Dict], equity_curve: List[Dict], 
+                               position_management: str = "full") -> Dict[str, Any]:
         """
         运行简单移动平均策略
         
@@ -139,10 +178,10 @@ class RealBacktestEngine:
             
             # 买入条件：短期均线上穿长期均线 且 没有持仓
             if ma_short_value > ma_long_value and position == 0:
-                # 检查资金是否足够
-                max_shares = int(current_capital / current_price)
-                if max_shares > 0:
-                    shares_to_buy = min(max_shares, 100)  # 最多买100股
+                # 根据仓位管理策略计算买入股数
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                
+                if shares_to_buy >= 100:  # 至少100股才能买入
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -195,7 +234,8 @@ class RealBacktestEngine:
                 equity_curve.append({
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "equity": round(current_equity, 2),
-                    "returns": round(daily_return, 4)
+                    "returns": round(daily_return, 4),
+                    "price": round(current_price, 2)
                 })
         
         # 计算最终结果
@@ -227,12 +267,15 @@ class RealBacktestEngine:
             "max_drawdown": round(max_drawdown, 4),
             "total_trades": len(trades),
             "trades": trades,
-            "equity_curve": equity_curve
+            "equity_curve": equity_curve,
+            "final_market_price": round(data['close'].iloc[-1], 2),
+            "price_series": self._build_price_series(data)
         }
     
     def _run_custom_strategy(self, data: pd.DataFrame, strategy: Dict[str, Any], 
                            current_capital: float, position: int, 
-                           trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                           trades: List[Dict], equity_curve: List[Dict], 
+                           position_management: str = "full") -> Dict[str, Any]:
         """
         运行自定义策略（基于节点）
         
@@ -257,13 +300,15 @@ class RealBacktestEngine:
         
         for node in nodes:
             node_data = node.get("data", {})
-            node_type = node_data.get("type", "")
+            # 使用顶层 node.type 判断节点大类（condition/logic/action）
+            node_category = node.get("type", "")
             
-            if node_type == "condition":
+            if node_category == "condition":
                 condition_nodes.append(node)
-            elif node_type == "logic":
+            elif node_category == "logic":
                 logic_nodes.append(node)
-            elif node_type == "action":
+                
+            elif node_category == "action":
                 action_nodes.append(node)
         
         logger.info(f"条件节点: {len(condition_nodes)}, 逻辑节点: {len(logic_nodes)}, 动作节点: {len(action_nodes)}")
@@ -271,14 +316,15 @@ class RealBacktestEngine:
         # 如果没有条件节点，使用默认策略
         if len(condition_nodes) == 0:
             logger.info("没有条件节点，使用默认移动平均策略")
-            return self._run_simple_ma_strategy(data, current_capital, position, trades, equity_curve)
+            return self._run_simple_ma_strategy(data, current_capital, position, trades, equity_curve, position_management)
         
         # 根据条件节点类型执行不同策略
-        return self._run_condition_based_strategy(data, condition_nodes, current_capital, position, trades, equity_curve)
+        return self._run_condition_based_strategy(data, condition_nodes, current_capital, position, trades, equity_curve, position_management)
     
     def _run_condition_based_strategy(self, data: pd.DataFrame, condition_nodes: List[Dict], 
                                     current_capital: float, position: int, 
-                                    trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                                    trades: List[Dict], equity_curve: List[Dict], 
+                                    position_management: str = "full") -> Dict[str, Any]:
         """
         基于条件节点执行策略
         
@@ -296,28 +342,30 @@ class RealBacktestEngine:
         # 获取第一个条件节点的参数
         first_node = condition_nodes[0]
         node_data = first_node.get("data", {})
-        sub_type = node_data.get("subType", "ma")
+        # 使用 data.subType 识别策略子类型（ma/rsi/bollinger/vwap/volume）
+        sub_type = node_data.get("subType", node_data.get("type", "ma"))
         
         logger.info(f"执行条件策略: {sub_type}")
         
         # 根据条件类型执行不同策略
         if sub_type == "ma":
-            return self._run_ma_strategy(data, node_data, current_capital, position, trades, equity_curve)
+            return self._run_ma_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         elif sub_type == "rsi":
-            return self._run_rsi_strategy(data, node_data, current_capital, position, trades, equity_curve)
+            return self._run_rsi_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         elif sub_type == "bollinger":
-            return self._run_bollinger_strategy(data, node_data, current_capital, position, trades, equity_curve)
+            return self._run_bollinger_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         elif sub_type == "vwap":
-            return self._run_vwap_strategy(data, node_data, current_capital, position, trades, equity_curve)
+            return self._run_vwap_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         elif sub_type == "volume":
-            return self._run_volume_strategy(data, node_data, current_capital, position, trades, equity_curve)
+            return self._run_volume_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         else:
             # 默认使用移动平均策略
-            return self._run_ma_strategy(data, node_data, current_capital, position, trades, equity_curve)
+            return self._run_ma_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
     
     def _run_ma_strategy(self, data: pd.DataFrame, node_data: Dict, 
                         current_capital: float, position: int, 
-                        trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                        trades: List[Dict], equity_curve: List[Dict], 
+                        position_management: str = "full") -> Dict[str, Any]:
         """执行移动平均策略（双均线交叉）"""
         # 从节点数据获取参数
         period = node_data.get("period", 20)
@@ -355,9 +403,10 @@ class RealBacktestEngine:
                 
                 # 买入条件：金叉且没有持仓
                 if golden_cross and position == 0:
-                    max_shares = int(current_capital / current_price)
-                    if max_shares > 0:
-                        shares_to_buy = min(max_shares, 100)
+                    # 根据仓位管理策略计算买入股数
+                    shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                    
+                    if shares_to_buy >= 100:  # 至少100股才能买入
                         cost = shares_to_buy * current_price
                         commission = cost * self.commission_rate
                         total_cost = cost + commission
@@ -409,14 +458,16 @@ class RealBacktestEngine:
                 equity_curve.append({
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "equity": round(current_equity, 2),
-                    "returns": round(daily_return, 4)
+                    "returns": round(daily_return, 4),
+                    "price": round(current_price, 2)
                 })
         
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
     
     def _run_rsi_strategy(self, data: pd.DataFrame, node_data: Dict, 
                          current_capital: float, position: int, 
-                         trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                         trades: List[Dict], equity_curve: List[Dict], 
+                         position_management: str = "full") -> Dict[str, Any]:
         """执行RSI策略"""
         period = node_data.get("period", 14)
         threshold = node_data.get("threshold", 30)
@@ -449,9 +500,10 @@ class RealBacktestEngine:
             
             # RSI交易逻辑：RSI < 30 买入（超卖），RSI > 70 卖出（超买）
             if rsi_value < 30 and position == 0:  # 超卖买入
-                max_shares = int(current_capital / current_price)
-                if max_shares > 0:
-                    shares_to_buy = min(max_shares, 100)
+                # 根据仓位管理策略计算买入股数
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                
+                if shares_to_buy >= 100:  # 至少100股才能买入
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -502,14 +554,16 @@ class RealBacktestEngine:
                 equity_curve.append({
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "equity": round(current_equity, 2),
-                    "returns": round(daily_return, 4)
+                    "returns": round(daily_return, 4),
+                    "price": round(current_price, 2)
                 })
         
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
     
     def _run_bollinger_strategy(self, data: pd.DataFrame, node_data: Dict, 
                                current_capital: float, position: int, 
-                               trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                               trades: List[Dict], equity_curve: List[Dict], 
+                               position_management: str = "full") -> Dict[str, Any]:
         """执行布林带策略"""
         period = node_data.get("period", 20)
         std_dev = node_data.get("stdDev", 2)
@@ -535,9 +589,10 @@ class RealBacktestEngine:
             
             # 布林带策略：价格突破上轨买入，跌破下轨卖出
             if current_price > bb_upper and position == 0:
-                max_shares = int(current_capital / current_price)
-                if max_shares > 0:
-                    shares_to_buy = min(max_shares, 100)
+                # 根据仓位管理策略计算买入股数
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                
+                if shares_to_buy >= 100:  # 至少100股才能买入
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -588,7 +643,8 @@ class RealBacktestEngine:
                 equity_curve.append({
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "equity": round(current_equity, 2),
-                    "returns": round(daily_return, 4)
+                    "returns": round(daily_return, 4),
+                    "price": round(current_price, 2)
                 })
         
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
@@ -604,7 +660,8 @@ class RealBacktestEngine:
     
     def _run_vwap_strategy(self, data: pd.DataFrame, node_data: Dict, 
                           current_capital: float, position: int, 
-                          trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                          trades: List[Dict], equity_curve: List[Dict], 
+                          position_management: str = "full") -> Dict[str, Any]:
         """执行VWAP策略"""
         # 从节点数据获取参数
         period = node_data.get("period", 20)
@@ -631,9 +688,10 @@ class RealBacktestEngine:
             
             # 买入条件：价格低于VWAP一定百分比
             if operator == "below" and price_deviation < -deviation and position == 0:
-                max_shares = int(current_capital / current_price)
-                if max_shares > 0:
-                    shares_to_buy = min(max_shares, 100)
+                # 根据仓位管理策略计算买入股数
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                
+                if shares_to_buy >= 100:  # 至少100股才能买入
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -677,14 +735,16 @@ class RealBacktestEngine:
             current_equity = current_capital + (position * current_price)
             equity_curve.append({
                 "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                "equity": round(current_equity, 2)
+                "equity": round(current_equity, 2),
+                "price": round(current_price, 2)
             })
         
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
     
     def _run_volume_strategy(self, data: pd.DataFrame, node_data: Dict, 
-                           current_capital: float, position: int, 
-                           trades: List[Dict], equity_curve: List[Dict]) -> Dict[str, Any]:
+                            current_capital: float, position: int, 
+                            trades: List[Dict], equity_curve: List[Dict], 
+                            position_management: str = "full") -> Dict[str, Any]:
         """执行成交量策略"""
         # 从节点数据获取参数
         period = node_data.get("period", 5)
@@ -712,9 +772,10 @@ class RealBacktestEngine:
             
             # 买入条件：成交量放大
             if operator == "greater_than" and volume_ratio > multiplier and position == 0:
-                max_shares = int(current_capital / current_price)
-                if max_shares > 0:
-                    shares_to_buy = min(max_shares, 100)
+                # 根据仓位管理策略计算买入股数
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                
+                if shares_to_buy >= 100:  # 至少100股才能买入
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -736,7 +797,8 @@ class RealBacktestEngine:
             current_equity = current_capital + (position * current_price)
             equity_curve.append({
                 "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                "equity": round(current_equity, 2)
+                "equity": round(current_equity, 2),
+                "price": round(current_price, 2)
             })
         
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
@@ -773,7 +835,9 @@ class RealBacktestEngine:
             "max_drawdown": round(max_drawdown, 4),
             "total_trades": len(trades),
             "trades": trades,
-            "equity_curve": equity_curve
+            "equity_curve": equity_curve,
+            "final_market_price": round(data['close'].iloc[-1], 2),
+            "price_series": self._build_price_series(data)
         }
     
     def _calculate_max_drawdown(self, equity_curve: List[Dict]) -> float:
@@ -801,12 +865,25 @@ class RealBacktestEngine:
         
         return max_drawdown
 
+    def _build_price_series(self, data: pd.DataFrame) -> List[Dict[str, Any]]:
+        """从原始数据构建价格序列用于前端K线图"""
+        series: List[Dict[str, Any]] = []
+        for _, row in data.iterrows():
+            series.append({
+                "timestamp": row['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+                "open": round(float(row['open']), 2) if 'open' in row else round(float(row['close']), 2),
+                "high": round(float(row['high']), 2) if 'high' in row else round(float(row['close']), 2),
+                "low": round(float(row['low']), 2) if 'low' in row else round(float(row['close']), 2),
+                "close": round(float(row['close']), 2)
+            })
+        return series
+
 # 全局回测引擎实例
 backtest_engine = RealBacktestEngine()
 
 def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timeframe: str = "5m", 
                      start_date: str = "2024-01-01", end_date: str = "2024-12-31", 
-                     initial_capital: float = 100000.0) -> Dict[str, Any]:
+                     initial_capital: float = 100000.0, position_management: str = "full") -> Dict[str, Any]:
     """
     便捷函数：运行真实数据回测
     
@@ -817,6 +894,7 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
         start_date: 开始日期
         end_date: 结束日期
         initial_capital: 初始资金
+        position_management: 仓位管理策略
         
     Returns:
         Dict: 回测结果
@@ -847,7 +925,7 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
         raise ValueError("过滤后数据量不足，至少需要50条记录")
     
     # 执行回测
-    result = engine._execute_backtest(data, strategy)
+    result = engine._execute_backtest(data, strategy, position_management)
     
     # 添加数据信息
     result["data_info"] = {

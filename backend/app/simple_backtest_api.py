@@ -222,12 +222,14 @@ async def real_backtest(request: Dict[str, Any]):
         end_date = request.get("endDate", "2024-12-31")
         initial_capital = request.get("initialCapital", 100000)
         strategy_id = request.get("strategyId", None)
+        position_management = request.get("positionManagement", "full")
         
         print(f"策略ID: {strategy_id}")
         print(f"策略节点数: {len(strategy.get('nodes', []))}")
         print(f"股票代码: {symbol}, 时间周期: {timeframe}")
         print(f"时间范围: {start_date} ~ {end_date}")
         print(f"初始资金: {initial_capital}")
+        print(f"仓位管理: {position_management}")
         
         # 详细记录策略配置
         print("=== 策略配置详情 ===")
@@ -245,7 +247,7 @@ async def real_backtest(request: Dict[str, Any]):
         print("==================")
         
         # 运行真实数据回测
-        result = run_real_backtest(strategy, symbol, timeframe, start_date, end_date, initial_capital)
+        result = run_real_backtest(strategy, symbol, timeframe, start_date, end_date, initial_capital, position_management)
         
         print(f"生成回测结果: {len(result['equity_curve'])} 个资金曲线点")
         return result

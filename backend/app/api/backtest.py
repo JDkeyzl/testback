@@ -3,6 +3,7 @@ from typing import Dict, Any
 
 from ..models.simple import SimpleBacktestRequest, SimpleBacktestResult
 from ..services.backtest_engine import BacktestEngine
+from ..real_backtest_engine import run_real_backtest
 
 router = APIRouter()
 
@@ -50,3 +51,36 @@ async def root() -> Dict[str, str]:
             "docs": "/docs"
         }
     }
+
+@router.post("/backtest/real")
+async def real_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    使用真实数据运行策略回测（与前端 /api/v1/backtest/real 对齐）
+    期望请求体包含：strategy, symbol, timeframe, startDate, endDate, initialCapital
+    """
+    try:
+        strategy = request.get("strategy")
+        if not strategy:
+            raise HTTPException(status_code=400, detail="缺少 strategy 字段")
+
+        symbol = request.get("symbol", "002130")
+        timeframe = request.get("timeframe", "5m")
+        start_date = request.get("startDate", "2024-01-01")
+        end_date = request.get("endDate", "2024-12-31")
+        initial_capital = request.get("initialCapital", 100000.0)
+        position_management = request.get("positionManagement", "full")
+
+        result = run_real_backtest(
+            strategy=strategy,
+            symbol=symbol,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital,
+            position_management=position_management,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"回测执行失败: {str(e)}")

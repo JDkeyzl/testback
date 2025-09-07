@@ -77,7 +77,8 @@ export function StrategiesPage() {
         startDate: strategyParams.startDate || '2024-01-01',
         endDate: strategyParams.endDate || '2024-12-31',
         initialCapital: strategyParams.initialCapital || 100000,
-        timeframe: strategyParams.timeframe || '5m'
+        timeframe: strategyParams.timeframe || '5m',
+        positionManagement: strategyParams.positionManagement || 'full'
       }
       
       handleBacktest(backtestParams)

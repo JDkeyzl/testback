@@ -43,10 +43,14 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   const { strategies, getStrategy } = useStrategyListStore()
   const [toasts, setToasts] = useState([])
   const [isLoadingStrategy, setIsLoadingStrategy] = useState(false)
-  const [strategyParams, setStrategyParams] = useState({
-    startDate: '2024-01-01',
-    endDate: '2024-12-31',
-    initialCapital: 100000
+  const [strategyParams, setStrategyParams] = useState(() => {
+    const saved = localStorage.getItem('strategyParams')
+    return saved ? JSON.parse(saved) : {
+      startDate: '2024-01-01',
+      endDate: '2024-12-31',
+      initialCapital: 100000,
+      positionManagement: 'full' // 仓位管理：full, half, third, quarter
+    }
   })
   
   // Toast管理函数
@@ -54,6 +58,11 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
     const id = Date.now() + Math.random()
     setToasts(prev => [...prev, { id, message, type, duration }])
   }
+
+  // 保存策略参数到localStorage
+  useEffect(() => {
+    localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
+  }, [strategyParams])
   
   const removeToast = (id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
@@ -527,7 +536,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
             <div className="max-w-6xl mx-auto h-full flex items-center">
               <div className="w-full">
                 <h3 className="text-sm font-semibold mb-3 text-foreground/80">策略参数配置</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-foreground/70">回测开始时间</label>
                     <Input
@@ -554,6 +563,19 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                       onChange={(e) => setStrategyParams(prev => ({ ...prev, initialCapital: Number(e.target.value) }))}
                       className="w-full h-8 text-xs"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">仓位管理</label>
+                    <select
+                      value={strategyParams.positionManagement}
+                      onChange={(e) => setStrategyParams(prev => ({ ...prev, positionManagement: e.target.value }))}
+                      className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                    >
+                      <option value="full">全仓</option>
+                      <option value="half">半仓</option>
+                      <option value="third">1/3 仓</option>
+                      <option value="quarter">1/4 仓</option>
+                    </select>
                   </div>
                 </div>
               </div>

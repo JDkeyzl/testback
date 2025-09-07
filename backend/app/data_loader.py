@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class StockDataLoader:
     """股票数据加载器"""
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: str = "/Users/ranka/projects/testback/data"):
         """
         初始化数据加载器
         
