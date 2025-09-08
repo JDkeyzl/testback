@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Play, Settings, Download, Upload, ArrowLeft, Home } from 'lucide-react'
+import { Settings, Download, Upload, ArrowLeft, Home } from 'lucide-react'
 
 export function TopNavigation() {
   const navigate = useNavigate()
@@ -94,10 +94,7 @@ export function TopNavigation() {
             <Settings className="h-4 w-4 mr-2" />
             设置
           </Button>
-          <Button size="sm" onClick={handleStartBacktest}>
-            <Play className="h-4 w-4 mr-2" />
-            开始回测
-          </Button>
+          {/* 顶部全局“开始回测”按钮已移除，保留页内的回测入口 */}
         </div>
       </div>
     </header>

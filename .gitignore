@@ -25,6 +25,21 @@ build/
 .DS_Store
 Thumbs.db
 
+# macOS (additional)
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+._*
+
+# Windows (additional)
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
 # Logs
 *.log
 
@@ -40,10 +55,28 @@ ENV/
 env.bak/
 venv.bak/
 
+# Python caches & coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Virtual envs (hidden)
+.venv/
+backend/.venv/
+
 # Backend specific
 backend/__pycache__/
 backend/*.pyc
 backend/.pytest_cache/
+
+# Frontend build caches
+.vite/
+.turbo/
+.parcel-cache/
 
 # Data files (optional - uncomment if you don't want to track data)
 # data/

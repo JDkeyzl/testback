@@ -17,6 +17,16 @@ export function StrategiesPage() {
   const [isLoading, setIsLoading] = useState(false)
   const strategyBuilderRef = useRef(null)
 
+  // 动态计算昨天（YYYY-MM-DD）
+  const getYesterday = useCallback(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }, [])
+
   // 根据URL参数自动切换到策略构建器
   useEffect(() => {
     if (strategyId) {
@@ -75,7 +85,7 @@ export function StrategiesPage() {
         strategyId: strategyId || currentStrategy.id,
         strategy: currentStrategy.strategy,
         startDate: strategyParams.startDate || '2024-01-01',
-        endDate: strategyParams.endDate || '2024-12-31',
+        endDate: strategyParams.endDate || getYesterday(),
         initialCapital: strategyParams.initialCapital || 100000,
         timeframe: strategyParams.timeframe || '5m',
         positionManagement: strategyParams.positionManagement || 'full'
@@ -136,7 +146,7 @@ export function StrategiesPage() {
       {/* 优化的顶部导航 */}
       <div className="sticky top-0 z-40 border-b border-border/50 bg-card/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 {pageInfo.icon}
@@ -147,9 +157,19 @@ export function StrategiesPage() {
               </div>
             </div>
             
-            {/* 优化的标签页切换 */}
-            <div className="flex items-center space-x-2">
-              <div className="flex rounded-lg bg-muted p-1">
+            {/* 恢复顶部快速回测按钮，并放在标签切换前 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {activeTab === 'builder' && (
+                <Button
+                  onClick={handleStartBacktest}
+                  disabled={isLoading}
+                  className="flex items-center space-x-2 bg-primary hover:bg-primary/90"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span>{isLoading ? '处理中...' : '快速回测'}</span>
+                </Button>
+              )}
+              <div className="flex rounded-lg bg-muted p-1 flex-shrink-0">
                 <Button
                   variant={activeTab === 'list' ? 'default' : 'ghost'}
                   size="sm"
@@ -169,18 +189,6 @@ export function StrategiesPage() {
                   <span>策略构建</span>
                 </Button>
               </div>
-              
-              {/* 快速回测按钮 */}
-              {activeTab === 'builder' && (
-                <Button
-                  onClick={handleStartBacktest}
-                  disabled={isLoading}
-                  className="flex items-center space-x-2 bg-primary hover:bg-primary/90"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>{isLoading ? '处理中...' : '快速回测'}</span>
-                </Button>
-              )}
             </div>
           </div>
         </div>

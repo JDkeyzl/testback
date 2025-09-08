@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 import os
+import sys
 import logging
 
 # 配置日志
@@ -17,14 +18,29 @@ logger = logging.getLogger(__name__)
 class StockDataLoader:
     """股票数据加载器"""
     
-    def __init__(self, data_dir: str = "/Users/ranka/projects/testback/data"):
+    def __init__(self, data_dir: Optional[str] = None):
         """
         初始化数据加载器
         
         Args:
             data_dir: 数据文件目录
         """
-        self.data_dir = data_dir
+        if data_dir is None:
+            # 根据操作系统选择默认数据目录
+            if sys.platform.startswith("win"):
+                preferred_dir = r"F:\apps\testback\data"
+            elif sys.platform == "darwin":
+                preferred_dir = "/Users/ranka/projects/testback/data"
+            else:
+                preferred_dir = None
+
+            # 项目根目录下的 data 作为兜底
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            fallback_dir = os.path.join(project_root, "data")
+
+            self.data_dir = preferred_dir if preferred_dir and os.path.isdir(preferred_dir) else fallback_dir
+        else:
+            self.data_dir = data_dir
         self.cache = {}  # 数据缓存
         
     def load_stock_data(self, symbol: str, timeframe: str = "5m") -> pd.DataFrame:

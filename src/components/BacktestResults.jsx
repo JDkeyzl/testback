@@ -136,6 +136,19 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
 
       setStatusMessage('正在加载股票数据...')
       
+      // 夹取结束日期到数据末日，避免数据不足报错
+      let usedEnd = endDate
+      try {
+        const infoRes = await fetch('http://localhost:8000/api/v1/data/info/002130')
+        if (infoRes.ok) {
+          const info = await infoRes.json()
+          const lastDataDate = String(info?.end_date || '').split(' ')[0]
+          if (lastDataDate) {
+            usedEnd = usedEnd && usedEnd > lastDataDate ? lastDataDate : usedEnd
+          }
+        }
+      } catch {}
+
       // 尝试调用真实数据回测API
       try {
         setStatusMessage('正在执行策略回测...')
@@ -150,7 +163,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
             symbol: "002130",  // 默认使用沃尔核材
             timeframe: timeframe,
             startDate: startDate,
-            endDate: endDate,
+            endDate: usedEnd,
             initialCapital: initialCapital,
             strategyId: strategyId
           })
@@ -476,9 +489,21 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
   const strategyRet = strategyInitial > 0 ? (strategyLast - strategyInitial) / strategyInitial : 0
   const firstClose = dailyPriceData.length > 0 ? dailyPriceData[0].close : (equityData[0]?.price || 0)
   const lastClose = dailyPriceData.length > 0 ? dailyPriceData[dailyPriceData.length - 1].close : (equityData[equityData.length - 1]?.price || firstClose)
+  const startOpen = backtestResult?.priceSeries && backtestResult.priceSeries.length > 0
+    ? Number(backtestResult.priceSeries[0].open ?? backtestResult.priceSeries[0].close ?? 0)
+    : firstClose
   const stockRet = firstClose > 0 ? (lastClose - firstClose) / firstClose : 0
   const outperformDiff = strategyRet - stockRet
   const outperformText = outperformDiff >= 0 ? '跑赢' : '跑输'
+
+  // 区间对比新增比值（结束/开始），>1 红，<1 绿，整数百分比
+  const fundRatio = strategyInitial > 0 ? strategyLast / strategyInitial : 0
+  const fundRatioPct = Math.round((fundRatio - 1) * 100)
+  const fundRatioClass = fundRatio > 1 ? 'text-red-600' : (fundRatio < 1 ? 'text-green-600' : 'text-muted-foreground')
+
+  const priceOpenCloseRatio = startOpen > 0 ? lastClose / startOpen : 0
+  const priceOpenClosePct = Math.round((priceOpenCloseRatio - 1) * 100)
+  const priceOpenCloseClass = priceOpenCloseRatio > 1 ? 'text-red-600' : (priceOpenCloseRatio < 1 ? 'text-green-600' : 'text-muted-foreground')
 
   // 从交易记录计算概览指标（与交易记录保持一致）
   const computeMaxDrawdown = (values) => {
@@ -747,13 +772,13 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <div className="flex justify-between">
+                    <div className="flex justify之间">
                       <span className="text-sm text-muted-foreground">盈利交易</span>
-                      <span className="font-medium text-green-600">{displayMetrics.winningTrades}</span>
+                      <span className="font-medium text-red-600">{displayMetrics.winningTrades}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify之间">
                       <span className="text-sm text-muted-foreground">亏损交易</span>
-                      <span className="font-medium text-red-600">{displayMetrics.losingTrades}</span>
+                      <span className="font-medium text-green-600">{displayMetrics.losingTrades}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">最终资金</span>
@@ -845,28 +870,36 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
-                    <span className="w-28 md:w-32 text-right">策略区间收益</span>
+                    <span className="w-28 md:w-32 text-right">区间开始资金</span>
                     <span className="text-center">：</span>
-                    <span className={strategyRet >= 0 ? 'text-red-600' : 'text-green-600'}>
-                      {(strategyRet * 100).toFixed(2)}%
-                    </span>
+                    <span>¥{strategyInitial.toLocaleString()}</span>
                   </div>
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
-                    <span className="w-28 md:w-32 text-right">结果</span>
+                    <span className="w-28 md:w-32 text-right">区间开始收盘价</span>
                     <span className="text-center">：</span>
-                    <span className={outperformDiff >= 0 ? 'text-red-600' : 'text-green-600'}>
-                      {outperformText} {(Math.abs(outperformDiff) * 100).toFixed(2)}%
-                    </span>
+                    <span>¥{firstClose?.toFixed(2)}</span>
                   </div>
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
-                    <span className="w-28 md:w-32 text-right">期初资金/价格</span>
+                    <span className="w-28 md:w-32 text-right">区间结束资金</span>
                     <span className="text-center">：</span>
-                    <span>¥{strategyInitial.toLocaleString()} / ¥{firstClose?.toFixed(2)}</span>
+                    <span>¥{strategyLast.toLocaleString()}</span>
                   </div>
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
-                    <span className="w-28 md:w-32 text-right">最新资金/价格</span>
+                    <span className="w-28 md:w-32 text-right">区间结束收盘价</span>
                     <span className="text-center">：</span>
-                    <span>¥{strategyLast.toLocaleString()} / ¥{lastClose?.toFixed(2)}</span>
+                    <span>¥{lastClose?.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
+                    <span className="w-28 md:w-32 text-right">资金涨跌幅</span>
+                    <span className="text-center">：</span>
+                    <span className={fundRatioClass}>{fundRatioPct >= 0 ? '+' : ''}{fundRatioPct}%</span>
+                  </div>
+                  <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
+                    <span className="w-28 md:w-32 text-right">股价涨跌幅</span>
+                    <span className="text-center">：</span>
+                    <span className={priceOpenCloseClass}>{priceOpenClosePct >= 0 ? '+' : ''}{priceOpenClosePct}%</span>
                   </div>
                 </div>
               </CardContent>

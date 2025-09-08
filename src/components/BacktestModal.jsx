@@ -14,7 +14,16 @@ export function BacktestModal({
 }) {
   const navigate = useNavigate()
   const [startDate, setStartDate] = useState('2024-01-01')
-  const [endDate, setEndDate] = useState('2024-12-31')
+  // 默认结束日期为今天的前一天
+  const getYesterday = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+  const [endDate, setEndDate] = useState(getYesterday())
   const [initialCapital, setInitialCapital] = useState(100000)
   const [timeframe, setTimeframe] = useState('5m')
   const [isRunning, setIsRunning] = useState(false)
@@ -23,7 +32,7 @@ export function BacktestModal({
   useEffect(() => {
     if (strategy) {
       setStartDate('2024-01-01')
-      setEndDate('2024-12-31')
+      setEndDate(getYesterday())
       setInitialCapital(100000)
       setTimeframe('5m')
     }

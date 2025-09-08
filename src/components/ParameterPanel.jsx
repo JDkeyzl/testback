@@ -1237,16 +1237,15 @@ export function ParameterPanel() {
   return (
     <div className="p-4">
       <Card className="shadow-sm border border-border/50 bg-card/80 backdrop-blur-sm">
+        {/* 恢复头部，仅隐藏节点ID */}
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
             <Settings className="h-4 w-4" />
             {getNodeTitle()}
           </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground">
-            节点ID: {selectedNodeId}
-          </CardDescription>
+          {/* 移除节点ID显示 */}
         </CardHeader>
-        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+        <CardContent className="space-y-4">
           {nodeType === 'condition' && renderConditionParams()}
           {nodeType === 'logic' && renderLogicParams()}
           {nodeType === 'action' && renderActionParams()}

@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Settings } from 'lucide-react'
+import { Settings, BarChart3 } from 'lucide-react'
 import { NodeToolbar } from './NodeToolbar'
 import { StrategyValidator } from './StrategyValidator'
 import { StrategyValidationTooltip } from './StrategyValidationTooltip'
@@ -43,11 +43,21 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   const { strategies, getStrategy } = useStrategyListStore()
   const [toasts, setToasts] = useState([])
   const [isLoadingStrategy, setIsLoadingStrategy] = useState(false)
+  // 计算昨天日期（YYYY-MM-DD）
+  const getYesterday = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
   const [strategyParams, setStrategyParams] = useState(() => {
     const saved = localStorage.getItem('strategyParams')
     return saved ? JSON.parse(saved) : {
       startDate: '2024-01-01',
-      endDate: '2024-12-31',
+      endDate: getYesterday(),
       initialCapital: 100000,
       positionManagement: 'full' // 仓位管理：full, half, third, quarter
     }
@@ -63,6 +73,25 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   useEffect(() => {
     localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
   }, [strategyParams])
+
+  // 迁移旧数据：如果本地存在旧的结束时间为固定 '2024-12-31' 或晚于今天，则修正为昨天
+  useEffect(() => {
+    const raw = localStorage.getItem('strategyParams')
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw)
+      const y = getYesterday()
+      const needFix = parsed && (
+        parsed.endDate === '2024-12-31' ||
+        (parsed.endDate && parsed.endDate > y)
+      )
+      if (needFix) {
+        const fixed = { ...parsed, endDate: y }
+        localStorage.setItem('strategyParams', JSON.stringify(fixed))
+        setStrategyParams(prev => ({ ...prev, endDate: y }))
+      }
+    } catch {}
+  }, [])
   
   const removeToast = (id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
@@ -535,7 +564,11 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
           <div className="bg-card border-t border-border p-4 flex-shrink-0" style={{ height: '120px' }}>
             <div className="max-w-6xl mx-auto h-full flex items-center">
               <div className="w-full">
-                <h3 className="text-sm font-semibold mb-3 text-foreground/80">策略参数配置</h3>
+                <div className="flex items-center justify-between mb-3">
+                  {/* 去掉页面下方的快速回测按钮，仅保留标题 */}
+                  <h3 className="text-sm font-semibold text-foreground/80">策略参数配置</h3>
+                  <div />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-foreground/70">回测开始时间</label>
