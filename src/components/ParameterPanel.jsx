@@ -157,6 +157,7 @@ export function ParameterPanel() {
       { value: 'price_range', label: '价格区间' },
       { value: 'rsi', label: 'RSI' },
       { value: 'bollinger', label: '布林带' },
+      { value: 'vwap', label: 'VWAP' },
       { value: 'macd', label: 'MACD' },
       { value: 'volume', label: '成交量' },
       { value: 'price', label: '价格' },
@@ -198,6 +199,7 @@ export function ParameterPanel() {
       price_range: { minPrice: 100, maxPrice: 200, timeframe: '1d' },
       rsi: { period: 14, timeframe: '1d', threshold: 30, operator: '<', direction: 'none' },
       bollinger: { period: 20, timeframe: '1d', stdDev: 2, condition: 'breakout', direction: 'lower' },
+      vwap: { period: 20, timeframe: '1d', deviation: 0.02, operator: 'below' },
       macd: { fast: 12, slow: 26, signal: 9, timeframe: '1d', threshold: 0, operator: '>' },
       volume: { threshold: 1000000, operator: '>', timeframe: '1d', avgPeriod: 20, multiplier: 1.5 },
       price: { threshold: 100, operator: '>', timeframe: '1d' },
@@ -217,7 +219,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">周期</label>
-                <ParameterHelp description="用于计算移动平均线的时间窗口长度。数值越大，均线越平滑，反应越慢；数值越小，均线越敏感，反应越快。" />
+                <ParameterHelp description="用于计算移动平均线的时间窗口长度。数值越大，均线越平滑，反应越慢；数值越小，均线越敏感，反应越快。适用场景：趋势跟随、回撤买入等。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -242,7 +244,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">时间周期</label>
-                <ParameterHelp description="选择计算移动平均线的时间单位。不同时间周期会影响指标的敏感度和适用场景。" />
+                <ParameterHelp description="选择计算移动平均线的时间单位。不同时间周期会影响指标的敏感度。适用场景：日线中期趋势、分钟线短线交易。" />
               </div>
               <Select
                 value={nodeParams.timeframe || '1d'}
@@ -264,7 +266,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">阈值</label>
-                <ParameterHelp description="用于触发买入/卖出信号的数值条件。当移动均线价格与阈值满足比较条件时，将触发相应的交易信号。" />
+                <ParameterHelp description="用于触发买入/卖出信号的数值条件。当移动均线价格与阈值满足比较条件时触发信号。适用场景：均线突破/回归策略。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -296,7 +298,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">操作符</label>
-                <ParameterHelp description="决定比较逻辑的运算符。例如：大于(>)表示当移动均线价格大于阈值时触发信号，小于(<)表示当价格小于阈值时触发信号。" />
+                <ParameterHelp description="决定比较逻辑的运算符。例如：大于(>) 表示当指标大于阈值时触发。适用场景：阈值越界触发。" />
               </div>
               <select
                 value={nodeParams.operator || '>'}
@@ -317,7 +319,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">最低价</label>
-                <ParameterHelp description="价格区间的下限值。当股票价格低于此值时，将触发相应的交易信号。通常用于支撑位或买入信号。" />
+                <ParameterHelp description="价格区间下限。价格低于此值触发信号。适用场景：支撑位、低吸。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -351,7 +353,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">最高价</label>
-                <ParameterHelp description="价格区间的上限值。当股票价格高于此值时，将触发相应的交易信号。通常用于阻力位或卖出信号。" />
+                <ParameterHelp description="价格区间上限。价格高于此值触发信号。适用场景：阻力位、止盈/反转。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -385,7 +387,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">时间周期</label>
-                <ParameterHelp description="选择价格区间判断的时间单位。不同时间周期会影响价格区间的有效性和信号质量。" />
+                <ParameterHelp description="选择价格区间判断的时间单位。适用场景：日线箱体、分钟区间震荡。" />
               </div>
               <Select
                 value={nodeParams.timeframe || '1d'}
@@ -412,7 +414,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">周期</label>
-                <ParameterHelp description="用于计算RSI指标的时间窗口长度。RSI是相对强弱指标，用于判断股票的超买超卖状态。常用周期为14。" />
+                <ParameterHelp description="RSI计算窗口。数值越小灵敏度越高。适用场景：震荡市高抛低吸、超买超卖判别。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -437,7 +439,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">时间周期</label>
-                <ParameterHelp description="选择计算RSI指标的时间单位。不同时间周期会影响RSI指标的敏感度和信号质量。" />
+                <ParameterHelp description="RSI计算时间单位。适用场景：分钟短线、日线波段。" />
               </div>
               <Select
                 value={nodeParams.timeframe || '1d'}
@@ -459,7 +461,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">RSI阈值</label>
-                <ParameterHelp description="RSI指标的触发阈值。RSI值范围0-100，通常30以下为超卖区域（买入信号），70以上为超买区域（卖出信号）。" />
+                <ParameterHelp description="RSI触发阈值。0-100，常见30/70。适用场景：超卖买入、超买卖出。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -493,7 +495,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">操作符</label>
-                <ParameterHelp description="决定RSI比较逻辑的运算符。例如：小于(<)表示当RSI小于阈值时触发信号（超卖买入），大于(>)表示当RSI大于阈值时触发信号（超买卖出）。" />
+                <ParameterHelp description="RSI比较运算符。适用场景：阈值越界触发。" />
               </div>
               <select
                 value={nodeParams.operator || '<'}
@@ -509,7 +511,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">方向判断</label>
-                <ParameterHelp description="RSI方向判断：向上表示当前RSI比前一根RSI高，向下表示当前RSI比前一根RSI低，无表示不判断方向。" />
+                <ParameterHelp description="RSI方向过滤：向上/向下/无。适用场景：配合趋势过滤假信号。" />
               </div>
               <select
                 value={nodeParams.direction || 'none'}
@@ -530,7 +532,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">周期</label>
-                <ParameterHelp description="用于计算布林带中轨（移动平均线）的时间窗口长度。布林带由中轨、上轨和下轨组成，用于判断价格波动范围。" />
+                <ParameterHelp description="布林带中轨窗口。适用场景：波动率框架、区间/突破策略。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -563,7 +565,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">时间周期</label>
-                <ParameterHelp description="选择计算布林带指标的时间单位。不同时间周期会影响布林带的宽度和信号质量。" />
+                <ParameterHelp description="布林带时间单位。适用场景：分钟短线与日线波段。" />
               </div>
               <Select
                 value={nodeParams.timeframe || '1d'}
@@ -585,7 +587,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">标准差</label>
-                <ParameterHelp description="布林带的标准差倍数，用于计算上轨和下轨。标准差越大，布林带越宽，价格波动范围越大。常用值为2倍标准差。" />
+                <ParameterHelp description="布林带标准差倍数。越大轨道越宽。适用场景：降低频率/减少假突破。" />
               </div>
               <div className="space-y-2">
                 <Slider
@@ -619,7 +621,7 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">突破条件</label>
-                <ParameterHelp description="选择布林带的判断条件：突破表示价格突破布林带轨道，位置表示价格在布林带中的相对位置。" />
+                <ParameterHelp description="判断条件：突破或位置。适用场景：突破追势或回归中轨。" />
               </div>
               <select
                 value={nodeParams.condition || 'breakout'}
@@ -634,7 +636,102 @@ export function ParameterPanel() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">突破方向</label>
-                <ParameterHelp description="选择突破方向：下穿下轨表示价格跌破布林带下轨（超卖信号），上穿上轨表示价格突破布林带上轨（超买信号）。" />
+                <ParameterHelp description="突破方向：下穿下轨/上穿上轨。适用场景：超买超卖/突破。" />
+      case 'vwap':
+        return (
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium">周期</label>
+                <ParameterHelp description="VWAP滚动窗口长度。用于计算加权平均价。适用场景：机构成交均价参考、均值回归/突破。" />
+              </div>
+              <div className="space-y-2">
+                <Slider
+                  value={[nodeParams.period || 20]}
+                  onValueChange={([value]) => handleParamChange('period', value)}
+                  max={200}
+                  min={1}
+                  step={1}
+                  className="w-full"
+                />
+                <Input
+                  type="number"
+                  value={nodeParams.period || 20}
+                  onChange={(e) => handleParamChange('period', parseInt(e.target.value))}
+                  min="1"
+                  max="200"
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium">偏离度</label>
+                <ParameterHelp description="价格相对VWAP的偏离阈值（比例）。负值/低于表示低估，高于表示高估。适用场景：VWAP均值回归、突破。" />
+              </div>
+              <div className="space-y-2">
+                <Slider
+                  value={[nodeParams.deviation ?? 0.02]}
+                  onValueChange={([value]) => handleParamChange('deviation', value)}
+                  max={0.2}
+                  min={0}
+                  step={0.001}
+                  className="w-full"
+                />
+                <Input
+                  type="number"
+                  value={nodeParams.deviation ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === '') handleParamChange('deviation', null)
+                    else handleParamChange('deviation', parseFloat(v))
+                  }}
+                  step="0.001"
+                  className="w-full"
+                  placeholder="0.02"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium">操作符</label>
+                <ParameterHelp description="低于/高于VWAP偏离阈值触发。适用场景：低于买入（均值回归），高于卖出（高估）。" />
+              </div>
+              <select
+                value={nodeParams.operator || 'below'}
+                onChange={(e) => handleParamChange('operator', e.target.value)}
+                className="w-full h-10 px-3 py-2 text-sm border border-input rounded-md bg-background"
+              >
+                <option value="below">低于</option>
+                <option value="above">高于</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium">时间周期</label>
+                <ParameterHelp description="VWAP计算时间单位。适用场景：分钟短线、日线波段。" />
+              </div>
+              <Select
+                value={nodeParams.timeframe || '1d'}
+                onValueChange={(value) => handleParamChange('timeframe', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择时间周期" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeframes.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
               </div>
               <select
                 value={nodeParams.direction || 'lower'}
