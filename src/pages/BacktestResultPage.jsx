@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -40,6 +40,11 @@ export function BacktestResultPage() {
     endDate: backtestParams?.endDate || todayStr,
     initialCapital: backtestParams?.initialCapital || 100000
   }
+
+  const isFutures = useMemo(() => {
+    const sym = String(safeParams.symbol || '')
+    return (location.state?.from === '/futures-backtest') || !/^\d{6}$/.test(sym)
+  }, [safeParams.symbol, location.state])
   
   console.log('BacktestResultPage: 策略获取调试', {
     backtestParams,
@@ -211,8 +216,22 @@ export function BacktestResultPage() {
     return result
   }
   const dailyPriceData = buildDailyPriceData(backtestResult?.priceSeries)
-  // 资金曲线改为“资产口径”：按日收盘价计入未平仓浮盈亏
-  const dailyAssets = buildDailyAssetsFromRows(tradesData, dailyPriceData, safeParams.startDate, safeParams.endDate, safeParams.initialCapital)
+  // 资金曲线改为“资产口径”：股票=交易记录+价格聚合；期货=后端权益曲线（逐日盯市）
+  const dailyAssets = useMemo(() => {
+    if (isFutures && backtestResult?.equityCurve?.length) {
+      const map = new Map()
+      for (const p of backtestResult.equityCurve) {
+        const ts = String(p.timestamp || p.date || '')
+        const d = ts.slice(0, 10)
+        const t = new Date(ts)
+        const equity = Number(p.equity)
+        const price = Number(p.price || 0)
+        if (!map.has(d) || t > map.get(d).t) map.set(d, { t, date: d, totalAssets: equity, cash: 0, position: 0, price })
+      }
+      return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date))
+    }
+    return buildDailyAssetsFromRows(tradesData, dailyPriceData, safeParams.startDate, safeParams.endDate, safeParams.initialCapital)
+  }, [isFutures, backtestResult, tradesData, dailyPriceData, safeParams.startDate, safeParams.endDate, safeParams.initialCapital])
   const equityData = dailyAssets.map(a => ({ date: a.date, value: a.totalAssets }))
   const equityReturnsData = (() => {
     const out = []
@@ -391,7 +410,8 @@ export function BacktestResultPage() {
       
       console.log('BacktestResultPage: 发送回测请求', requestBody)
       
-      const response = await fetch('http://localhost:8000/api/v1/backtest/real', {
+      const url = isFutures ? 'http://localhost:8000/api/v1/backtest/futures' : 'http://localhost:8000/api/v1/backtest/real'
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -466,7 +486,7 @@ export function BacktestResultPage() {
                 startDate: backtestParams.startDate,
                 endDate: usedEndDate,
                 initialCapital: backtestParams.initialCapital,
-                symbol: '002130',
+                symbol: safeParams.symbol,
                 strategySnapshot: backtestParams.strategy || strategy?.strategy
               },
               summary: {
