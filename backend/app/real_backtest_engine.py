@@ -1021,6 +1021,14 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
     """
     # 创建新的回测引擎实例，使用指定的初始资金
     engine = RealBacktestEngine(initial_capital=initial_capital)
+    # 根据标的类型设置市场模型（非6位数字视为期货）
+    try:
+        if not str(symbol).isdigit() or len(str(symbol)) != 6:
+            engine.market = FuturesMarketModel(commission_rate=engine.commission_rate)
+        else:
+            engine.market = StockMarketModel(commission_rate=engine.commission_rate)
+    except Exception:
+        pass
     
     # 加载数据并过滤时间范围
     data = load_stock_data(symbol, timeframe)
@@ -1062,15 +1070,14 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
         }
     }
     
-    # 可选调试信息
+    # 可选调试信息（合并而非覆盖，以保留各策略统计）
     if debug:
         try:
-            result["debug"] = {
-                "data": {
-                    "rows": int(len(data)),
-                    "start": data['timestamp'].min().strftime('%Y-%m-%d %H:%M:%S') if len(data) else None,
-                    "end": data['timestamp'].max().strftime('%Y-%m-%d %H:%M:%S') if len(data) else None,
-                }
+            dbg = result.setdefault("debug", {})
+            dbg["data"] = {
+                "rows": int(len(data)),
+                "start": data['timestamp'].min().strftime('%Y-%m-%d %H:%M:%S') if len(data) else None,
+                "end": data['timestamp'].max().strftime('%Y-%m-%d %H:%M:%S') if len(data) else None,
             }
         except Exception:
             pass

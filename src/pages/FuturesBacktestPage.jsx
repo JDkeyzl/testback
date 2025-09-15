@@ -155,7 +155,16 @@ export function FuturesBacktestPage() {
           winRate: tMetrics.winRate || 0,
           totalTrades: tMetrics.totalTrades || 0,
           elapsedMs: Math.round((performance.now() - t0)),
-          backtestParams: { symbol: contract, timeframe, startDate, endDate, initialCapital },
+          backtestParams: { 
+            symbol: contract, 
+            timeframe, 
+            startDate, 
+            endDate, 
+            initialCapital,
+            strategyId: sid,
+            strategy: strat.strategy || strat,
+            name: strat.name || strat.title || '未命名策略'
+          },
           symbol: contract,
           symbolLabel: contract
         })
