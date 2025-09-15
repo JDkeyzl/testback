@@ -542,6 +542,16 @@ class RealBacktestEngine:
         # 计算RSI（避免 SettingWithCopy）
         data = data.copy()
         data = data.assign(rsi=self._calculate_rsi(data['close'], period))
+        # 调试统计
+        stats = {
+            'type': 'rsi',
+            'params': {'period': period, 'threshold': threshold, 'operator': operator},
+            'indicator_samples': {'rsi_notna': int(data['rsi'].notna().sum())},
+            'signals': {'cond_true': 0},
+            'orders': {'buy_attempts': 0, 'sell_attempts': 0, 'buys': 0, 'sells': 0},
+            'rejections': {'min_lot': 0, 'insufficient_cash': 0},
+            'min_lot': self.market.min_lot(),
+        }
         
         # 回测逻辑（使用参数化阈值与操作符）
         for i in range(period, len(data)):
@@ -564,14 +574,17 @@ class RealBacktestEngine:
                 condition_met = rsi_value <= threshold
             
             # 参数化 RSI 交易逻辑：根据 operator/threshold 触发
-            if position == 0 and (
+            cond_buy = (position == 0 and (
                 (operator in ('<','below') and rsi_value < threshold) or
                 (operator in ('>','above') and rsi_value > threshold) or
                 (operator == '<=' and rsi_value <= threshold) or
                 (operator == '>=' and rsi_value >= threshold)
-            ):
+            ))
+            if cond_buy:
+                stats['signals']['cond_true'] += 1
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                stats['orders']['buy_attempts'] += 1
                 
                 if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
@@ -581,6 +594,7 @@ class RealBacktestEngine:
                     if total_cost <= current_capital:
                         current_capital -= total_cost
                         position += shares_to_buy
+                        stats['orders']['buys'] += 1
                         
                         trades.append({
                             "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
@@ -590,6 +604,10 @@ class RealBacktestEngine:
                             "amount": round(total_cost, 2),
                             "pnl": None
                         })
+                    else:
+                        stats['rejections']['insufficient_cash'] += 1
+                else:
+                    stats['rejections']['min_lot'] += 1
             
             elif position > 0 and (
                 (operator in ('>','above') and rsi_value > threshold) or
@@ -597,6 +615,7 @@ class RealBacktestEngine:
                 (operator == '>=' and rsi_value >= threshold) or
                 (operator == '<=' and rsi_value <= threshold)
             ):
+                stats['orders']['sell_attempts'] += 1
                 revenue = position * current_price
                 commission = revenue * self.commission_rate
                 net_revenue = revenue - commission
@@ -606,6 +625,7 @@ class RealBacktestEngine:
                 
                 current_capital += net_revenue
                 
+                stats['orders']['sells'] += 1
                 trades.append({
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "action": "sell",
@@ -633,7 +653,12 @@ class RealBacktestEngine:
                     "price": round(current_price, 2)
                 })
         
-        return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
+        res = self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
+        try:
+            res.setdefault('debug', {})['rsi'] = stats
+        except Exception:
+            pass
+        return res
     
     def _run_bollinger_strategy(self, data: pd.DataFrame, node_data: Dict, 
                                current_capital: float, position: int, 
