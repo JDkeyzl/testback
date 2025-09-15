@@ -80,8 +80,9 @@ class RealBacktestEngine:
             data = load_stock_data(symbol, timeframe)
             logger.info(f"成功加载 {len(data)} 条数据记录")
             
-            if len(data) < 50:
-                raise ValueError("数据量不足，至少需要50条记录")
+            # 放宽最小样本量限制：<50 时仍可运行，<10 才报错
+            if len(data) < 10:
+                raise ValueError("数据量不足，至少需要10条记录")
             
             # 运行回测
             result = self._execute_backtest(data, strategy, position_management)
@@ -247,28 +248,64 @@ class RealBacktestEngine:
         win_trades = [t for t in sell_trades if t["pnl"] > 0]
         win_rate = len(win_trades) / len(sell_trades) if sell_trades else 0
         
-        # 计算盈亏比
-        if win_trades and sell_trades:
-            avg_win = np.mean([t["pnl"] for t in win_trades])
-            avg_loss = np.mean([t["pnl"] for t in sell_trades if t["pnl"] < 0])
-            profit_loss_ratio = abs(avg_win / avg_loss) if avg_loss != 0 else 0
+        # 计算盈亏比（防止 NaN/Inf）
+        if sell_trades:
+            wins_pnls = [float(t["pnl"]) for t in win_trades] if win_trades else []
+            losses_pnls = [float(t["pnl"]) for t in sell_trades if float(t["pnl"]) < 0]
+            avg_win = float(np.mean(wins_pnls)) if len(wins_pnls) > 0 else 0.0
+            avg_loss = float(np.mean(losses_pnls)) if len(losses_pnls) > 0 else 0.0
+            if avg_loss == 0.0:
+                profit_loss_ratio = 0.0
+            else:
+                try:
+                    profit_loss_ratio = abs(avg_win / avg_loss)
+                    if not np.isfinite(profit_loss_ratio):
+                        profit_loss_ratio = 0.0
+                except Exception:
+                    profit_loss_ratio = 0.0
         else:
-            profit_loss_ratio = 0
+            profit_loss_ratio = 0.0
         
         # 计算最大回撤
         max_drawdown = self._calculate_max_drawdown(equity_curve)
         
+        # 清理数值中的 NaN/Inf，避免 JSON 序列化失败
+        def safe_num(x):
+            try:
+                v = float(x)
+                if not np.isfinite(v):
+                    return 0.0
+                return v
+            except Exception:
+                return 0.0
+
+        clean_trades = []
+        for t in trades:
+            ct = dict(t)
+            for k in ("price","quantity","amount","pnl"):
+                if k in ct and ct[k] is not None:
+                    ct[k] = safe_num(ct[k])
+            clean_trades.append(ct)
+
+        clean_equity = []
+        for p in equity_curve:
+            cp = dict(p)
+            cp["equity"] = safe_num(p.get("equity", 0))
+            cp["returns"] = safe_num(p.get("returns", 0))
+            cp["price"] = safe_num(p.get("price", 0))
+            clean_equity.append(cp)
+
         return {
             "initial_capital": self.initial_capital,
-            "final_equity": round(final_equity, 2),
-            "total_return": round(total_return, 4),
-            "win_rate": round(win_rate, 4),
-            "profit_loss_ratio": round(profit_loss_ratio, 4),
-            "max_drawdown": round(max_drawdown, 4),
-            "total_trades": len(trades),
-            "trades": trades,
-            "equity_curve": equity_curve,
-            "final_market_price": round(data['close'].iloc[-1], 2),
+            "final_equity": safe_num(round(final_equity, 2)),
+            "total_return": safe_num(round(total_return, 4)),
+            "win_rate": safe_num(round(win_rate, 4)),
+            "profit_loss_ratio": safe_num(round(profit_loss_ratio, 4)),
+            "max_drawdown": safe_num(round(max_drawdown, 4)),
+            "total_trades": int(len(trades)),
+            "trades": clean_trades,
+            "equity_curve": clean_equity,
+            "final_market_price": safe_num(round(data['close'].iloc[-1], 2)),
             "price_series": self._build_price_series(data)
         }
     
@@ -815,13 +852,23 @@ class RealBacktestEngine:
         win_trades = [t for t in sell_trades if t["pnl"] > 0]
         win_rate = len(win_trades) / len(sell_trades) if sell_trades else 0
         
-        # 计算盈亏比
-        if win_trades and sell_trades:
-            avg_win = np.mean([t["pnl"] for t in win_trades])
-            avg_loss = np.mean([t["pnl"] for t in sell_trades if t["pnl"] < 0])
-            profit_loss_ratio = abs(avg_win / avg_loss) if avg_loss != 0 else 0
+        # 计算盈亏比（防止 NaN/Inf）
+        if sell_trades:
+            wins_pnls = [float(t["pnl"]) for t in win_trades] if win_trades else []
+            losses_pnls = [float(t["pnl"]) for t in sell_trades if float(t["pnl"]) < 0]
+            avg_win = float(np.mean(wins_pnls)) if len(wins_pnls) > 0 else 0.0
+            avg_loss = float(np.mean(losses_pnls)) if len(losses_pnls) > 0 else 0.0
+            if avg_loss == 0.0:
+                profit_loss_ratio = 0.0
+            else:
+                try:
+                    profit_loss_ratio = abs(avg_win / avg_loss)
+                    if not np.isfinite(profit_loss_ratio):
+                        profit_loss_ratio = 0.0
+                except Exception:
+                    profit_loss_ratio = 0.0
         else:
-            profit_loss_ratio = 0
+            profit_loss_ratio = 0.0
         
         # 计算最大回撤
         max_drawdown = self._calculate_max_drawdown(equity_curve)
@@ -921,8 +968,9 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
             logger.warning("过滤后没有数据，使用原始数据")
             data = load_stock_data(symbol, timeframe)
     
-    if len(data) < 50:
-        raise ValueError("过滤后数据量不足，至少需要50条记录")
+    # 放宽最小样本量限制：<50 时仍可运行，<10 才报错
+    if len(data) < 10:
+        raise ValueError("过滤后数据量不足，至少需要10条记录")
     
     # 执行回测
     result = engine._execute_backtest(data, strategy, position_management)

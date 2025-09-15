@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Activity, Calendar, Clock, BarChart3, List, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStrategyListStore } from '../store/strategyListStore'
+import { formatTradesWithFees as fmtTradesFees, buildDailyAssetsFromRows, computeMetricsFromTrades as computeFromTrades, computeMetricsFromAssets as computeFromAssets } from '../utils/metrics'
+import { useBacktestHistoryStore } from '../store/backtestHistoryStore'
 
 export function BacktestResultPage() {
   const navigate = useNavigate()
@@ -18,10 +20,26 @@ export function BacktestResultPage() {
   const [dataInfo, setDataInfo] = useState(null)
   const [statusMessage, setStatusMessage] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const { addRecord } = useBacktestHistoryStore()
+  const hasLoggedRef = useRef(false)
   
   // 从路由状态获取回测参数，或使用URL参数
   const backtestParams = location.state?.backtestParams || { strategyId }
-  const strategy = getStrategy(backtestParams.strategyId)
+  // 允许从路由状态直接提供策略配置（支持策略库临时回测）
+  const strategyFromStore = backtestParams?.strategyId ? getStrategy(backtestParams.strategyId) : null
+  const strategy = strategyFromStore || (backtestParams?.strategy ? { id: backtestParams.strategyId || 'temp', name: backtestParams.name || '临时策略', strategy: backtestParams.strategy } : null)
+
+  // 统一默认参数，避免直接打开路由时参数缺失导致回测异常
+  const todayStr = (() => { const d = new Date(); return d.toISOString().slice(0,10) })()
+  const safeParams = {
+    strategyId: backtestParams?.strategyId || strategy?.id || 'temp',
+    strategy: backtestParams?.strategy || strategy?.strategy,
+    symbol: backtestParams?.symbol || '002130',
+    timeframe: backtestParams?.timeframe || '1d',
+    startDate: backtestParams?.startDate || '2025-01-01',
+    endDate: backtestParams?.endDate || todayStr,
+    initialCapital: backtestParams?.initialCapital || 100000
+  }
   
   console.log('BacktestResultPage: 策略获取调试', {
     backtestParams,
@@ -172,10 +190,7 @@ export function BacktestResultPage() {
     })
   }
 
-  const tradesData = formatTrades(backtestResult?.trades)
-  const equityData = tradesData.length > 0
-    ? buildEquityFromTrades(tradesData)
-    : formatEquityCurve(backtestResult?.equityCurve)
+  const tradesData = fmtTradesFees(backtestResult?.trades, backtestParams?.initialCapital)
 
   // 将5分钟价格序列聚合为日线收盘价折线
   const buildDailyPriceData = (series) => {
@@ -192,16 +207,34 @@ export function BacktestResultPage() {
     for (const [date, close] of dailyMap.entries()) {
       result.push({ date, close })
     }
+    result.sort((a,b) => String(a.date).localeCompare(String(b.date)))
     return result
   }
   const dailyPriceData = buildDailyPriceData(backtestResult?.priceSeries)
+  // 资金曲线改为“资产口径”：按日收盘价计入未平仓浮盈亏
+  const dailyAssets = buildDailyAssetsFromRows(tradesData, dailyPriceData, safeParams.startDate, safeParams.endDate, safeParams.initialCapital)
+  const equityData = dailyAssets.map(a => ({ date: a.date, value: a.totalAssets }))
+  const equityReturnsData = (() => {
+    const out = []
+    let prev = null
+    for (const a of dailyAssets) {
+      const v = Number(a.totalAssets)
+      const ret = prev ? ((v - prev) / prev) * 100 : 0
+      out.push({ date: a.date, returns: Number(ret.toFixed(2)) })
+      prev = v
+    }
+    return out
+  })()
 
-  // 策略 vs 标的 收益对比（最后一天）
+  // R2 回撤：不再追加“持有”行
+
+  // 基于资产序列的指标与区间表现（资产口径）
   const initialCap = backtestParams?.initialCapital || 100000
-  const strategyLast = equityData.length > 0 ? Number(equityData[equityData.length - 1].value) : initialCap
-  const strategyRet = initialCap > 0 ? (strategyLast - initialCap) / initialCap : 0
-  const firstClose = dailyPriceData.length > 0 ? dailyPriceData[0].close : (equityData[0]?.price || 0)
-  const lastClose = dailyPriceData.length > 0 ? dailyPriceData[dailyPriceData.length - 1].close : (equityData[equityData.length - 1]?.price || firstClose)
+  const assetsMetrics = computeFromAssets(dailyAssets)
+  const strategyLast = assetsMetrics.endAsset || initialCap
+  const strategyRet = assetsMetrics.totalReturn || 0
+  const firstClose = assetsMetrics.startPrice || 0
+  const lastClose = assetsMetrics.endPrice || firstClose
   const startOpen = backtestResult?.priceSeries && backtestResult.priceSeries.length > 0
     ? Number(backtestResult.priceSeries[0].open ?? backtestResult.priceSeries[0].close ?? 0)
     : firstClose
@@ -263,7 +296,16 @@ export function BacktestResultPage() {
     }
   }
 
-  const displayMetrics = computeMetricsFromTrades(tradesData)
+  // 指标合并：收益/回撤用资产口径；胜率/交易次数用成交口径
+  const tradeMetrics = computeFromTrades(tradesData)
+  const displayMetrics = {
+    totalReturn: strategyRet,
+    maxDrawdown: assetsMetrics.maxDrawdown || 0,
+    winRate: tradeMetrics.winRate || 0,
+    totalTrades: tradeMetrics.totalTrades || 0,
+    winningTrades: tradeMetrics.winningTrades || 0,
+    losingTrades: tradeMetrics.losingTrades || 0
+  }
 
   // 交易记录页滚动控制（页面级）
   const scrollToTop = () => {
@@ -274,8 +316,36 @@ export function BacktestResultPage() {
     window.scrollTo({ top: height, behavior: 'smooth' })
   }
 
+  // 如果从历史进入并携带快照，则直接使用，不再重新回测
+  useEffect(() => {
+    const snap = location.state?.useHistorySnapshot
+    if (snap && !backtestResult) {
+      try {
+        const formatted = {
+          metrics: {
+            totalReturn: snap?.summary?.totalReturn ?? 0,
+            annualReturn: snap?.summary?.totalReturn ?? 0,
+            maxDrawdown: snap?.summary?.maxDrawdown ?? 0,
+            sharpeRatio: 0,
+            winRate: 0,
+            profitLossRatio: 0,
+            totalTrades: snap?.summary?.totalTrades ?? 0,
+            winningTrades: 0,
+            losingTrades: 0
+          },
+          equityCurve: snap?.equityCurve || [],
+          priceSeries: snap?.priceSeries || [],
+          trades: snap?.trades || [],
+          dataInfo: snap?.dataInfo || null
+        }
+        setBacktestResult(formatted)
+      } catch {}
+    }
+  }, [location.state, backtestResult])
+
   // 运行回测
   const runBacktest = useCallback(async () => {
+    if (location.state?.useHistorySnapshot) return
     if (!backtestParams || !strategy) {
       console.log('BacktestResultPage: 缺少参数或策略，无法运行回测', {
         hasBacktestParams: !!backtestParams,
@@ -289,6 +359,7 @@ export function BacktestResultPage() {
     console.log('BacktestResultPage: 开始回测', backtestParams)
     console.log('BacktestResultPage: 策略配置', backtestParams.strategy || strategy.strategy)
     setIsRunning(true)
+    hasLoggedRef.current = false
     setError(null)
     setStatusMessage(`正在运行：${strategy?.name || backtestParams.strategyId}`)
     
@@ -296,9 +367,9 @@ export function BacktestResultPage() {
       setStatusMessage('正在加载股票数据...')
       
       // 预取数据信息，若数据不足目标日期，自动夹取至数据末日
-      let usedEndDate = backtestParams.endDate
+      let usedEndDate = safeParams.endDate
       try {
-        const infoRes = await fetch('http://localhost:8000/api/v1/data/info/002130')
+        const infoRes = await fetch(`http://localhost:8000/api/v1/data/info/${safeParams.symbol}`)
         if (infoRes.ok) {
           const info = await infoRes.json()
           const lastDataDate = String(info?.end_date || '').split(' ')[0]
@@ -309,13 +380,13 @@ export function BacktestResultPage() {
       } catch {}
 
       const requestBody = {
-        strategy: backtestParams.strategy || strategy.strategy,
-        symbol: "002130",
-        timeframe: backtestParams.timeframe,
-        startDate: backtestParams.startDate,
+        strategy: safeParams.strategy || strategy.strategy,
+        symbol: safeParams.symbol,
+        timeframe: safeParams.timeframe,
+        startDate: safeParams.startDate,
         endDate: usedEndDate,
-        initialCapital: backtestParams.initialCapital,
-        strategyId: backtestParams.strategyId
+        initialCapital: safeParams.initialCapital,
+        strategyId: safeParams.strategyId || strategy?.id
       }
       
       console.log('BacktestResultPage: 发送回测请求', requestBody)
@@ -353,9 +424,72 @@ export function BacktestResultPage() {
           dataInfo: result.data_info || null
         }
         
+        // 调试输出：关键计数与参数
+        try {
+          console.debug('Result counts', {
+            trades: (result.trades || []).length,
+            equityCurve: (result.equity_curve || []).length,
+            priceSeries: (result.price_series || []).length,
+            requestBody
+          })
+        } catch {}
+
         setBacktestResult(formattedResult)
         setDataInfo(result.data_info)
         setStatusMessage('回测完成！')
+
+        // 写入回测历史记录（前端本地持久化，可扩展后端）
+        try {
+          if (!hasLoggedRef.current) {
+            // 基于这次返回结果即时计算概要，避免依赖旧的组件状态
+            const tradesRowsLog = formattedResult.trades ? formatTrades(formattedResult.trades) : []
+            const equityFromTradesLog = tradesRowsLog.length > 0
+              ? buildEquityFromTrades(tradesRowsLog)
+              : formatEquityCurve(formattedResult.equityCurve)
+            const strategyLastLog = equityFromTradesLog.length > 0
+              ? Number(equityFromTradesLog[equityFromTradesLog.length - 1].value)
+              : (backtestParams?.initialCapital || 100000)
+            const initialCapLog = backtestParams?.initialCapital || 100000
+            const strategyRetLog = initialCapLog > 0 ? (strategyLastLog - initialCapLog) / initialCapLog : 0
+            const dailyPriceDataLog = buildDailyPriceData(formattedResult.priceSeries)
+            const firstCloseLog = dailyPriceDataLog.length > 0 ? dailyPriceDataLog[0].close : 0
+            const lastCloseLog = dailyPriceDataLog.length > 0 ? dailyPriceDataLog[dailyPriceDataLog.length - 1].close : firstCloseLog
+            const stockRetLog = firstCloseLog > 0 ? (lastCloseLog - firstCloseLog) / firstCloseLog : 0
+            const outperformDiffLog = strategyRetLog - stockRetLog
+            const metricsLog = computeMetricsFromTrades(tradesRowsLog)
+
+            const historyRecord = {
+              strategyId: backtestParams.strategyId || strategy?.id || 'unknown',
+              strategyName: strategy?.name || '未命名策略',
+              params: {
+                timeframe: backtestParams.timeframe,
+                startDate: backtestParams.startDate,
+                endDate: usedEndDate,
+                initialCapital: backtestParams.initialCapital,
+                symbol: '002130',
+                strategySnapshot: backtestParams.strategy || strategy?.strategy
+              },
+              summary: {
+                totalReturn: metricsLog.totalReturn,
+                maxDrawdown: metricsLog.maxDrawdown,
+                winRate: metricsLog.winRate,
+                totalTrades: metricsLog.totalTrades,
+                finalEquity: strategyLastLog,
+                outperform: outperformDiffLog,
+                priceStart: firstCloseLog,
+                priceEnd: lastCloseLog
+              },
+              links: {
+                toResultRoute: `/backtest/${backtestParams.strategyId || strategy?.id || 'temp'}`
+              },
+              meta: {}
+            }
+            addRecord(historyRecord)
+            hasLoggedRef.current = true
+          }
+        } catch (e) {
+          console.warn('写入回测历史记录失败', e)
+        }
       } else {
         const errorText = await response.text()
         throw new Error(`回测失败: ${errorText}`)
@@ -384,20 +518,6 @@ export function BacktestResultPage() {
     }
   }, [backtestParams, strategy, backtestResult, runBacktest])
 
-  // 如果没有回测参数或策略，返回策略管理页
-  useEffect(() => {
-    console.log('BacktestResultPage: 检查参数和策略', {
-      backtestParams: !!backtestParams,
-      strategy: !!strategy,
-      strategyId: backtestParams?.strategyId
-    })
-    
-    if (!backtestParams || !strategy) {
-      console.log('BacktestResultPage: 缺少参数或策略，导航回策略页面')
-      navigate('/strategies')
-    }
-  }, [backtestParams, strategy, navigate])
-
   // 如果没有回测参数或策略，显示加载状态
   if (!backtestParams || !strategy) {
     return (
@@ -418,12 +538,20 @@ export function BacktestResultPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const from = location.state?.from
+                  if (from) navigate(from)
+                  else navigate(-1)
+                }}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  返回上一页
+                </Button>
                 <h1 className="text-xl font-semibold">回测结果</h1>
                 <p className="text-sm text-muted-foreground">
                   {strategy.name} - {backtestParams.startDate} 至 {backtestParams.endDate}
                 </p>
                 <div className="text-xs text-muted-foreground mt-1">
-                  策略ID: {backtestParams.strategyId} | 周期: {backtestParams.timeframe} | 初始资金: ¥{backtestParams.initialCapital?.toLocaleString()}
+                  策略ID: {safeParams.strategyId} | 周期: {safeParams.timeframe} | 初始资金: ¥{safeParams.initialCapital?.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -610,7 +738,7 @@ export function BacktestResultPage() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">最终资金</span>
-                      <span className="font-medium">¥{backtestResult?.final_equity?.toFixed(2) || '0.00'}</span>
+                      <span className="font-medium">¥{Number(strategyLast).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">夏普比率</span>
@@ -649,8 +777,8 @@ export function BacktestResultPage() {
             {/* 资金曲线 */}
             <Card>
               <CardHeader>
-                <CardTitle>资金曲线</CardTitle>
-                <CardDescription>总资产变化趋势</CardDescription>
+                <CardTitle>资金曲线（资产口径）</CardTitle>
+                <CardDescription>总资产（现金+持仓市值，含未平仓浮盈亏）</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-64">
@@ -728,7 +856,7 @@ export function BacktestResultPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   {/* 隐藏：策略区间收益 与 结果 */}
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
-                    <span className="w-28 md:w-32 text-right">区间开始资金</span>
+                    <span className="w-28 md:w-32 text-right">区间起始资产</span>
                     <span className="text-center">：</span>
                     <span>¥{initialCap.toLocaleString()}</span>
                   </div>
@@ -738,7 +866,7 @@ export function BacktestResultPage() {
                     <span>¥{firstClose?.toFixed(2)}</span>
                   </div>
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
-                    <span className="w-28 md:w-32 text-right">区间结束资金</span>
+                    <span className="w-28 md:w-32 text-right">区间结束资产</span>
                     <span className="text-center">：</span>
                     <span>¥{strategyLast.toLocaleString()}</span>
                   </div>
@@ -771,9 +899,9 @@ export function BacktestResultPage() {
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {equityData.length > 0 ? (
+                {equityReturnsData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={equityData}>
+                    <BarChart data={equityReturnsData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -816,22 +944,30 @@ export function BacktestResultPage() {
               </div>
               {tradesData.length > 0 ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-7 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <div className="grid grid-cols-9 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
                     <div>时间</div>
                     <div>类型</div>
                     <div>价格</div>
                     <div>数量</div>
                     <div>盈亏</div>
                     <div>持仓</div>
+                    <div>股票价值</div>
+                    <div>现金</div>
                     <div>总资产</div>
                   </div>
-                  {tradesData.map((trade, index) => (
-                    <div key={index} className="grid grid-cols-7 gap-4 text-sm py-2 border-b hover:bg-muted/50">
+                  {tradesData.map((trade, index) => {
+                    // 用 dailyAssets 对齐当日资产口径，若缺则回退到行内数据
+                    const a = dailyAssets.find(x => x.date === String(trade.date).split(' ')[0])
+                    const sec = a ? (a.position * a.price) : Number(trade.securityValue || 0)
+                    const cash = a ? a.cash : Number(trade.balance || 0)
+                    const ta = a ? a.totalAssets : Number(trade.totalAssets || (cash + sec))
+                    return (
+                    <div key={index} className="grid grid-cols-9 gap-4 text-sm py-2 border-b hover:bg-muted/50">
                       <div className="text-xs">
                         <div>{trade.time}</div>
                       </div>
-                      <div className={trade.action === 'buy' ? 'text-green-600' : 'text-red-600'}>
-                        {trade.action === 'buy' ? '买入' : '卖出'}
+                      <div className={trade.action === 'buy' ? 'text-green-600' : (trade.action === 'sell' ? 'text-red-600' : 'text-blue-600')}>
+                        {trade.action === 'buy' ? '买入' : (trade.action === 'sell' ? '卖出' : '持有')}
                       </div>
                       <div>¥{trade.price}</div>
                       <div>{trade.quantity}</div>
@@ -839,13 +975,25 @@ export function BacktestResultPage() {
                         {trade.pnl}
                       </div>
                       <div className="font-medium">{trade.position}</div>
-                      <div className="font-medium">¥{trade.totalAssets}</div>
+                      <div className="font-medium">¥{sec.toFixed ? sec.toFixed(2) : sec}</div>
+                      <div className="font-medium">¥{cash.toFixed ? cash.toFixed(2) : cash}</div>
+                      <div className="font-medium">¥{ta.toFixed ? ta.toFixed(2) : ta}</div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-32 text-muted-foreground">
-                  {isRunning ? '正在生成交易记录...' : '暂无交易记录'}
+                <div className="p-4 border rounded-md bg-muted/30">
+                  <div className="text-sm font-medium text-muted-foreground">本次回测未产生交易</div>
+                  <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                    <div>- 可能原因：策略条件在所选时间区间内未被触发。</div>
+                    <div>- 建议操作：
+                      <span className="ml-1">尝试调整时间区间或K线周期；在策略库预览中查看“适用K线周期”与“使用技巧”。</span>
+                    </div>
+                    <div>- 数据提示：
+                      <span className="ml-1">数据范围 {dataInfo?.start_date || '—'} 至 {dataInfo?.end_date || '—'}；总记录 {dataInfo?.total_records ?? '—'}。</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>

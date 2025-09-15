@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, TrendingDown, DollarSign, Activity, Play, Loader2, AlertCircle, Calendar, Clock, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStrategyStore } from '../store/strategyStore'
 import { useStrategyListStore } from '../store/strategyListStore'
+import { formatTradesWithFees as fmtTradesFees, buildDailyAssetsFromRows, computeMetricsFromTrades as computeFromTrades, computeMetricsFromAssets as computeFromAssets } from '../utils/metrics'
 
 export function BacktestResults({ externalStrategyData = null, strategyId = null, backtestParams = null }) {
   const [activeTab, setActiveTab] = useState('overview')
@@ -22,6 +23,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
   const [endDate, setEndDate] = useState(backtestParams?.endDate || '2024-12-31')
   const [initialCapital, setInitialCapital] = useState(backtestParams?.initialCapital || 100000)
   const [timeframe, setTimeframe] = useState(backtestParams?.timeframe || '5m')
+  const [symbol, setSymbol] = useState(backtestParams?.symbol || '002130')
   
   const { nodeParams } = useStrategyStore()
   const { getStrategy } = useStrategyListStore()
@@ -37,6 +39,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
       setEndDate(backtestParams.endDate || '2024-12-31')
       setInitialCapital(backtestParams.initialCapital || 100000)
       setTimeframe(backtestParams.timeframe || '5m')
+      setSymbol(backtestParams.symbol || '002130')
     }
   }, [backtestParams])
 
@@ -118,110 +121,80 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
     }
   }
 
-  // 运行回测
+  // 运行回测（下方仅展示和 API 调用保持一致的部分，换用统一交易口径处理结果）
   const runBacktest = useCallback(async () => {
-    console.log('BacktestResults: runBacktest开始执行')
     setIsRunning(true)
     setError(null)
     setRunningStrategyName(currentStrategy?.name || '当前策略')
     setStatusMessage('正在准备回测数据...')
-    
     try {
       const strategyData = buildStrategyData()
-      console.log('BacktestResults: 构建的策略数据', strategyData)
-      
-      if (strategyData.nodes.length === 0) {
-        throw new Error('请先添加策略节点')
-      }
+      if (strategyData.nodes.length === 0) throw new Error('请先添加策略节点')
 
       setStatusMessage('正在加载股票数据...')
-      
-      // 夹取结束日期到数据末日，避免数据不足报错
       let usedEnd = endDate
       try {
-        const infoRes = await fetch('http://localhost:8000/api/v1/data/info/002130')
+        const infoRes = await fetch(`http://localhost:8000/api/v1/data/info/${symbol || '002130'}`)
         if (infoRes.ok) {
           const info = await infoRes.json()
           const lastDataDate = String(info?.end_date || '').split(' ')[0]
-          if (lastDataDate) {
-            usedEnd = usedEnd && usedEnd > lastDataDate ? lastDataDate : usedEnd
-          }
+          if (lastDataDate) usedEnd = usedEnd && usedEnd > lastDataDate ? lastDataDate : usedEnd
         }
       } catch {}
 
-      // 尝试调用真实数据回测API
-      try {
-        setStatusMessage('正在执行策略回测...')
-        
-        const response = await fetch('http://localhost:8000/api/v1/backtest/real', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            strategy: strategyData,
-            symbol: "002130",  // 默认使用沃尔核材
-            timeframe: timeframe,
-            startDate: startDate,
-            endDate: usedEnd,
-            initialCapital: initialCapital,
-            strategyId: strategyId
-          })
+      setStatusMessage('正在执行策略回测...')
+      const response = await fetch('http://localhost:8000/api/v1/backtest/real', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          strategy: strategyData,
+          symbol: symbol || '002130',
+          timeframe,
+          startDate,
+          endDate: usedEnd,
+          initialCapital,
+          strategyId
         })
+      })
 
-        if (response.ok) {
-          setStatusMessage('正在处理回测结果...')
-          
-          const result = await response.json()
-          console.log('BacktestResults: 真实数据回测成功', result)
-          
-          // 转换数据格式以匹配前端显示
-          const formattedResult = {
-            metrics: {
-              totalReturn: result.total_return || 0,
-              annualReturn: result.total_return || 0,  // 使用总收益率作为年化收益率
-              maxDrawdown: result.max_drawdown || 0,
-              sharpeRatio: 0,  // 暂时设为0，后续可计算
-              winRate: result.win_rate || 0,
-              profitLossRatio: result.profit_loss_ratio || 0,
-              totalTrades: result.total_trades || 0,
-              winningTrades: Math.round((result.win_rate || 0) * (result.total_trades || 0)),
-              losingTrades: Math.round((1 - (result.win_rate || 0)) * (result.total_trades || 0))
-            },
-            equityCurve: result.equity_curve || [],
-            priceSeries: result.price_series || [],
-            trades: result.trades || [],
-            dataInfo: result.data_info || null  // 添加数据信息
-          }
-          
-          setBacktestResult(formattedResult)
-          setDataInfo(result.data_info)
-          setStatusMessage('回测完成！')
-          setActiveTab('overview')
-          return
-        } else {
-          console.warn('BacktestResults: 真实数据API调用失败，状态码:', response.status)
-          const errorText = await response.text()
-          console.warn('BacktestResults: API错误响应:', errorText)
+      if (response.ok) {
+        const result = await response.json()
+        // 统一交易口径：基于 trades.amount
+        const rows = fmtTradesFees(result.trades || [], initialCapital)
+        const equity = buildEqFromTrades(rows)
+        const m = computeFromTrades(rows)
+        const formattedResult = {
+          metrics: {
+            totalReturn: m.totalReturn,
+            annualReturn: m.totalReturn,
+            maxDrawdown: m.maxDrawdown,
+            sharpeRatio: 0,
+            winRate: m.winRate,
+            profitLossRatio: 0,
+            totalTrades: m.totalTrades,
+            winningTrades: m.winningTrades,
+            losingTrades: m.losingTrades
+          },
+          equityCurve: equity,
+          priceSeries: result.price_series || [],
+          trades: rows,
+          dataInfo: result.data_info || null
         }
-      } catch (apiError) {
-        console.warn('BacktestResults: 真实数据API调用异常，使用模拟数据:', apiError)
+        setBacktestResult(formattedResult)
+        setDataInfo(result.data_info)
+        setStatusMessage('回测完成！')
+        setActiveTab('overview')
+      } else {
+        const errorText = await response.text()
+        throw new Error(errorText)
       }
-
-      // 如果API调用失败，使用模拟数据
-      const mockResult = generateMockBacktestResult()
-      setBacktestResult(mockResult)
-      setActiveTab('overview')
-      
     } catch (err) {
       setError(err.message)
-      console.error('回测失败:', err)
     } finally {
       setIsRunning(false)
       setRunningStrategyName(null)
       setStatusMessage(null)
     }
-  }, [externalStrategyData, strategyId, currentStrategy, startDate, endDate, initialCapital, timeframe])
+  }, [externalStrategyData, strategyId, currentStrategy, startDate, endDate, initialCapital, timeframe, symbol])
 
   // 当有外部策略数据时，自动运行回测
   useEffect(() => {
@@ -461,12 +434,39 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
   }
 
   const tradesData = formatTrades(backtestResult?.trades)
-  const equityData = tradesData.length > 0
-    ? buildEquityFromTrades(tradesData)
-    : formatEquityCurve(backtestResult?.equityCurve)
+  // 日线价格
+  const buildDailyPriceDataA = (series) => {
+    if (!series) return []
+    const m = new Map()
+    for (const p of series) {
+      const ts = p.timestamp || p.date || ''
+      const d = String(ts).split(' ')[0]
+      m.set(d, Number(p.close))
+    }
+    const out = []
+    for (const [date, close] of m.entries()) out.push({ date, close })
+    return out
+  }
+  const dailyPriceData = buildDailyPriceDataA(backtestResult?.priceSeries)
+  const dailyAssets = buildDailyAssetsFromRows(tradesData, dailyPriceData, startDate, endDate, initialCapital)
+  dailyPriceData.sort((a,b) => String(a.date).localeCompare(String(b.date)))
+  const equityData = dailyAssets.map(a => ({ date: a.date, value: a.totalAssets }))
+  const equityReturnsData = (() => {
+    const out = []
+    let prev = null
+    for (const a of dailyAssets) {
+      const v = Number(a.totalAssets)
+      const ret = prev ? ((v - prev) / prev) * 100 : 0
+      out.push({ date: a.date, returns: Number(ret.toFixed(2)) })
+      prev = v
+    }
+    return out
+  })()
+
+  // R2 回撤：不再追加“持有”行
 
   // 将5分钟价格序列聚合为日线收盘价折线
-  const buildDailyPriceData = (series) => {
+  const buildDailyPriceDataB = (series) => {
     if (!series) return []
     const dailyMap = new Map()
     for (const p of series) {
@@ -481,14 +481,15 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
     }
     return result
   }
-  const dailyPriceData = buildDailyPriceData(backtestResult?.priceSeries)
+  const dailyPriceData2 = buildDailyPriceDataB(backtestResult?.priceSeries)
 
   // 策略 vs 标的 收益对比（最后一天）
   const strategyInitial = initialCapital
-  const strategyLast = equityData.length > 0 ? Number(equityData[equityData.length - 1].value) : strategyInitial
-  const strategyRet = strategyInitial > 0 ? (strategyLast - strategyInitial) / strategyInitial : 0
-  const firstClose = dailyPriceData.length > 0 ? dailyPriceData[0].close : (equityData[0]?.price || 0)
-  const lastClose = dailyPriceData.length > 0 ? dailyPriceData[dailyPriceData.length - 1].close : (equityData[equityData.length - 1]?.price || firstClose)
+  const assetsMetrics = computeFromAssets(dailyAssets)
+  const strategyLast = assetsMetrics.endAsset || strategyInitial
+  const strategyRet = assetsMetrics.totalReturn || 0
+  const firstClose = assetsMetrics.startPrice || 0
+  const lastClose = assetsMetrics.endPrice || firstClose
   const startOpen = backtestResult?.priceSeries && backtestResult.priceSeries.length > 0
     ? Number(backtestResult.priceSeries[0].open ?? backtestResult.priceSeries[0].close ?? 0)
     : firstClose
@@ -552,7 +553,16 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
     }
   }
 
-  const displayMetrics = computeMetricsFromTrades(tradesData)
+  // 指标合并：收益/回撤用资产口径；胜率/交易次数用成交口径
+  const tradeMetrics = computeMetricsFromTrades(tradesData)
+  const displayMetrics = {
+    totalReturn: assetsMetrics.totalReturn || 0,
+    maxDrawdown: assetsMetrics.maxDrawdown || 0,
+    winRate: tradeMetrics.winRate || 0,
+    totalTrades: tradeMetrics.totalTrades || 0,
+    winningTrades: tradeMetrics.winningTrades || 0,
+    losingTrades: tradeMetrics.losingTrades || 0
+  }
   const tradesContainerRef = useRef(null)
   const scrollTradesToTop = () => {
     if (tradesContainerRef.current) {
@@ -792,8 +802,8 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
             {/* 资金曲线 */}
             <Card>
               <CardHeader>
-                <CardTitle>资金曲线</CardTitle>
-                <CardDescription>总资产变化趋势</CardDescription>
+                <CardTitle>资金曲线（资产口径）</CardTitle>
+                <CardDescription>总资产（现金+持仓市值，含未平仓浮盈亏）</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-64">
@@ -915,9 +925,9 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {equityData.length > 0 ? (
+                {equityReturnsData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={equityData}>
+                    <LineChart data={equityReturnsData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -925,12 +935,13 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
                         formatter={(value) => [`${value}%`, '收益率']}
                         labelFormatter={(label) => `日期: ${label}`}
                       />
-                      <Bar 
+                      <Line 
+                        type="monotone" 
                         dataKey="returns" 
-                        fill="#10b981"
+                        stroke="#10b981"
                         name="收益率"
                       />
-                    </BarChart>
+                    </LineChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -960,36 +971,46 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
               </div>
               {tradesData.length > 0 ? (
                 <div ref={tradesContainerRef} className="space-y-2 max-h-[60vh] overflow-auto pr-2">
-                  <div className="grid grid-cols-7 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <div className="grid grid-cols-9 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
                     <div>时间</div>
                     <div>类型</div>
                     <div>价格</div>
                     <div>数量</div>
                     <div>盈亏</div>
                     <div>持仓</div>
+                    <div>股票价值</div>
+                    <div>现金</div>
                     <div>总资产</div>
                   </div>
-                  {tradesData.map((trade, index) => (
-                    <div key={index} className="grid grid-cols-7 gap-4 text-sm py-2 border-b hover:bg-muted/50">
-                      <div className="text-xs">
-                        <div>{trade.date}</div>
-                        <div className="text-muted-foreground">{trade.time}</div>
+                  {tradesData.map((trade, index) => {
+                    const a = dailyAssets.find(x => x.date === String(trade.date).split(' ')[0])
+                    const sec = a ? (a.position * a.price) : Number(trade.securityValue || 0)
+                    const cash = a ? a.cash : Number(trade.balance || 0)
+                    const ta = a ? a.totalAssets : Number(trade.totalAssets || (cash + sec))
+                    return (
+                      <div key={index} className="grid grid-cols-9 gap-4 text-sm py-2 border-b hover:bg-muted/50">
+                        <div className="text-xs">
+                          <div>{trade.date}</div>
+                          <div className="text-muted-foreground">{trade.time}</div>
+                        </div>
+                        <div className={trade.action === 'buy' ? 'text-green-600' : (trade.action === 'sell' ? 'text-red-600' : 'text-blue-600')}>
+                          {trade.action === 'buy' ? '买入' : (trade.action === 'sell' ? '卖出' : '持有')}
+                        </div>
+                        <div>¥{trade.price}</div>
+                        <div>{trade.quantity}</div>
+                        <div className={trade.pnlClass}>
+                          {trade.pnl}
+                        </div>
+                        <div className="text-xs">
+                          <div>{trade.position}</div>
+                          <div className="text-muted-foreground">成本: ¥{trade.avgCost}</div>
+                        </div>
+                        <div className="font-medium">¥{sec.toFixed ? sec.toFixed(2) : sec}</div>
+                        <div className="font-medium">¥{cash.toFixed ? cash.toFixed(2) : cash}</div>
+                        <div className="font-medium">¥{ta.toFixed ? ta.toFixed(2) : ta}</div>
                       </div>
-                      <div className={trade.action === 'buy' ? 'text-green-600' : 'text-red-600'}>
-                        {trade.action === 'buy' ? '买入' : '卖出'}
-                      </div>
-                      <div>¥{trade.price}</div>
-                      <div>{trade.quantity}</div>
-                      <div className={trade.pnlClass}>
-                        {trade.pnl}
-                      </div>
-                      <div className="text-xs">
-                        <div>{trade.position}</div>
-                        <div className="text-muted-foreground">成本: ¥{trade.avgCost}</div>
-                      </div>
-                      <div className="font-medium">¥{trade.totalAssets || trade.balance}</div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-32 text-muted-foreground">

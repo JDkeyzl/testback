@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Settings, Download, Upload, ArrowLeft, Home } from 'lucide-react'
+import { Settings, Download, Upload, ArrowLeft, Home, BarChart3 } from 'lucide-react'
 
 export function TopNavigation() {
   const navigate = useNavigate()
@@ -94,6 +94,16 @@ export function TopNavigation() {
             <Settings className="h-4 w-4 mr-2" />
             设置
           </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="default" size="sm" onClick={() => navigate('/symbol-backtest')}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              股票回测
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/futures-backtest')}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              期货回测
+            </Button>
+          </div>
           {/* 顶部全局“开始回测”按钮已移除，保留页内的回测入口 */}
         </div>
       </div>

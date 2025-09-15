@@ -5,6 +5,8 @@ import { WelcomePage } from './pages/WelcomePage'
 import { StrategiesPage } from './pages/StrategiesPage'
 import { BacktestResultPage } from './pages/BacktestResultPage'
 import { TestAutoFix } from './pages/TestAutoFix'
+import { SymbolBacktestPage } from './pages/SymbolBacktestPage'
+import { FuturesBacktestPage } from './pages/FuturesBacktestPage'
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
           <Route path="/strategies" element={<StrategiesPage key="strategies-list" />} />
           <Route path="/strategies/:strategyId/edit" element={<StrategiesPage key="strategies-edit" />} />
           <Route path="/backtest/:strategyId" element={<BacktestResultPage />} />
+          <Route path="/symbol-backtest" element={<SymbolBacktestPage />} />
+          <Route path="/futures-backtest" element={<FuturesBacktestPage />} />
           <Route path="/test-autofix" element={<TestAutoFix />} />
           <Route path="*" element={<Navigate to="/welcome" replace />} />
         </Routes>

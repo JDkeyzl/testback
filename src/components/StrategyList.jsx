@@ -5,12 +5,13 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { useStrategyListStore } from '../store/strategyListStore'
 import { useStrategyStore } from '../store/strategyStore'
-import { Edit, Play, Trash2, Plus, Calendar, Clock, Save, X, Pencil, RefreshCw, BarChart3, Settings } from 'lucide-react'
+import { Edit, Play, Trash2, Plus, Calendar, Clock, Save, X, Pencil, RefreshCw, BarChart3, Settings, Library, Eye } from 'lucide-react'
+import { strategyLibrary } from '../data/strategyLibrary'
 import { BacktestModal } from './BacktestModal'
 
 export function StrategyList({ onBacktest }) {
   const navigate = useNavigate()
-  const { strategies, deleteStrategy, renameStrategy, initializeDefaultStrategies, resetToSample } = useStrategyListStore()
+  const { strategies, addStrategy, deleteStrategy, renameStrategy, initializeDefaultStrategies, resetToSample } = useStrategyListStore()
   const { resetAllParams, initNodeParams } = useStrategyStore()
   const [deletingId, setDeletingId] = useState(null)
   const [backtestModalOpen, setBacktestModalOpen] = useState(false)
@@ -18,6 +19,10 @@ export function StrategyList({ onBacktest }) {
   const [renamingId, setRenamingId] = useState(null)
   const [newName, setNewName] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showLibrary, setShowLibrary] = useState(false)
+  const [previewItem, setPreviewItem] = useState(null)
+  const [openedFromLibrary, setOpenedFromLibrary] = useState(false)
+  const [shouldReopenLibraryOnClose, setShouldReopenLibraryOnClose] = useState(false)
 
   // 初始化默认策略 - 优化性能
   useEffect(() => {
@@ -62,8 +67,19 @@ export function StrategyList({ onBacktest }) {
     setBacktestModalOpen(true)
   }, [])
 
+  // 从策略库打开回测（关闭抽屉，关闭时如未执行回测则恢复抽屉）
+  const handleRunBacktestFromLibrary = useCallback((strategy) => {
+    setOpenedFromLibrary(true)
+    setShouldReopenLibraryOnClose(true)
+    setShowLibrary(false)
+    setSelectedStrategy(strategy)
+    setBacktestModalOpen(true)
+  }, [])
+
   // 执行回测
   const handleExecuteBacktest = useCallback(async (backtestParams) => {
+    // 用户确认执行回测时不再恢复抽屉
+    setShouldReopenLibraryOnClose(false)
     if (onBacktest) {
       await onBacktest(backtestParams)
     }
@@ -73,7 +89,31 @@ export function StrategyList({ onBacktest }) {
   const handleCloseBacktestModal = useCallback(() => {
     setBacktestModalOpen(false)
     setSelectedStrategy(null)
+    if (openedFromLibrary && shouldReopenLibraryOnClose) {
+      setShowLibrary(true)
+    }
+    setOpenedFromLibrary(false)
+    setShouldReopenLibraryOnClose(false)
   }, [])
+
+  // 从策略库复制为我的策略（深拷贝，生成新ID）
+  const handleCopyFromLibrary = useCallback((libItem) => {
+    try {
+      const deepCopy = JSON.parse(JSON.stringify(libItem))
+      const toAdd = {
+        ...deepCopy,
+        id: undefined, // 让store自动生成新id
+        name: deepCopy.name + '（副本）',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      addStrategy(toAdd)
+      alert('已复制到我的策略')
+    } catch (e) {
+      console.error('复制策略失败', e)
+      alert('复制策略失败，请重试')
+    }
+  }, [addStrategy])
 
   // 开始重命名
   const handleStartRename = useCallback((strategy) => {
@@ -161,6 +201,15 @@ export function StrategyList({ onBacktest }) {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowLibrary(true)}
+            className="flex items-center space-x-2"
+          >
+            <Library className="h-4 w-4" />
+            <span>打开策略库</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleResetToDefault}
             className="flex items-center space-x-2"
           >
@@ -178,6 +227,7 @@ export function StrategyList({ onBacktest }) {
         </div>
       </div>
 
+      {/* 我的策略 */}
       {/* 优化的策略列表 */}
       <div className="space-y-3">
         {strategies.length === 0 ? (
@@ -313,6 +363,147 @@ export function StrategyList({ onBacktest }) {
         strategy={selectedStrategy}
         onRunBacktest={handleExecuteBacktest}
       />
+
+      {/* 策略库抽屉 */}
+      {showLibrary && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowLibrary(false)}></div>
+          <div className="absolute right-0 top-0 h-full w-full md:w-[560px] bg-card border-l border-border shadow-2xl flex flex-col">
+            <div className="p-4 md:p-5 border-b border-border flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Library className="h-4 w-4" />
+                <span className="font-semibold">策略库</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowLibrary(false)}>关闭</Button>
+            </div>
+            <div className="p-4 md:p-5 overflow-y-auto flex-1">
+              <div className="grid gap-3">
+                {strategyLibrary.map((lib) => (
+                  <Card key={lib.id} className="hover:shadow-lg transition-all duration-200 border-border/50 hover:border-border">
+                    <CardContent className="p-3 md:p-4">
+                      <div className="flex flex-col gap-2">
+                        {/* 头部：名称 + 标签 */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-sm md:text-base leading-tight break-words text-foreground">
+                              {lib.name}
+                            </h4>
+                            <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                              <span className="px-1.5 py-0.5 rounded bg-muted">预置</span>
+                              {lib.recommended && <span className="px-1.5 py-0.5 rounded bg-muted">建议：{lib.recommended}</span>}
+                              {(() => { const t = lib?.strategy?.nodes?.[0]?.data?.subType || lib?.strategy?.nodes?.[0]?.data?.type; return t ? <span className="px-1.5 py-0.5 rounded bg-muted">类型：{t}</span> : null })()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 主体：简介与小信息行 */}
+                        <div className="text-xs md:text-sm text-muted-foreground line-clamp-2">
+                          {lib.description}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3 w-3" /> 节点：{lib?.strategy?.nodes?.length || 0}
+                          </span>
+                          {lib.tips && (
+                            <span className="inline-flex items-center gap-1">
+                              <Settings className="h-3 w-3" /> 技巧：<span className="truncate max-w-[200px] md:max-w-[320px] inline-block align-bottom">{lib.tips}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 底部：紧凑操作区，自动换行 */}
+                        <div className="pt-1 flex flex-wrap items-center gap-2">
+                          <div className="inline-flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPreviewItem(lib)}
+                              className="h-8 px-2 flex items-center space-x-1 whitespace-nowrap"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>预览</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRunBacktestFromLibrary(lib)}
+                              className="h-8 px-2 flex items-center space-x-1 hover:bg-primary/10 hover:text-primary whitespace-nowrap"
+                            >
+                              <Play className="h-3 w-3" />
+                              <span>回测</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopyFromLibrary(lib)}
+                              className="h-8 px-2 flex items-center space-x-1 whitespace-nowrap"
+                            >
+                              <Plus className="h-3 w-3" />
+                              <span>复制到我的策略</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 预览模态框（不影响当前页面操作） */}
+      {previewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setPreviewItem(null)}></div>
+          <Card className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader className="pb-3 sticky top-0 bg-card z-10 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">{previewItem.name} - 策略预览</CardTitle>
+                  <CardDescription className="text-xs">预览策略原理与使用技巧</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setPreviewItem(null)} className="h-8 w-8 p-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4">
+              <div>
+                <div className="text-sm font-medium mb-1">策略说明</div>
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {previewItem.principle || '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-1">适用场景</div>
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {previewItem.scenarios || '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-1">使用技巧</div>
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {previewItem.tips || '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-1">适用 K 线周期</div>
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {previewItem.recommended || '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-1">核心逻辑（节点式）</div>
+                <div className="text-xs text-muted-foreground bg-muted rounded p-3 overflow-x-auto">
+                  <pre className="whitespace-pre-wrap break-words">{JSON.stringify({ nodes: previewItem.strategy?.nodes?.map(n => ({ type: n.type, subType: n.data?.subType, desc: n.data?.description })) || [] }, null, 2)}</pre>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -26,7 +26,11 @@ export function BacktestModal({
   const [endDate, setEndDate] = useState(getYesterday())
   const [initialCapital, setInitialCapital] = useState(100000)
   const [timeframe, setTimeframe] = useState('5m')
+  const recommended = strategy?.recommended || strategy?.strategy?.recommended
+  const tips = strategy?.tips
   const [isRunning, setIsRunning] = useState(false)
+  const [sources, setSources] = useState([])
+  const [symbol, setSymbol] = useState('002130')
 
   // 当策略变化时重置表单
   useEffect(() => {
@@ -34,9 +38,44 @@ export function BacktestModal({
       setStartDate('2024-01-01')
       setEndDate(getYesterday())
       setInitialCapital(100000)
-      setTimeframe('5m')
+      // 默认时间周期从策略节点里读取，若不存在则保持'5m'
+      const tfFromNodes = Array.isArray(strategy.strategy?.nodes)
+        ? (strategy.strategy.nodes.find(n => n?.data?.timeframe)?.data?.timeframe || null)
+        : null
+      // 优先采用策略库的建议周期（若能匹配标准值），否则回落到节点设置，再否则'5m'
+      const tf = (() => {
+        if (recommended?.includes('1d')) return '1d'
+        if (recommended?.includes('4h')) return '4h'
+        if (recommended?.includes('1h')) return '1h'
+        if (recommended?.includes('30m')) return '30m'
+        if (recommended?.includes('15m')) return '15m'
+        if (recommended?.includes('5m')) return '5m'
+        if (recommended?.includes('1m')) return '1m'
+        return tfFromNodes || '5m'
+      })()
+      setTimeframe(tf)
     }
   }, [strategy])
+
+  // 加载数据源列表
+  useEffect(() => {
+    const fetchSources = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/data/sources')
+        if (res.ok) {
+          const data = await res.json()
+          setSources(Array.isArray(data?.sources) ? data.sources : [])
+          // 若存在常用symbol则默认选第一个
+          if (!symbol && data?.sources?.length) {
+            setSymbol(data.sources[0].symbol)
+          }
+        }
+      } catch (e) {
+        // 静默失败
+      }
+    }
+    fetchSources()
+  }, [])
 
   const handleRunBacktest = async () => {
     if (!strategy) return
@@ -45,11 +84,13 @@ export function BacktestModal({
     try {
       const backtestParams = {
         strategyId: strategy.id,
+        name: strategy.name,
         strategy: strategy.strategy, // 传递策略的JSON配置
         startDate,
         endDate,
         initialCapital,
-        timeframe
+        timeframe,
+        symbol
       }
       
       // 调用父组件的回测处理函数
@@ -179,6 +220,39 @@ export function BacktestModal({
                 <option value="1w">1周</option>
                 <option value="1M">1月</option>
               </select>
+              {(recommended || tips) && (
+                <div className="text-[11px] text-muted-foreground space-y-1">
+                  {recommended && <div>建议周期：{recommended}</div>}
+                  {tips && <div>操作技巧：{tips}</div>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 数据源选择 */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 text-sm font-medium">
+              <Clock className="h-4 w-4" />
+              <span>数据源</span>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="symbol" className="text-xs">选择数据源（来自 data/*.csv）</Label>
+              <select
+                id="symbol"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-input bg-background rounded-md"
+                disabled={isRunning}
+              >
+                {sources.length > 0 ? (
+                  sources.map((s) => (
+                    <option key={s.symbol} value={s.symbol}>{s.name} ({s.symbol})</option>
+                  ))
+                ) : (
+                  <option value="002130">002130（默认）</option>
+                )}
+              </select>
+              <div className="text-[11px] text-muted-foreground">将从所选CSV加载数据进行回测</div>
             </div>
           </div>
 
