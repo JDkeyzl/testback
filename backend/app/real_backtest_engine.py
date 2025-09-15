@@ -206,7 +206,7 @@ class RealBacktestEngine:
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 
-                if shares_to_buy >= 100:  # 至少100股才能买入
+                if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -470,7 +470,7 @@ class RealBacktestEngine:
                     # 根据仓位管理策略计算买入股数
                     shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                     
-                    if shares_to_buy >= 100:  # 至少100股才能买入
+                    if shares_to_buy >= self.market.min_lot():
                         cost = shares_to_buy * current_price
                         commission = cost * self.commission_rate
                         total_cost = cost + commission
@@ -568,7 +568,7 @@ class RealBacktestEngine:
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 
-                if shares_to_buy >= 100:  # 至少100股才能买入
+                if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -662,7 +662,7 @@ class RealBacktestEngine:
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 
-                if shares_to_buy >= 100:  # 至少100股才能买入
+                if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -764,7 +764,7 @@ class RealBacktestEngine:
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 
-                if shares_to_buy >= 100:  # 至少100股才能买入
+                if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
@@ -849,7 +849,7 @@ class RealBacktestEngine:
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 
-                if shares_to_buy >= 100:  # 至少100股才能买入
+                if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
