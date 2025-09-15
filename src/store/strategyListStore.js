@@ -1,9 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { completeStrategies } from '../data/completeStrategies'
-
-// 默认策略模板 - 使用完整策略
-const defaultStrategies = completeStrategies
+// 默认策略模板（清空）
+const defaultStrategies = []
 
 export const useStrategyListStore = create(
   persist(
@@ -81,10 +79,13 @@ export const useStrategyListStore = create(
       // 重置为默认策略
       resetToSample: () => {
         set({ strategies: defaultStrategies, selectedStrategyId: null })
+      },
+      clearAll: () => {
+        set({ strategies: [], selectedStrategyId: null })
       }
     }),
     {
-      name: 'strategy-list-storage', // 本地存储的key
+      name: 'strategy-list-storage-v2', // 升级key以清空旧数据
       partialize: (state) => ({ strategies: state.strategies }) // 只持久化strategies
     }
   )
