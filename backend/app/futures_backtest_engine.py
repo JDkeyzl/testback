@@ -136,7 +136,7 @@ class FuturesBacktestEngine:
         cash = self.initial_capital
         position = 0  # 持仓张数（仅做多）
         entry_price = 0.0
-        entry_fee_total = 0.0
+        # 手续费暂不计入
         prev_close = None
         trades: List[Dict[str, Any]] = []
         equity_curve: List[Dict[str, Any]] = []
@@ -146,7 +146,6 @@ class FuturesBacktestEngine:
             'orders': {'buy_attempts': 0, 'buys': 0, 'sell_attempts': 0, 'sells': 0},
             'rejections': {'no_capacity': 0, 'forced_liquidations': 0},
             'capacity': {'max_open_samples': [], 'avg_max_open': 0.0},
-            'fees_total': 0.0,
         }
 
         nodes = strategy.get('nodes', [])
@@ -237,22 +236,17 @@ class FuturesBacktestEngine:
                 maint_req = position * px * self.spec.multiplier * self.spec.maintenance_margin_rate
                 if equity < maint_req:
                     # 全部平仓
-                    fee = self.spec.fee_per_contract * position
-                    cash -= fee
-                    stats['fees_total'] += float(fee)
-                    # 实现强平净盈亏（计入开仓与平仓费用）
-                    pnl_gross = (px - entry_price) * self.spec.multiplier * position
-                    pnl_net = pnl_gross - entry_fee_total - fee
+                    # 强平净盈亏（不计手续费）
+                    pnl_net = (px - entry_price) * self.spec.multiplier * position
                     trades.append({
                         'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S'),
                         'action': 'sell',
                         'price': round(px, 2),
                         'quantity': int(position),
-                        'amount': round(fee, 2),  # 期货amount记载费用更合理（本字段不代表现金流）
+                        'amount': 0.0,
                         'pnl': round(pnl_net, 2)
                     })
                     position = 0
-                    entry_fee_total = 0.0
                     if debug:
                         stats['rejections']['forced_liquidations'] += 1
                     traded_this_bar = True
@@ -266,18 +260,14 @@ class FuturesBacktestEngine:
                     stats['capacity']['max_open_samples'].append(int(max_open))
                 qty = max(1, max_open)
                 if qty > 0:
-                    fee = self.spec.fee_per_contract * qty
-                    cash -= fee
-                    stats['fees_total'] += float(fee)
                     position += qty
                     entry_price = px
-                    entry_fee_total = float(fee)
                     trades.append({
                         'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S'),
                         'action': 'buy',
                         'price': round(px, 2),
                         'quantity': int(qty),
-                        'amount': round(fee, 2),
+                        'amount': 0.0,
                         'pnl': None
                     })
                     if debug:
@@ -292,21 +282,16 @@ class FuturesBacktestEngine:
                 if debug:
                     stats['signals']['sell'] += 1
                     stats['orders']['sell_attempts'] += 1
-                fee = self.spec.fee_per_contract * position
-                cash -= fee
-                stats['fees_total'] += float(fee)
-                pnl_gross = (px - entry_price) * self.spec.multiplier * position
-                pnl_net = pnl_gross - entry_fee_total - fee
+                pnl_net = (px - entry_price) * self.spec.multiplier * position
                 trades.append({
                     'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S'),
                     'action': 'sell',
                     'price': round(px, 2),
                     'quantity': int(position),
-                    'amount': round(fee, 2),
+                    'amount': 0.0,
                     'pnl': round(pnl_net, 2)
                 })
                 position = 0
-                entry_fee_total = 0.0
                 if debug:
                     stats['orders']['sells'] += 1
                 traded_this_bar = True
@@ -318,21 +303,16 @@ class FuturesBacktestEngine:
         # 结束时强制平仓（若有持仓），仅计费用
         if position > 0 and len(data) > 0:
             px = _round_to_tick(float(data['close'].iloc[-1]), self.spec.tick_size)
-            fee = self.spec.fee_per_contract * position
-            cash -= fee
-            stats['fees_total'] += float(fee)
-            pnl_gross = (px - entry_price) * self.spec.multiplier * position
-            pnl_net = pnl_gross - entry_fee_total - fee
+            pnl_net = (px - entry_price) * self.spec.multiplier * position
             trades.append({
                 'timestamp': data['timestamp'].iloc[-1].strftime('%Y-%m-%d %H:%M:%S'),
                 'action': 'sell',
                 'price': round(px, 2),
                 'quantity': int(position),
-                'amount': round(fee, 2),
+                'amount': 0.0,
                 'pnl': round(pnl_net, 2)
             })
             position = 0
-            entry_fee_total = 0.0
 
         # 指标
         total_return = (equity - self.initial_capital) / self.initial_capital if self.initial_capital > 0 else 0.0

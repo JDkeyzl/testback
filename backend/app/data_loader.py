@@ -204,9 +204,6 @@ class StockDataLoader:
             DataFrame: 过滤后的DataFrame
         """
         # 对常见周期统一基于聚合，确保1w/1d等周期正确处理
-        # 若原始数据为5m，则"5m"无需重采样，直接返回
-        if timeframe == "5m":
-            return df
 
         # 日线与周线采用“组内最后一根K线的时间戳”，避免边界偏移
         if timeframe in ("1d", "1w"):

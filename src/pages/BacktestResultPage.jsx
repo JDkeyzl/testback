@@ -195,7 +195,36 @@ export function BacktestResultPage() {
     })
   }
 
-  const tradesData = fmtTradesFees(backtestResult?.trades, backtestParams?.initialCapital)
+  const tradesData = useMemo(() => {
+    if (isFutures) {
+      const list = Array.isArray(backtestResult?.trades) ? backtestResult.trades : []
+      let pos = 0
+      return list.map((t) => {
+        const ts = t.timestamp || t.date || ''
+        const dateStr = ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : ''
+        if (t.action === 'buy') pos += Number(t.quantity || 0)
+        else if (t.action === 'sell') pos = Math.max(0, pos - Number(t.quantity || 0))
+        return {
+          timestamp: ts,
+          date: ts ? new Date(ts).toLocaleDateString('zh-CN') : ts,
+          time: dateStr,
+          action: t.action,
+          price: Number(t.price || 0).toFixed(2),
+          quantity: Number(t.quantity || 0),
+          amount: Number(t.amount || 0).toFixed(2), // 期货这里为费用
+          pnl: t.pnl == null ? '-' : (Number(t.pnl) >= 0 ? `+¥${Number(t.pnl).toFixed(2)}` : `-¥${Math.abs(Number(t.pnl)).toFixed(2)}`),
+          pnlClass: t.pnl == null ? '' : (Number(t.pnl) >= 0 ? 'text-red-600' : 'text-green-600'),
+          pnlValue: t.pnl == null ? null : Number(t.pnl),
+          balance: '-',
+          position: pos,
+          securityValue: '0.00',
+          totalAssets: '-',
+          avgCost: '-'
+        }
+      })
+    }
+    return fmtTradesFees(backtestResult?.trades, backtestParams?.initialCapital)
+  }, [isFutures, backtestResult?.trades, backtestParams?.initialCapital])
 
   // 将5分钟价格序列聚合为日线收盘价折线
   const buildDailyPriceData = (series) => {
