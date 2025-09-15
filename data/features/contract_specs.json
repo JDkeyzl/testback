@@ -1,0 +1,16 @@
+{
+  "__default__": {
+    "multiplier": 10.0,
+    "tick_size": 1.0,
+    "fee_per_contract": 2.0,
+    "initial_margin_rate": 0.14,
+    "maintenance_margin_rate": 0.14
+  },
+  "p2601": {
+    "multiplier": 10.0,
+    "tick_size": 1.0,
+    "fee_per_contract": 2.0,
+    "initial_margin_rate": 0.14,
+    "maintenance_margin_rate": 0.14
+  }
+}

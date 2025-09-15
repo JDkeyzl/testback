@@ -152,6 +152,7 @@ async def futures_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
             start_date=start_date,
             end_date=end_date,
             initial_capital=initial_capital,
+            debug=bool(request.get("debug", False)),
         )
         return result
     except HTTPException:

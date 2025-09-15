@@ -21,8 +21,8 @@ class ContractSpec:
     multiplier: float = 10.0
     tick_size: float = 1.0
     fee_per_contract: float = 2.0  # 单边费用
-    initial_margin_rate: float = 0.1
-    maintenance_margin_rate: float = 0.08
+    initial_margin_rate: float = 0.14
+    maintenance_margin_rate: float = 0.14
 
 
 def _round_to_tick(price: float, tick: float) -> float:
@@ -50,8 +50,25 @@ def load_contract_spec(symbol: str) -> ContractSpec:
                             initial_margin_rate=float(d.get('initial_margin_rate', 0.1)),
                             maintenance_margin_rate=float(d.get('maintenance_margin_rate', 0.08)),
                         )
-        # 默认：较为保守的参数
-        return ContractSpec(symbol=symbol)
+        # 默认：较为保守的参数；若配置中存在 __default__ 则继承
+        default = None
+        try:
+            if spec_path.exists():
+                with open(spec_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    d = data.get('__default__') if isinstance(data, dict) else None
+                    if isinstance(d, dict):
+                        default = ContractSpec(
+                            symbol=symbol,
+                            multiplier=float(d.get('multiplier', 10.0)),
+                            tick_size=float(d.get('tick_size', 1.0)),
+                            fee_per_contract=float(d.get('fee_per_contract', 2.0)),
+                            initial_margin_rate=float(d.get('initial_margin_rate', 0.14)),
+                            maintenance_margin_rate=float(d.get('maintenance_margin_rate', 0.14)),
+                        )
+        except Exception:
+            default = None
+        return default or ContractSpec(symbol=symbol)
     except Exception:
         return ContractSpec(symbol=symbol)
 
@@ -114,7 +131,7 @@ class FuturesBacktestEngine:
                 mdd = dd
         return round(self._safe_num(mdd), 4)
 
-    def run(self, data: pd.DataFrame, strategy: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, data: pd.DataFrame, strategy: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
         equity = self.initial_capital
         cash = self.initial_capital
         position = 0  # 持仓张数（仅做多）
@@ -122,6 +139,14 @@ class FuturesBacktestEngine:
         prev_close = None
         trades: List[Dict[str, Any]] = []
         equity_curve: List[Dict[str, Any]] = []
+        stats: Dict[str, Any] = {
+            'indicator': {},
+            'signals': {'buy': 0, 'sell': 0},
+            'orders': {'buy_attempts': 0, 'buys': 0, 'sell_attempts': 0, 'sells': 0},
+            'rejections': {'no_capacity': 0, 'forced_liquidations': 0},
+            'capacity': {'max_open_samples': [], 'avg_max_open': 0.0},
+            'fees_total': 0.0,
+        }
 
         nodes = strategy.get('nodes', [])
         first = nodes[0] if nodes else None
@@ -139,6 +164,14 @@ class FuturesBacktestEngine:
             data['rsi'] = 100 - (100 / (1 + rs))
             threshold = float((first or {}).get('data', {}).get('threshold', 30))
             operator = str((first or {}).get('data', {}).get('operator', '<'))
+            if debug:
+                stats['indicator'] = {
+                    'type': 'rsi',
+                    'period': period,
+                    'notna': int(data['rsi'].notna().sum()),
+                    'threshold': threshold,
+                    'operator': operator,
+                }
         else:
             # 简单双均线
             period = int((first or {}).get('data', {}).get('period', 20))
@@ -146,6 +179,14 @@ class FuturesBacktestEngine:
             data = data.copy()
             data['ma_s'] = data['close'].rolling(window=short_p).mean()
             data['ma_l'] = data['close'].rolling(window=period).mean()
+            if debug:
+                stats['indicator'] = {
+                    'type': 'ma',
+                    'short': short_p,
+                    'long': period,
+                    'na_s': int(data['ma_s'].isna().sum()),
+                    'na_l': int(data['ma_l'].isna().sum()),
+                }
 
         for i in range(max(20, 14), len(data)):
             row = data.iloc[i]
@@ -187,6 +228,8 @@ class FuturesBacktestEngine:
                         buy_signal = (position == 0 and ma_s > ma_l and prev_s <= prev_l)
                         sell_signal = (position > 0 and ma_s < ma_l and prev_s >= prev_l)
 
+            traded_this_bar = False
+
             # 强平检查（维持保证金）
             if position > 0:
                 used_margin = position * px * self.spec.multiplier * self.spec.initial_margin_rate
@@ -195,6 +238,7 @@ class FuturesBacktestEngine:
                     # 全部平仓
                     fee = self.spec.fee_per_contract * position
                     cash -= fee
+                    stats['fees_total'] += float(fee)
                     trades.append({
                         'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S'),
                         'action': 'sell',
@@ -204,14 +248,22 @@ class FuturesBacktestEngine:
                         'pnl': None
                     })
                     position = 0
+                    if debug:
+                        stats['rejections']['forced_liquidations'] += 1
+                    traded_this_bar = True
             
             # 买入（开多）
-            if buy_signal and position == 0:
+            if (not traded_this_bar) and buy_signal and position == 0:
                 max_open = self.calculate_max_open_contracts(equity, px)
+                if debug:
+                    stats['signals']['buy'] += 1
+                    stats['orders']['buy_attempts'] += 1
+                    stats['capacity']['max_open_samples'].append(int(max_open))
                 qty = max(1, max_open)
                 if qty > 0:
                     fee = self.spec.fee_per_contract * qty
                     cash -= fee
+                    stats['fees_total'] += float(fee)
                     position += qty
                     entry_price = px
                     trades.append({
@@ -222,11 +274,21 @@ class FuturesBacktestEngine:
                         'amount': round(fee, 2),
                         'pnl': None
                     })
+                    if debug:
+                        stats['orders']['buys'] += 1
+                    traded_this_bar = True
+                else:
+                    if debug:
+                        stats['rejections']['no_capacity'] += 1
 
             # 卖出（平多）
-            elif sell_signal and position > 0:
+            elif (not traded_this_bar) and sell_signal and position > 0:
+                if debug:
+                    stats['signals']['sell'] += 1
+                    stats['orders']['sell_attempts'] += 1
                 fee = self.spec.fee_per_contract * position
                 cash -= fee
+                stats['fees_total'] += float(fee)
                 trades.append({
                     'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S'),
                     'action': 'sell',
@@ -236,6 +298,9 @@ class FuturesBacktestEngine:
                     'pnl': round((px - entry_price) * self.spec.multiplier * position, 2)
                 })
                 position = 0
+                if debug:
+                    stats['orders']['sells'] += 1
+                traded_this_bar = True
 
             # 记录权益曲线
             self._append_equity(equity_curve, ts, equity, px, prev_equity)
@@ -246,6 +311,7 @@ class FuturesBacktestEngine:
             px = _round_to_tick(float(data['close'].iloc[-1]), self.spec.tick_size)
             fee = self.spec.fee_per_contract * position
             cash -= fee
+            stats['fees_total'] += float(fee)
             trades.append({
                 'timestamp': data['timestamp'].iloc[-1].strftime('%Y-%m-%d %H:%M:%S'),
                 'action': 'sell',
@@ -268,6 +334,11 @@ class FuturesBacktestEngine:
             if sum(loss_vals) > 0:
                 profit_loss_ratio = abs(np.mean(win_vals) / np.mean(loss_vals)) if np.mean(loss_vals) != 0 else 0.0
 
+        # 汇总容量统计
+        if debug and stats['capacity']['max_open_samples']:
+            arr = stats['capacity']['max_open_samples']
+            stats['capacity']['avg_max_open'] = float(round(sum(arr) / max(len(arr), 1), 2))
+
         result = {
             'market': 'futures',
             'initial_capital': round(self._safe_num(self.initial_capital), 2),
@@ -280,12 +351,23 @@ class FuturesBacktestEngine:
             'trades': trades,
             'equity_curve': equity_curve,
         }
+        if debug:
+            result['debug'] = {
+                'spec': {
+                    'multiplier': self.spec.multiplier,
+                    'tick_size': self.spec.tick_size,
+                    'initial_margin_rate': self.spec.initial_margin_rate,
+                    'maintenance_margin_rate': self.spec.maintenance_margin_rate,
+                    'fee_per_contract': self.spec.fee_per_contract,
+                },
+                'stats': stats,
+            }
         return result
 
 
 def run_futures_backtest(strategy: Dict[str, Any], symbol: str, timeframe: str,
                          start_date: Optional[str], end_date: Optional[str],
-                         initial_capital: float = 100000.0) -> Dict[str, Any]:
+                         initial_capital: float = 100000.0, debug: bool = False) -> Dict[str, Any]:
     spec = load_contract_spec(symbol)
     engine = FuturesBacktestEngine(initial_capital=initial_capital, spec=spec)
     data = load_stock_data(symbol, timeframe)
@@ -296,7 +378,7 @@ def run_futures_backtest(strategy: Dict[str, Any], symbol: str, timeframe: str,
     if len(data) < 10:
         raise ValueError('过滤后数据量不足，至少需要10条记录')
 
-    res = engine.run(data, strategy)
+    res = engine.run(data, strategy, debug=debug)
     # 附加数据概览与价格序列
     res['data_info'] = {
         'symbol': symbol,
