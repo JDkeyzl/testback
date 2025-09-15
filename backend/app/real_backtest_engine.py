@@ -543,7 +543,7 @@ class RealBacktestEngine:
         data = data.copy()
         data = data.assign(rsi=self._calculate_rsi(data['close'], period))
         
-        # 回测逻辑（类似MA策略）
+        # 回测逻辑（使用参数化阈值与操作符）
         for i in range(period, len(data)):
             row = data.iloc[i]
             current_price = row['close']
@@ -563,8 +563,13 @@ class RealBacktestEngine:
             elif operator == "<=":
                 condition_met = rsi_value <= threshold
             
-            # RSI交易逻辑：RSI < 30 买入（超卖），RSI > 70 卖出（超买）
-            if rsi_value < 30 and position == 0:  # 超卖买入
+            # 参数化 RSI 交易逻辑：根据 operator/threshold 触发
+            if position == 0 and (
+                (operator in ('<','below') and rsi_value < threshold) or
+                (operator in ('>','above') and rsi_value > threshold) or
+                (operator == '<=' and rsi_value <= threshold) or
+                (operator == '>=' and rsi_value >= threshold)
+            ):
                 # 根据仓位管理策略计算买入股数
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 
@@ -586,7 +591,12 @@ class RealBacktestEngine:
                             "pnl": None
                         })
             
-            elif rsi_value > 70 and position > 0:  # 超买卖出
+            elif position > 0 and (
+                (operator in ('>','above') and rsi_value > threshold) or
+                (operator in ('<','below') and rsi_value < threshold) or
+                (operator == '>=' and rsi_value >= threshold) or
+                (operator == '<=' and rsi_value <= threshold)
+            ):
                 revenue = position * current_price
                 commission = revenue * self.commission_rate
                 net_revenue = revenue - commission
@@ -967,7 +977,8 @@ backtest_engine = RealBacktestEngine()
 
 def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timeframe: str = "5m", 
                      start_date: str = "2024-01-01", end_date: str = "2024-12-31", 
-                     initial_capital: float = 100000.0, position_management: str = "full") -> Dict[str, Any]:
+                     initial_capital: float = 100000.0, position_management: str = "full",
+                     debug: bool = False) -> Dict[str, Any]:
     """
     便捷函数：运行真实数据回测
     
@@ -1026,4 +1037,16 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
         }
     }
     
+    # 可选调试信息
+    if debug:
+        try:
+            result["debug"] = {
+                "data": {
+                    "rows": int(len(data)),
+                    "start": data['timestamp'].min().strftime('%Y-%m-%d %H:%M:%S') if len(data) else None,
+                    "end": data['timestamp'].max().strftime('%Y-%m-%d %H:%M:%S') if len(data) else None,
+                }
+            }
+        except Exception:
+            pass
     return result

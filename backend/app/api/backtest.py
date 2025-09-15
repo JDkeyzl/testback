@@ -118,6 +118,7 @@ async def real_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
             end_date=end_date,
             initial_capital=initial_capital,
             position_management=position_management,
+            debug=bool(request.get("debug", False))
         )
         return result
     except HTTPException:
