@@ -124,7 +124,7 @@ export function FuturesBacktestPage() {
           initialCapital,
           strategy: strat.strategy || strat
         }
-        const res = await fetch('http://localhost:8000/api/v1/backtest/real', {
+        const res = await fetch('http://localhost:8000/api/v1/backtest/futures', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         })
         const data = await res.json()

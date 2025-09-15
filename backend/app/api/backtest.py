@@ -10,6 +10,7 @@ from pathlib import Path
 from ..models.simple import SimpleBacktestRequest, SimpleBacktestResult
 from ..services.backtest_engine import BacktestEngine
 from ..real_backtest_engine import run_real_backtest
+from ..futures_backtest_engine import run_futures_backtest
 from ..data_loader import get_data_info, data_loader
 from ..futures_data import get_futures_data
 import numpy as np
@@ -125,6 +126,38 @@ async def real_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"回测执行失败: {str(e)}")
+
+@router.post("/backtest/futures")
+async def futures_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    期货保证金制度回测端点（独立于股票），按合约规格计算权益曲线
+    期望：{ strategy, symbol, timeframe, startDate, endDate, initialCapital }
+    """
+    try:
+        strategy = request.get("strategy")
+        if not strategy:
+            raise HTTPException(status_code=400, detail="缺少 strategy 字段")
+        symbol = request.get("symbol")
+        if not symbol:
+            raise HTTPException(status_code=400, detail="缺少 symbol")
+        timeframe = request.get("timeframe", "5m")
+        start_date = request.get("startDate")
+        end_date = request.get("endDate")
+        initial_capital = float(request.get("initialCapital", 100000.0))
+
+        result = run_futures_backtest(
+            strategy=strategy,
+            symbol=str(symbol),
+            timeframe=str(timeframe),
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"期货回测执行失败: {str(e)}")
 
 @router.get("/data/info/{symbol}")
 async def get_stock_data_info(symbol: str) -> Dict[str, Any]:
