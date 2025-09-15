@@ -12,10 +12,31 @@ from .data_loader import load_stock_data
 
 logger = logging.getLogger(__name__)
 
+class MarketModel:
+    """市场模型基类：定义撮合与规则（占位，后续扩展）。"""
+    def __init__(self, commission_rate: float = 0.001):
+        self.commission_rate = commission_rate
+
+    def min_lot(self) -> int:
+        return 100  # 股票默认手数；期货模型可覆盖
+
+    def buy_commission(self, amount: float) -> float:
+        return amount * self.commission_rate
+
+    def sell_commission(self, amount: float) -> float:
+        return amount * self.commission_rate
+
+class StockMarketModel(MarketModel):
+    pass
+
+class FuturesMarketModel(MarketModel):
+    def min_lot(self) -> int:
+        return 1  # 期货以合约张数计（占位）
+
 class RealBacktestEngine:
     """真实数据回测引擎"""
     
-    def __init__(self, initial_capital: float = 100000.0, commission_rate: float = 0.001):
+    def __init__(self, initial_capital: float = 100000.0, commission_rate: float = 0.001, market: Optional[MarketModel] = None):
         """
         初始化回测引擎
         
@@ -25,6 +46,7 @@ class RealBacktestEngine:
         """
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
+        self.market = market or StockMarketModel(commission_rate=commission_rate)
     
     def calculate_position_size(self, current_capital: float, current_price: float, 
                               position_management: str = 'full') -> int:
@@ -37,7 +59,7 @@ class RealBacktestEngine:
             position_management: 仓位管理策略 ('full', 'half', 'third', 'quarter')
             
         Returns:
-            int: 买入股数（100的整数倍）
+            int: 买入股数（按市场模型的最小手数整数倍）
         """
         # 根据仓位管理策略计算可用资金比例
         if position_management == 'full':
@@ -51,13 +73,10 @@ class RealBacktestEngine:
         else:
             available_ratio = 1.0  # 默认全仓
         
-        # 计算可用资金
         available_capital = current_capital * available_ratio
-        
-        # 计算可买股数（向下取整到100的整数倍）
-        max_shares = int(available_capital / current_price)
-        shares_to_buy = (max_shares // 100) * 100  # 确保是100的整数倍
-        
+        max_units = int(available_capital / max(current_price, 1e-9))
+        lot = self.market.min_lot()
+        shares_to_buy = (max_units // lot) * lot
         return max(0, shares_to_buy)
         
     def run_backtest(self, strategy: Dict[str, Any], symbol: str = "002130", timeframe: str = "5m", 
@@ -75,7 +94,12 @@ class RealBacktestEngine:
             Dict: 回测结果
         """
         try:
-            # 加载真实数据
+            # 粗粒度选择市场模型：features 目录/非6位数字视为期货
+            if not symbol.isdigit() or len(symbol) != 6:
+                self.market = FuturesMarketModel(commission_rate=self.commission_rate)
+            else:
+                self.market = StockMarketModel(commission_rate=self.commission_rate)
+
             logger.info(f"正在加载股票数据: {symbol}")
             data = load_stock_data(symbol, timeframe)
             logger.info(f"成功加载 {len(data)} 条数据记录")
@@ -411,11 +435,14 @@ class RealBacktestEngine:
         
         logger.info(f"MA策略参数: period={period}, threshold={threshold}, operator={operator}")
         
-        # 计算短期和长期移动平均线
+        # 计算短期和长期移动平均线（避免 SettingWithCopy，用副本并 assign）
         short_period = min(period, 10)
         long_period = period
-        data['ma_short'] = data['close'].rolling(window=short_period).mean()
-        data['ma_long'] = data['close'].rolling(window=long_period).mean()
+        data = data.copy()
+        data = data.assign(
+            ma_short=data['close'].rolling(window=short_period).mean(),
+            ma_long=data['close'].rolling(window=long_period).mean()
+        )
         
         # 回测逻辑
         for i in range(long_period, len(data)):
@@ -512,8 +539,9 @@ class RealBacktestEngine:
         
         logger.info(f"RSI策略参数: period={period}, threshold={threshold}, operator={operator}")
         
-        # 计算RSI
-        data['rsi'] = self._calculate_rsi(data['close'], period)
+        # 计算RSI（避免 SettingWithCopy）
+        data = data.copy()
+        data = data.assign(rsi=self._calculate_rsi(data['close'], period))
         
         # 回测逻辑（类似MA策略）
         for i in range(period, len(data)):
@@ -607,11 +635,16 @@ class RealBacktestEngine:
         
         logger.info(f"布林带策略参数: period={period}, std_dev={std_dev}")
         
-        # 计算布林带
-        data['bb_middle'] = data['close'].rolling(window=period).mean()
-        data['bb_std'] = data['close'].rolling(window=period).std()
-        data['bb_upper'] = data['bb_middle'] + (data['bb_std'] * std_dev)
-        data['bb_lower'] = data['bb_middle'] - (data['bb_std'] * std_dev)
+        # 计算布林带（避免 SettingWithCopy）
+        data = data.copy()
+        bb_middle = data['close'].rolling(window=period).mean()
+        bb_std = data['close'].rolling(window=period).std()
+        data = data.assign(
+            bb_middle=bb_middle,
+            bb_std=bb_std,
+            bb_upper=bb_middle + (bb_std * std_dev),
+            bb_lower=bb_middle - (bb_std * std_dev)
+        )
         
         # 回测逻辑（简化版）
         for i in range(period, len(data)):
@@ -708,7 +741,10 @@ class RealBacktestEngine:
         logger.info(f"VWAP策略参数: period={period}, deviation={deviation}, operator={operator}")
         
         # 计算VWAP
-        data['vwap'] = (data['close'] * data['volume']).rolling(window=period).sum() / data['volume'].rolling(window=period).sum()
+        data = data.copy()
+        roll_value = (data['close'] * data['volume']).rolling(window=period).sum()
+        roll_vol = data['volume'].rolling(window=period).sum()
+        data = data.assign(vwap=roll_value / roll_vol)
         
         # 回测逻辑
         for i in range(period, len(data)):
@@ -791,7 +827,8 @@ class RealBacktestEngine:
         logger.info(f"Volume策略参数: period={period}, multiplier={multiplier}, operator={operator}")
         
         # 计算平均成交量
-        data['avg_volume'] = data['volume'].rolling(window=period).mean()
+        data = data.copy()
+        data = data.assign(avg_volume=data['volume'].rolling(window=period).mean())
         
         # 回测逻辑
         for i in range(period, len(data)):
