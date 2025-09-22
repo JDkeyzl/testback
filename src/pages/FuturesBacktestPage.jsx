@@ -98,6 +98,7 @@ export function FuturesBacktestPage() {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
   const selectAll = () => setSelectedIds(allStrategies.map(s => s.id))
+  // 移除“全不选”按钮需求后，仍保留内部函数供一键测所有逻辑需要时使用
   const clearAll = () => setSelectedIds([])
 
   async function runBatch() {
@@ -280,42 +281,23 @@ export function FuturesBacktestPage() {
           </div>
 
           <div className="mt-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[11px] text-muted-foreground">若本地无所选合约CSV，可尝试一键拉取</div>
-              <Button size="sm" variant="outline" disabled={!contract || isRunning} onClick={async () => {
-                try {
-                  setStatus('正在拉取期货数据...')
-                  // timeframe 转 AkShare period 参数
-                  const map = { '1m': '1', '5m': '5', '15m': '15', '30m': '30', '1h': '60' }
-                  const period = map[timeframe] || '5'
-                  const q = new URLSearchParams({ symbol: contract, period, startDate, endDate, save: 'true', name: '' }).toString()
-                  const url = `/api/v1/futures/data?${q}`
-                  const r = await fetch(url)
-                  const data = await r.json()
-                  if (!r.ok || !data?.ok) throw new Error(data?.detail || '拉取失败')
-                  const tip = data?.range?.partial ? '（提示：第三方接口返回区间少于请求区间）' : ''
-                  alert(`已获取 ${data.count} 条数据${data.csv?`，已保存：${data.csv}`:''}${tip}`)
-                  try {
-                    const refresh = await fetch('/api/v1/data/sources')
-                    if (refresh.ok) {
-                      const d = await refresh.json()
-                      setSources(Array.isArray(d?.sources) ? d.sources : [])
-                    }
-                  } catch {}
-                } catch (e) {
-                  alert('拉取失败：' + (e?.message || e))
-                } finally {
-                  setStatus('')
-                }
-              }}>一键拉取数据</Button>
-            </div>
+            {/* 去掉期货页的一键拉取数据按钮（仅保留回测功能） */}
 
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium">选择策略（我的策略 + 策略库）</div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={selectAll} disabled={isRunning}>全选</Button>
-                <Button size="sm" variant="outline" onClick={clearAll} disabled={isRunning}>全不选</Button>
-                <Button size="sm" onClick={selectAll} disabled={isRunning} className="bg-primary text-primary-foreground">一键测所有</Button>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    const ids = allStrategies.map(s => s.id)
+                    setSelectedIds(ids)
+                    // 直接开始回测（等同全选+开始）
+                    await runBatch()
+                  }}
+                  disabled={isRunning}
+                  className="bg-primary text-primary-foreground"
+                >一键测所有</Button>
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">

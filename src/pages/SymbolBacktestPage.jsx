@@ -422,41 +422,82 @@ export function SymbolBacktestPage() {
                 }
               }}>一键拉取数据</Button>
             </div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[11px] text-muted-foreground">试用期货数据（AkShare）</div>
-              <Button size="sm" variant="outline" disabled={isRunning} onClick={async () => {
-                const fut = prompt('输入期货合约代码，例如 p2601', 'p2601')
-                if (!fut) return
-                const per = prompt('分钟周期(1/5/15/30/60)', '5') || '5'
-                try {
-                  setStatus('正在拉取期货数据...')
-                  const q = new URLSearchParams({ symbol: fut, period: per, startDate, endDate, save: 'true' }).toString()
-                  const url = `/api/v1/futures/data?${q}`
-                  const r = await fetch(url)
-                  const data = await r.json()
-                  if (!r.ok || !data?.ok) throw new Error(data?.detail || '期货数据拉取失败')
-                  alert(`已获取 ${data.count} 条数据${data.csv?`，已保存：${data.csv}`:''}`)
-                  // 成功保存CSV后刷新本地数据源，便于直接选择
-                  try {
-                    const refresh = await fetch('/api/v1/data/sources')
-                    if (refresh.ok) {
-                      const d = await refresh.json()
-                      setSources(Array.isArray(d?.sources) ? d.sources : [])
-                    }
-                  } catch {}
-                } catch (e) {
-                  alert('期货拉取失败：' + (e?.message || e))
-                } finally {
-                  setStatus('')
-                }
-              }}>拉取期货数据</Button>
-            </div>
+            {/* 移除“拉取期货数据”按钮（股票页不提供期货入口） */}
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium">选择策略（我的策略 + 策略库）</div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={selectAll} disabled={isRunning}>全选</Button>
-                <Button size="sm" variant="outline" onClick={clearAll} disabled={isRunning}>全不选</Button>
-                <Button size="sm" onClick={selectAll} disabled={isRunning} className="bg-primary text-primary-foreground">一键测所有</Button>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    const ids = allStrategies.map(s => s.id)
+                    setSelectedIds(ids)
+                    // 直接开始回测（等同全选+开始）
+                    await (async () => {
+                      if (!symbol || !timeframe || !startDate || !endDate || initialCapital <= 0) {
+                        alert('请完整填写表单')
+                        return
+                      }
+                      const toRun = allStrategies.filter(s => ids.includes(s.id))
+                      if (toRun.length === 0) { alert('请至少选择一个策略'); return }
+                      setIsRunning(true)
+                      setResults([])
+                      try {
+                        let completed = 0
+                        for (const s of toRun) {
+                          setStatus(`正在回测：${s.name} (${completed+1}/${toRun.length})`)
+                          let usedEnd = endDate
+                          try {
+                            const infoRes = await fetch(`/api/v1/data/info/${symbol}`)
+                            if (infoRes.ok) {
+                              const info = await infoRes.json()
+                              const lastDataDate = String(info?.end_date || '').split(' ')[0]
+                              if (lastDataDate) usedEnd = usedEnd && usedEnd > lastDataDate ? lastDataDate : usedEnd
+                            }
+                          } catch {}
+                          const t0 = Date.now()
+                          const resp = await fetch('/api/v1/backtest/stocks', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ strategy: s.strategy, symbol, timeframe, startDate, endDate: usedEnd, initialCapital, strategyId: s.id })
+                          })
+                          const elapsedMs = Date.now() - t0
+                          if (resp.ok) {
+                            const result = await resp.json()
+                            const priceSeries = Array.isArray(result.price_series) ? result.price_series : []
+                            const dailyMap = new Map()
+                            for (const p of priceSeries) { const ts = p.timestamp || p.date || ''; const d = String(ts).split(' ')[0]; dailyMap.set(d, Number(p.close)) }
+                            const dailyPrices = []; for (const [date, close] of dailyMap.entries()) dailyPrices.push({ date, close })
+                            const rows = fmtTradesFees(result.trades || [], initialCapital)
+                            const dailyAssets = buildDailyAssetsFromRows(rows, dailyPrices, startDate, usedEnd, initialCapital)
+                            const assetsMetrics = computeFromAssets(dailyAssets)
+                            const totalReturn = assetsMetrics.totalReturn
+                            const maxDrawdown = assetsMetrics.maxDrawdown
+                            const metrics = computeFromTrades(rows)
+                            const winRate = metrics.winRate
+                            const totalTrades = metrics.totalTrades
+                            const finalEquity = Number((initialCapital * (1 + totalReturn)).toFixed(2))
+                            const symbolLabel = `${selectedStock?.nameZh || symbol}（${symbol}）`
+                            const row = { strategyId: s.id, strategyName: s.name, symbol, symbolLabel, totalReturn, maxDrawdown, winRate, totalTrades, elapsedMs, backtestParams: { strategyId: s.id, strategy: s.strategy, symbol, timeframe, startDate, endDate: usedEnd, initialCapital }, rawResult: result }
+                            setResults(prev => {
+                              const next = [...prev, row].sort((a,b) => b.totalReturn - a.totalReturn)
+                              try { batchStore.setResultsFor(symbol, next, { symbol, symbolName: selectedStock?.nameZh, timeframe, startDate, endDate: usedEnd, initialCapital }) } catch {}
+                              return next
+                            })
+                            try { addRecord({ strategyId: s.id, strategyName: s.name, params: row.backtestParams, summary: { totalReturn, maxDrawdown, winRate, totalTrades, finalEquity }, links: { toResultRoute: `/backtest/${s.id}` }, meta: { symbol } }) } catch {}
+                          } else {
+                            const err = await resp.text(); console.error('批量回测失败', s.name, err)
+                          }
+                          completed += 1
+                        }
+                        setStatus('批量回测完成')
+                      } catch (e) {
+                        console.error(e); alert('批量回测失败：' + (e?.message || e))
+                      } finally { setIsRunning(false); setStatus('') }
+                    })()
+                  }}
+                  disabled={isRunning}
+                  className="bg-primary text-primary-foreground"
+                >一键测所有</Button>
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
