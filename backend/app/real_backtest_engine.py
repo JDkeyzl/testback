@@ -816,30 +816,32 @@ class RealBacktestEngine:
                 continue
 
             # 信号模式
+            gc = (prev['macd_dif'] <= prev['macd_dea']) and (row['macd_dif'] > row['macd_dea'])
+            dc = (prev['macd_dif'] >= prev['macd_dea']) and (row['macd_dif'] < row['macd_dea'])
             if mode == 'golden_cross':
-                # DIF 上穿 DEA
-                buy_cross = (prev['macd_dif'] <= prev['macd_dea']) and (row['macd_dif'] > row['macd_dea'])
-                sell_cross = False
+                # 入场：金叉；出场：死叉（默认对腿）
+                buy_cross = gc
+                sell_cross = dc
             elif mode == 'death_cross':
-                # DIF 下穿 DEA
-                buy_cross = False
-                sell_cross = (prev['macd_dif'] >= prev['macd_dea']) and (row['macd_dif'] < row['macd_dea'])
+                # 亦采用金叉入场、死叉出场，确保完整交易回合
+                buy_cross = gc
+                sell_cross = dc
             elif mode == 'zero_above':
                 buy_cross = (prev['macd_dif'] <= 0) and (row['macd_dif'] > 0)
-                sell_cross = False
+                sell_cross = dc  # 离场用死叉
             elif mode == 'zero_below':
-                buy_cross = False
+                buy_cross = gc  # 入场用金叉
                 sell_cross = (prev['macd_dif'] >= 0) and (row['macd_dif'] < 0)
             elif mode == 'hist_turn_positive':
                 buy_cross = (hp <= 0) and (h > 0)
-                sell_cross = False
+                sell_cross = dc
             elif mode == 'hist_turn_negative':
-                buy_cross = False
+                buy_cross = gc
                 sell_cross = (hp >= 0) and (h < 0)
             else:
-                # 默认：柱体与阈值比较
+                # 默认：柱体与阈值比较；离场仍用死叉保障闭环
                 buy_cross = (hp <= threshold) and cmp(h, threshold, operator)
-                sell_cross = (hp >= -threshold) and cmp(-h, threshold, operator)
+                sell_cross = dc
 
             if buy_cross and position == 0:
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
