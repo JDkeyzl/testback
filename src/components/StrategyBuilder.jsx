@@ -297,6 +297,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
               ...nodeParam,
               type: nodeParam.subType || node.data.type, // 更新节点类型
               // 确保所有参数都传递到节点
+              mode: nodeParam.mode,
               period: nodeParam.period,
               threshold: nodeParam.threshold,
               operator: nodeParam.operator,

@@ -10,7 +10,7 @@ const conditionTypes = {
   price_range: { label: '价格区间', params: ['minPrice', 'maxPrice'] },
   rsi: { label: 'RSI', params: ['period', 'value', 'operator', 'direction'] },
   bollinger: { label: '布林带', params: ['period', 'stdDev', 'condition', 'direction'] },
-  macd: { label: 'MACD', params: ['fast', 'slow', 'signal', 'operator'] },
+  macd: { label: 'MACD', params: ['fast', 'slow', 'signal', 'mode', 'operator', 'threshold'] },
   volume: { label: '成交量', params: ['avgPeriod', 'multiplier'] },
   price: { label: '价格', params: ['value', 'operator'] },
   trend: { label: '趋势判断', params: ['period', 'condition', 'direction'] },
@@ -98,7 +98,19 @@ export function ConditionNode({ data, isConnectable, id }) {
         const bollingerDirection = nodeData.direction === 'lower' ? '下轨' : '上轨'
         return `布林带(${nodeData.period || 20}, ${timeframeLabel}) ${bollingerCondition}${bollingerDirection}`
       case 'macd':
-        return `MACD(${nodeData.fast || 12},${nodeData.slow || 26},${nodeData.signal || 9}, ${timeframeLabel}) ${operators.find(op => op.value === nodeData.operator)?.label || '>'} ${nodeData.threshold || 0}`
+        {
+          const modeLabelMap = {
+            golden_cross: '金叉',
+            death_cross: '死叉',
+            zero_above: '零轴上',
+            zero_below: '零轴下',
+            hist_turn_positive: '柱转正',
+            hist_turn_negative: '柱转负',
+            hist_threshold: `${operators.find(op => op.value === nodeData.operator)?.label || '大于'} ${nodeData.threshold ?? 0}`
+          }
+          const modeText = modeLabelMap[nodeData.mode || 'hist_threshold'] || '阈值比较'
+          return `MACD(${nodeData.fast || 12},${nodeData.slow || 26},${nodeData.signal || 9}, ${timeframeLabel}) ${modeText}`
+        }
       case 'volume':
         return `成交量(${timeframeLabel}) ${nodeData.avgPeriod || 20}日均量×${nodeData.multiplier || 1.5}`
       case 'price':
