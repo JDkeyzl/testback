@@ -22,10 +22,10 @@ export function ActionNode({ data, isConnectable, id }) {
   
   const nodeId = id || 'unknown'
   
-  // 初始化节点参数
+  // 初始化节点参数（保留已有的 type）
   useEffect(() => {
-    initNodeParams(nodeId, 'action', data.type || 'buy')
-  }, [nodeId, data.type, initNodeParams])
+    initNodeParams(nodeId, 'action', (data.type || 'buy'), data || {})
+  }, [nodeId, data, initNodeParams])
 
   // 从全局状态获取参数
   const nodeParams = getNodeParams(nodeId)

@@ -320,12 +320,19 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
       return validNodes.map((node) => {
         const nodeParam = nodeParams[node.id]
         if (nodeParam) {
+          const nodeType = node.type
+          const subType = nodeParam.subType || node.data.subType || (nodeType === 'logic' ? 'and' : nodeType === 'action' ? 'buy' : 'ma')
+          const resolvedType = nodeType === 'action'
+            ? (nodeParam.type || subType || node.data.type)
+            : (nodeParam.subType || node.data.type)
           return {
             ...node,
             data: {
               ...node.data,
               ...nodeParam,
-              type: nodeParam.subType || node.data.type, // 更新节点类型
+              // 对于动作节点，type 取 nodeParam.type；其他节点取 subType
+              type: resolvedType,
+              subType,
               // 确保所有参数都传递到节点
               mode: nodeParam.mode,
               period: nodeParam.period,

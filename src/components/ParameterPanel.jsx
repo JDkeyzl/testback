@@ -1255,7 +1255,7 @@ export function ParameterPanel() {
   }
 
   const renderActionParams = () => {
-    if (subType === 'hold') {
+    if ((nodeParams.type || subType) === 'hold') {
       return <div className="text-sm text-muted-foreground">持有信号无需配置参数</div>
     }
 
