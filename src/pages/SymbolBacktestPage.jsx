@@ -8,6 +8,7 @@ import { useStrategyListStore } from '../store/strategyListStore'
 import { strategyLibrary } from '../data/strategyLibrary'
 import { useBacktestHistoryStore } from '../store/backtestHistoryStore'
 import { useSymbolBatchStore } from '../store/symbolBatchStore'
+import { useSymbolPageState } from '../store/symbolPageStateStore'
 import { BarChart3, Play, Loader2, RefreshCw } from 'lucide-react'
 import { formatTradesWithFees as fmtTradesFees, computeMetricsFromTrades as computeFromTrades, buildDailyAssetsFromRows, computeMetricsFromAssets as computeFromAssets } from '../utils/metrics'
 
@@ -16,6 +17,7 @@ export function SymbolBacktestPage() {
   const { strategies } = useStrategyListStore()
   const { addRecord } = useBacktestHistoryStore()
   const batchStore = useSymbolBatchStore()
+  const { state: pg, setState: setPg } = useSymbolPageState()
 
   const [sources, setSources] = useState([])
   const [symbol, setSymbol] = useState('')
@@ -34,6 +36,22 @@ export function SymbolBacktestPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [status, setStatus] = useState('')
   const [results, setResults] = useState([])
+  // 页面状态恢复（只在首次渲染时执行一次）
+  const restoredRef = useRef(false)
+  useEffect(() => {
+    if (restoredRef.current) return
+    restoredRef.current = true
+    try {
+      if (pg?.symbol) setSymbol(pg.symbol)
+      if (pg?.symbolName && pg?.symbol) setSelectedStock({ nameZh: pg.symbolName, code: pg.symbol, codeFull: pg.symbol })
+      if (pg?.query) setQuery(pg.query)
+      if (pg?.timeframe) setTimeframe(pg.timeframe)
+      if (pg?.startDate) setStartDate(pg.startDate)
+      if (pg?.endDate) setEndDate(pg.endDate)
+      if (pg?.initialCapital) setInitialCapital(pg.initialCapital)
+    } catch {}
+  }, [pg])
+
   // 恢复当前标的的最近一次批量结果
   useEffect(() => {
     try {
@@ -303,7 +321,7 @@ export function SymbolBacktestPage() {
                 className="text-xs mb-2"
                 placeholder="输入中文名或代码搜索..."
                 value={query}
-                onChange={e=>{ setQuery(e.target.value); setHighlightIdx(-1) }}
+                onChange={e=>{ setQuery(e.target.value); setPg({ query: e.target.value }); setHighlightIdx(-1) }}
                 onFocus={()=>setIsFocused(true)}
                 onBlur={handleBlur}
                 onKeyDown={(e)=>{
@@ -316,6 +334,7 @@ export function SymbolBacktestPage() {
                       setSymbol(hit.code)
                       setSelectedStock(hit)
                       setQuery(`${hit.nameZh}（${hit.code}）`)
+                      setPg({ symbol: hit.code, symbolName: hit.nameZh, query: `${hit.nameZh}（${hit.code}）` })
                       setIsFocused(false)
                     }
                   }
@@ -332,7 +351,7 @@ export function SymbolBacktestPage() {
                       <button
                         type="button"
                         key={it.code}
-                        onMouseDown={(e)=>{ e.preventDefault(); setSymbol(it.code); setSelectedStock(it); setQuery(`${it.nameZh}（${it.code}）`); setIsFocused(false) }}
+                        onMouseDown={(e)=>{ e.preventDefault(); setSymbol(it.code); setSelectedStock(it); setQuery(`${it.nameZh}（${it.code}）`); setPg({ symbol: it.code, symbolName: it.nameZh, query: `${it.nameZh}（${it.code}）` }); setIsFocused(false) }}
                         className={`w-full text-left px-2 py-1 text-xs hover:bg-muted flex items-center justify-between ${idx===highlightIdx?'bg-muted/60':''}`}
                         disabled={isRunning}
                       >
@@ -347,7 +366,7 @@ export function SymbolBacktestPage() {
             </div>
             <div>
               <Label className="text-xs">时间周期</Label>
-              <select className="w-full px-3 py-2 text-xs border rounded-md" value={timeframe} onChange={e=>setTimeframe(e.target.value)} disabled={isRunning}>
+              <select className="w-full px-3 py-2 text-xs border rounded-md" value={timeframe} onChange={e=>{ setTimeframe(e.target.value); setPg({ timeframe: e.target.value }) }} disabled={isRunning}>
                 <option value="1m">1分钟</option>
                 <option value="5m">5分钟</option>
                 <option value="15m">15分钟</option>
@@ -360,15 +379,15 @@ export function SymbolBacktestPage() {
             </div>
             <div>
               <Label className="text-xs">开始日期</Label>
-              <Input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} disabled={isRunning} className="text-xs" />
+              <Input type="date" value={startDate} onChange={e=>{ setStartDate(e.target.value); setPg({ startDate: e.target.value }) }} disabled={isRunning} className="text-xs" />
             </div>
             <div>
               <Label className="text-xs">结束日期</Label>
-              <Input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} disabled={isRunning} className="text-xs" />
+              <Input type="date" value={endDate} onChange={e=>{ setEndDate(e.target.value); setPg({ endDate: e.target.value }) }} disabled={isRunning} className="text-xs" />
             </div>
             <div>
               <Label className="text-xs">初始资金</Label>
-              <Input type="number" value={initialCapital} onChange={e=>setInitialCapital(Number(e.target.value))} disabled={isRunning} className="text-xs" />
+              <Input type="number" value={initialCapital} onChange={e=>{ const v = Number(e.target.value); setInitialCapital(v); setPg({ initialCapital: v }) }} disabled={isRunning} className="text-xs" />
             </div>
           </div>
 
