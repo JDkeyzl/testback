@@ -251,10 +251,25 @@ async def fetch_stock_data(body: Dict[str, Any]) -> Dict[str, Any]:
         if not code_full or '.' not in code_full:
             raise HTTPException(status_code=400, detail="缺少有效的 codeFull，例如 sh.601360")
 
-        project_root = Path(__file__).resolve().parents[3]
-        script_path = project_root / 'scripts' / 'getSingleStock.py'
-        if not script_path.exists():
-            raise HTTPException(status_code=404, detail="抓取脚本不存在")
+        # 更健壮地定位项目根与脚本路径
+        here = Path(__file__).resolve()
+        candidate_roots = [
+            here.parents[3] if len(here.parents) >= 4 else here.parent,
+            here.parents[2] if len(here.parents) >= 3 else here.parent,
+            here.parents[1] if len(here.parents) >= 2 else here.parent,
+            here.parents[0] if len(here.parents) >= 1 else here.parent,
+        ]
+        script_path = None
+        project_root = None
+        for root in candidate_roots:
+            cand = root / 'scripts' / 'getSingleStock.py'
+            if cand.exists():
+                script_path = cand
+                project_root = root
+                break
+        if script_path is None:
+            roots_str = "; ".join(str(r) for r in candidate_roots)
+            raise HTTPException(status_code=404, detail=f"抓取脚本不存在（查找过的根：{roots_str}）")
 
         env = os.environ.copy()
         # 通过环境变量传参数，避免修改脚本签名（脚本将读取这些变量覆盖默认）
