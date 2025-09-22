@@ -286,11 +286,21 @@ async def fetch_stock_data(body: Dict[str, Any]) -> Dict[str, Any]:
         if proc.returncode != 0:
             raise HTTPException(status_code=500, detail=f"脚本执行失败: {proc.stderr or proc.stdout}")
 
-        # 返回文件是否存在
+        # 返回文件是否存在；若不存在则按 code 后缀兜底搜索
         data_dir = project_root / 'data'
         code = code_full.split('.')[-1]
-        csv_path = data_dir / f"{name}-{code}.csv"
-        return {"ok": True, "stdout": proc.stdout, "csv": str(csv_path)}
+        expected = data_dir / f"{name}-{code}.csv"
+        resolved = None
+        if expected.exists():
+            resolved = expected
+        else:
+            # 兜底：按 *-code.csv 搜索（以实际生成的为准）
+            cand = list(data_dir.glob(f"*-{code}.csv"))
+            if cand:
+                resolved = cand[0]
+        if not resolved:
+            raise HTTPException(status_code=500, detail=f"脚本执行成功但未找到CSV：期望 {expected}；stdout: {proc.stdout[-500:]} ")
+        return {"ok": True, "stdout": proc.stdout, "csv": str(resolved), "code": code, "name": name}
     except HTTPException:
         raise
     except subprocess.TimeoutExpired:

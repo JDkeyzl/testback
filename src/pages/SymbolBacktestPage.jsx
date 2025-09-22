@@ -397,15 +397,19 @@ export function SymbolBacktestPage() {
               <Button size="sm" variant="outline" disabled={!selectedStock || isRunning} onClick={async () => {
                 try {
                   setStatus('正在拉取数据...')
-                  const codeFull = selectedStock?.codeFull && selectedStock.codeFull.includes('.')
-                    ? selectedStock.codeFull
-                    : (symbol.startsWith('6') ? `sh.${symbol}` : `sz.${symbol}`)
+                  // 统一以当前选择的 symbol 推导 codeFull，避免字典中的 codeFull 误配
+                  const codeFull = (symbol && symbol.startsWith('6')) ? `sh.${symbol}` : `sz.${symbol}`
                   const res = await fetch('/api/v1/data/fetch', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ codeFull, name: selectedStock?.nameZh || symbol, startDate, endDate, timeframe })
                   })
-                  const data = await res.json()
-                  if (!res.ok || !data?.ok) throw new Error(data?.detail || '拉取失败')
+                  const raw = await res.text()
+                  let data = null
+                  try { data = raw ? JSON.parse(raw) : null } catch {}
+                  if (!res.ok || !(data && data.ok)) {
+                    const msg = (data && (data.detail || data.error)) || `${res.status} ${res.statusText}`
+                    throw new Error(msg)
+                  }
                   alert('拉取完成：' + (data.csv || ''))
                   // 刷新本地数据源列表
                   try {
