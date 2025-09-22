@@ -77,11 +77,12 @@ export function SymbolBacktestPage() {
           const data = await r.json()
           const arr = Array.isArray(data?.sources) ? data.sources : []
           setSources(arr)
-          if (arr.length && !symbol) setSymbol(arr[0].symbol)
+          // 仅在没有已恢复的 symbol 时设置默认值，避免覆盖用户选择
+          if (arr.length && !symbol && !(pg && pg.symbol)) setSymbol(arr[0].symbol)
         }
       } catch {}
     })()
-  }, [symbol])
+  }, [symbol, pg])
 
   // 加载本地股票字典
   useEffect(() => {
@@ -168,6 +169,18 @@ export function SymbolBacktestPage() {
     }
     return arr.slice(0, 50)
   }, [debouncedQuery, normalizedStocks])
+
+  // 保证显示名称、选中项与 symbol 对齐（防止 query 显示与实际 symbol 不一致）
+  useEffect(() => {
+    if (!symbol) return
+    const hit = normalizedStocks.find(it => it.code === symbol)
+    if (hit) {
+      setSelectedStock(hit)
+      const label = `${hit.nameZh}（${hit.code}）`
+      if (query !== label) setQuery(label)
+      try { setPg({ symbol: hit.code, symbolName: hit.nameZh, query: label }) } catch {}
+    }
+  }, [symbol, normalizedStocks])
 
   // 失焦延时隐藏，避免点击项时提前关闭
   const handleBlur = useCallback(() => {
