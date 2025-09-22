@@ -4,6 +4,7 @@ pydantic==2.5.0
 numpy==1.26.4
 pandas==2.1.4
 akshare==1.17.53
+baostock==0.8.9
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
