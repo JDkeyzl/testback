@@ -177,10 +177,11 @@ export function SymbolBacktestPage() {
     if (hit) {
       setSelectedStock(hit)
       const label = `${hit.nameZh}（${hit.code}）`
-      if (query !== label) setQuery(label)
-      try { setPg({ symbol: hit.code, symbolName: hit.nameZh, query: label }) } catch {}
+      // 仅在输入框未聚焦时，同步显示名称，避免覆盖用户正在输入的搜索词
+      if (!isFocused && query !== label) setQuery(label)
+      try { setPg({ symbol: hit.code, symbolName: hit.nameZh, query: isFocused ? query : label }) } catch {}
     }
-  }, [symbol, normalizedStocks])
+  }, [symbol, normalizedStocks, isFocused])
 
   // 失焦延时隐藏，避免点击项时提前关闭
   const handleBlur = useCallback(() => {
