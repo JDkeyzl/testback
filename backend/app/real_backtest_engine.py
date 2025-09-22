@@ -774,10 +774,11 @@ class RealBacktestEngine:
         fast = int(node_data.get("fast", 12) or 12)
         slow = int(node_data.get("slow", 26) or 26)
         signal = int(node_data.get("signal", 9) or 9)
+        mode = str(node_data.get("mode", "hist_threshold") or "hist_threshold")
         threshold = float(node_data.get("threshold", 0) or 0.0)
         operator = str(node_data.get("operator", ">") or ">")
 
-        logger.info(f"MACD策略参数: fast={fast}, slow={slow}, signal={signal}, threshold={threshold}, operator={operator}")
+        logger.info(f"MACD策略参数: fast={fast}, slow={slow}, signal={signal}, mode={mode}, threshold={threshold}, operator={operator}")
 
         # 计算 MACD
         data = data.copy()
@@ -814,9 +815,31 @@ class RealBacktestEngine:
             if pd.isna(h) or pd.isna(hp):
                 continue
 
-            # 触发条件
-            buy_cross = (hp <= threshold) and cmp(h, threshold, operator)
-            sell_cross = (hp >= -threshold) and cmp(-h, threshold, operator)  # 等价于 h < -threshold when operator is '>'
+            # 信号模式
+            if mode == 'golden_cross':
+                # DIF 上穿 DEA
+                buy_cross = (prev['macd_dif'] <= prev['macd_dea']) and (row['macd_dif'] > row['macd_dea'])
+                sell_cross = False
+            elif mode == 'death_cross':
+                # DIF 下穿 DEA
+                buy_cross = False
+                sell_cross = (prev['macd_dif'] >= prev['macd_dea']) and (row['macd_dif'] < row['macd_dea'])
+            elif mode == 'zero_above':
+                buy_cross = (prev['macd_dif'] <= 0) and (row['macd_dif'] > 0)
+                sell_cross = False
+            elif mode == 'zero_below':
+                buy_cross = False
+                sell_cross = (prev['macd_dif'] >= 0) and (row['macd_dif'] < 0)
+            elif mode == 'hist_turn_positive':
+                buy_cross = (hp <= 0) and (h > 0)
+                sell_cross = False
+            elif mode == 'hist_turn_negative':
+                buy_cross = False
+                sell_cross = (hp >= 0) and (h < 0)
+            else:
+                # 默认：柱体与阈值比较
+                buy_cross = (hp <= threshold) and cmp(h, threshold, operator)
+                sell_cross = (hp >= -threshold) and cmp(-h, threshold, operator)
 
             if buy_cross and position == 0:
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)

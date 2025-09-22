@@ -200,7 +200,7 @@ export function ParameterPanel() {
       rsi: { period: 14, timeframe: '1d', threshold: 30, operator: '<', direction: 'none' },
       bollinger: { period: 20, timeframe: '1d', stdDev: 2, condition: 'breakout', direction: 'lower' },
       vwap: { period: 20, timeframe: '1d', deviation: 0.02, operator: 'below' },
-      macd: { fast: 12, slow: 26, signal: 9, timeframe: '1d', threshold: 0, operator: '>' },
+      macd: { fast: 12, slow: 26, signal: 9, timeframe: '1d', mode: 'hist_threshold', threshold: 0, operator: '>' },
       volume: { threshold: 1000000, operator: '>', timeframe: '1d', avgPeriod: 20, multiplier: 1.5 },
       price: { threshold: 100, operator: '>', timeframe: '1d' },
       trend: { period: 200, timeframe: '1d', condition: 'slope', direction: 'down' },
@@ -750,6 +750,25 @@ export function ParameterPanel() {
           <div className="space-y-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium">信号模式</label>
+                <ParameterHelp description="选择MACD信号类型：金叉/死叉（DIF与DEA交叉）、零轴上下（DIF相对0）、柱能量转正（hist由负转正）或阈值比较（hist相对阈值）。" />
+              </div>
+              <select
+                value={nodeParams.mode || 'hist_threshold'}
+                onChange={(e) => handleParamChange('mode', e.target.value)}
+                className="w-full h-10 px-3 py-2 text-sm border border-input rounded-md bg-background"
+              >
+                <option value="golden_cross">金叉（DIF上穿DEA）</option>
+                <option value="death_cross">死叉（DIF下穿DEA）</option>
+                <option value="zero_above">零轴上方（DIF&gt;0）</option>
+                <option value="zero_below">零轴下方（DIF&lt;0）</option>
+                <option value="hist_turn_positive">柱能量转正（hist由负转正）</option>
+                <option value="hist_turn_negative">柱能量转负（hist由正转负）</option>
+                <option value="hist_threshold">柱体与阈值比较（支持操作符）</option>
+              </select>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">快线周期</label>
                 <ParameterHelp description="MACD指标中快线（EMA）的计算周期，单位：天。MACD由快线、慢线和信号线组成，用于判断趋势变化和买卖信号。" />
               </div>
@@ -869,6 +888,7 @@ export function ParameterPanel() {
               </Select>
             </div>
             
+            { (nodeParams.mode || 'hist_threshold') === 'hist_threshold' && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">阈值</label>
@@ -900,7 +920,9 @@ export function ParameterPanel() {
                 />
               </div>
             </div>
+            ) }
 
+            { (nodeParams.mode || 'hist_threshold') === 'hist_threshold' && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium">操作符</label>
@@ -916,6 +938,7 @@ export function ParameterPanel() {
                 ))}
               </select>
             </div>
+            ) }
           </div>
         )
 
