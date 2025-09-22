@@ -419,6 +419,8 @@ class RealBacktestEngine:
             return self._run_vwap_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         elif sub_type == "volume":
             return self._run_volume_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
+        elif sub_type == "macd":
+            return self._run_macd_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
         else:
             # 默认使用移动平均策略
             return self._run_ma_strategy(data, node_data, current_capital, position, trades, equity_curve, position_management)
@@ -752,6 +754,114 @@ class RealBacktestEngine:
                     "price": round(current_price, 2)
                 })
         
+        return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
+
+    def _run_macd_strategy(self, data: pd.DataFrame, node_data: Dict,
+                           current_capital: float, position: int,
+                           trades: List[Dict], equity_curve: List[Dict],
+                           position_management: str = "full") -> Dict[str, Any]:
+        """执行 MACD 策略
+        参数（来自前端节点 data）:
+          - fast: 快线周期，默认 12
+          - slow: 慢线周期，默认 26
+          - signal: 信号线周期，默认 9
+          - threshold: 触发阈值（针对柱体 DIF-DEA），默认 0
+          - operator: 比较符号（>、<、>=、<=），默认 '>'
+        交易规则（简化）:
+          - 买入：柱体从下向上突破 threshold（含0）且空仓
+          - 卖出：柱体从上向下跌破 -threshold（含0）且持仓
+        """
+        fast = int(node_data.get("fast", 12) or 12)
+        slow = int(node_data.get("slow", 26) or 26)
+        signal = int(node_data.get("signal", 9) or 9)
+        threshold = float(node_data.get("threshold", 0) or 0.0)
+        operator = str(node_data.get("operator", ">") or ">")
+
+        logger.info(f"MACD策略参数: fast={fast}, slow={slow}, signal={signal}, threshold={threshold}, operator={operator}")
+
+        # 计算 MACD
+        data = data.copy()
+        ema_fast = data['close'].ewm(span=fast, adjust=False).mean()
+        ema_slow = data['close'].ewm(span=slow, adjust=False).mean()
+        dif = ema_fast - ema_slow
+        dea = dif.ewm(span=signal, adjust=False).mean()
+        hist = dif - dea
+        data = data.assign(macd_dif=dif, macd_dea=dea, macd_hist=hist)
+
+        def cmp(x: float, y: float, op: str) -> bool:
+            if op == '>':
+                return x > y
+            if op == '<':
+                return x < y
+            if op == '>=':
+                return x >= y
+            if op == '<=':
+                return x <= y
+            if op == '==':
+                return x == y
+            if op == '!=':
+                return x != y
+            return x > y
+
+        for i in range(max(slow, signal) + 1, len(data)):
+            row = data.iloc[i]
+            prev = data.iloc[i-1]
+            current_price = row['close']
+            timestamp = row['timestamp']
+            h = row['macd_hist']
+            hp = prev['macd_hist']
+
+            if pd.isna(h) or pd.isna(hp):
+                continue
+
+            # 触发条件
+            buy_cross = (hp <= threshold) and cmp(h, threshold, operator)
+            sell_cross = (hp >= -threshold) and cmp(-h, threshold, operator)  # 等价于 h < -threshold when operator is '>'
+
+            if buy_cross and position == 0:
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                if shares_to_buy >= self.market.min_lot():
+                    cost = shares_to_buy * current_price
+                    commission = cost * self.commission_rate
+                    total_cost = cost + commission
+                    if total_cost <= current_capital:
+                        current_capital -= total_cost
+                        position += shares_to_buy
+                        trades.append({
+                            "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            "action": "buy",
+                            "price": round(current_price, 2),
+                            "quantity": shares_to_buy,
+                            "amount": round(total_cost, 2),
+                            "pnl": None
+                        })
+
+            elif sell_cross and position > 0:
+                revenue = position * current_price
+                commission = revenue * self.commission_rate
+                net_revenue = revenue - commission
+                buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
+                pnl = net_revenue - buy_cost
+                current_capital += net_revenue
+                trades.append({
+                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "action": "sell",
+                    "price": round(current_price, 2),
+                    "quantity": position,
+                    "amount": round(net_revenue, 2),
+                    "pnl": round(pnl, 2)
+                })
+                position = 0
+
+            # 记录资金曲线（适度抽样）
+            if i % 5 == 0:
+                current_equity = current_capital + (position * current_price)
+                equity_curve.append({
+                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "equity": round(current_equity, 2),
+                    "price": round(current_price, 2)
+                })
+
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
     
     def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
