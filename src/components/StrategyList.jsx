@@ -218,7 +218,18 @@ export function StrategyList({ onBacktest }) {
           <Button
             variant="default"
             size="sm"
-            onClick={() => navigate('/strategy')}
+            onClick={() => {
+              // 立即创建一个空白策略并跳转到编辑页
+              const newId = `strategy_${Date.now()}`
+              const base = {
+                id: newId,
+                name: '新策略',
+                description: '请在策略构建器中添加节点并保存',
+                strategy: { nodes: [], edges: [] }
+              }
+              addStrategy(base)
+              navigate(`/strategies/${newId}/edit`)
+            }}
             className="flex items-center space-x-2 bg-primary hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
