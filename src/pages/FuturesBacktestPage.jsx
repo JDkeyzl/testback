@@ -354,7 +354,28 @@ export function FuturesBacktestPage() {
                       <td className="py-2 pr-3">{r.totalTrades}</td>
                       <td className="py-2 pr-3">{r.elapsedMs}</td>
                       <td className="py-2 pr-3">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/backtest/${r.strategyId}`, { state: { useHistorySnapshot: true, rawResult: r.rawResult, backtestParams: r.backtestParams, from: '/futures-backtest' } })}>查看详情</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const stripFns = (o) => {
+                              if (Array.isArray(o)) return o.map(stripFns)
+                              if (o && typeof o === 'object') {
+                                const out = {}
+                                for (const k in o) {
+                                  const v = o[k]
+                                  if (typeof v === 'function') continue
+                                  out[k] = stripFns(v)
+                                }
+                                return out
+                              }
+                              return o
+                            }
+                            navigate(`/backtest/${r.strategyId}`, {
+                              state: stripFns({ useHistorySnapshot: true, rawResult: r.rawResult, backtestParams: r.backtestParams, from: '/futures-backtest' })
+                            })
+                          }}
+                        >查看详情</Button>
                       </td>
                     </tr>
                   ))}

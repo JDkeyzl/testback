@@ -39,8 +39,8 @@ const getId = () => `dndnode_${id++}`
 export const StrategyBuilder = React.forwardRef((props, ref) => {
   const reactFlowWrapper = useRef(null)
   const { strategyId } = useParams()
-  const { nodeParams, setSelectedNodeId } = useStrategyStore()
-  const { strategies, getStrategy } = useStrategyListStore()
+  const { nodeParams, setSelectedNode, setNodeParams, resetAllParams } = useStrategyStore()
+  const { strategies, getStrategy, updateStrategy, addStrategy } = useStrategyListStore()
   const [toasts, setToasts] = useState([])
   const [isLoadingStrategy, setIsLoadingStrategy] = useState(false)
   // 计算昨天日期（YYYY-MM-DD）
@@ -124,14 +124,14 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   // 处理节点选择
   const handleNodeClick = useCallback((event, node) => {
     console.log('StrategyBuilder: 节点被点击', node)
-    setSelectedNodeId(node.id)
-  }, [setSelectedNodeId])
+    setSelectedNode(node.id)
+  }, [setSelectedNode])
 
   // 处理画布点击（取消选择）
   const handlePaneClick = useCallback(() => {
     console.log('StrategyBuilder: 画布被点击，取消节点选择')
-    setSelectedNodeId(null)
-  }, [setSelectedNodeId])
+    setSelectedNode(null)
+  }, [setSelectedNode])
   
   // 默认节点和边配置
   const getDefaultNodes = () => [
@@ -262,8 +262,38 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
       loadStrategy(strategyId).then((strategy) => {
         if (strategy && strategy.strategy) {
           console.log('StrategyBuilder: 加载策略成功，更新节点和边', strategy)
-          setNodes(strategy.strategy.nodes || getDefaultNodes())
+          const rawNodes = strategy.strategy.nodes || getDefaultNodes()
+          // 兼容历史策略：为MACD条件节点补齐mode字段
+          const fixedNodes = rawNodes.map(n => {
+            if (n?.type === 'condition' && (n?.data?.subType === 'macd' || n?.data?.type === 'macd')) {
+              return { ...n, data: { mode: n.data.mode || 'hist_threshold', ...n.data } }
+            }
+            return n
+          })
+          setNodes(fixedNodes)
           setEdges(strategy.strategy.edges || getDefaultEdges())
+
+          // 将已加载策略节点的数据写入全局参数仓库，避免旧的 nodeParams 覆盖画布数据
+          try {
+            resetAllParams()
+            fixedNodes.forEach((n) => {
+              const nodeType = n.type
+              const subType = n.data?.subType || n.data?.type || (nodeType === 'logic' ? 'and' : nodeType === 'action' ? 'buy' : 'ma')
+              // 将节点 data 作为参数写入，确保如 MACD.mode 等保持一致
+              setNodeParams(
+                n.id,
+                nodeType,
+                subType,
+                {
+                  ...n.data,
+                  nodeType,
+                  subType,
+                }
+              )
+            })
+          } catch (e) {
+            console.warn('StrategyBuilder: 同步节点参数到store失败', e)
+          }
         } else {
           console.log('StrategyBuilder: 未找到策略数据，使用默认配置')
         }
@@ -454,15 +484,28 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
     setEdges([])
   }
 
-  const { addStrategy } = useStrategyListStore()
-  
   const saveStrategy = () => {
+    // 去除不可序列化字段（函数）以避免后续路由 state 克隆错误
+    const sanitize = (obj) => {
+      if (Array.isArray(obj)) return obj.map(sanitize)
+      if (obj && typeof obj === 'object') {
+        const out = {}
+        for (const k in obj) {
+          const v = obj[k]
+          if (typeof v === 'function') continue
+          out[k] = sanitize(v)
+        }
+        return out
+      }
+      return obj
+    }
+
     const strategy = {
       nodes: nodes.map(node => ({
         id: node.id,
         type: node.type,
         position: node.position,
-        data: node.data
+        data: sanitize(node.data) // 过滤 onChange/onDelete 等函数引用
       })),
       edges: edges.map(edge => ({
         id: edge.id,
@@ -478,16 +521,37 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
     // 生成策略名称
     const strategyName = `策略_${new Date().toLocaleString()}`
     const strategyDescription = `包含${nodes.length}个节点的交易策略`
+    // 调试打印：保存的策略数据
+    try {
+      console.log('StrategyBuilder: 保存策略数据', {
+        strategyId,
+        name: strategyName,
+        description: strategyDescription,
+        nodes: strategy.nodes,
+        edges: strategy.edges
+      })
+    } catch {}
     
-    // 保存到策略列表
-    const strategyId = addStrategy({
-      name: strategyName,
-      description: strategyDescription,
-      strategy: strategy
-    })
-    
-    console.log('策略已保存:', strategyId)
-    alert('策略保存成功！')
+    // 若为编辑已有策略，则更新；否则新增
+    const existing = strategyId ? getStrategy(strategyId) : null
+    if (existing) {
+      updateStrategy(strategyId, {
+        name: existing.name || strategyName,
+        description: strategyDescription,
+        strategy
+      })
+      console.log('策略已更新:', strategyId)
+      alert('策略更新成功！')
+    } else {
+      addStrategy({
+        id: strategyId || undefined,
+        name: strategyName,
+        description: strategyDescription,
+        strategy
+      })
+      console.log('策略已保存(新建)')
+      alert('策略保存成功！')
+    }
   }
 
   return (

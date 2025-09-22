@@ -39,8 +39,10 @@ export function ConditionNode({ data, isConnectable, id }) {
   
   // 初始化节点参数
   useEffect(() => {
-    initNodeParams(nodeId, 'condition', data.type || 'ma')
-  }, [nodeId, data.type, initNodeParams])
+    // 传入画布节点当前的 data 作为初始值，确保如 MACD.mode 等不被默认值覆盖
+    // 优先使用 data.subType，其次 data.type，避免子类型识别错误
+    initNodeParams(nodeId, 'condition', (data.subType || data.type || 'ma'), data || {})
+  }, [nodeId, data, initNodeParams])
 
   // 从全局状态获取参数
   const nodeParams = getNodeParams(nodeId)
@@ -51,7 +53,8 @@ export function ConditionNode({ data, isConnectable, id }) {
     operator: '>',
     fast: 12,
     slow: 26,
-    signal: 9
+    signal: 9,
+    mode: 'hist_threshold'
   }
 
   const conditionType = conditionTypes[nodeData.type] || conditionTypes.ma

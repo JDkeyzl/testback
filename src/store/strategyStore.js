@@ -34,6 +34,7 @@ const defaultNodeParams = {
       slow: 26,
       signal: 9,
       timeframe: '1d',
+      mode: 'hist_threshold',
       threshold: 0.0,
       operator: '>'
     },
@@ -113,17 +114,19 @@ export const useStrategyStore = create((set, get) => ({
   },
   
   // 初始化节点参数
-  initNodeParams: (nodeId, nodeType, subType) => {
+  initNodeParams: (nodeId, nodeType, subType, initial = {}) => {
     const state = get()
     if (!state.nodeParams[nodeId]) {
       const defaultParams = defaultNodeParams[nodeType]?.[subType] || {}
+      // 使用画布节点自带的数据作为初始值，覆盖默认值（避免丢失如 MACD 的 mode 等）
+      const seed = { ...defaultParams, ...initial }
       set((state) => ({
         nodeParams: {
           ...state.nodeParams,
           [nodeId]: {
             nodeType,
             subType,
-            ...defaultParams
+            ...seed
           }
         }
       }))

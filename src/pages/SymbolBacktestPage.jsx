@@ -68,7 +68,7 @@ export function SymbolBacktestPage() {
     } catch {}
   }, [symbol])
 
-  // 加载数据源
+  // 加载数据源（仅初始化一次；避免因 symbol/query 等状态变化导致重复请求）
   useEffect(() => {
     (async () => {
       try {
@@ -82,7 +82,7 @@ export function SymbolBacktestPage() {
         }
       } catch {}
     })()
-  }, [symbol, pg])
+  }, [])
 
   // 加载本地股票字典
   useEffect(() => {
@@ -572,7 +572,30 @@ export function SymbolBacktestPage() {
                       <td className="py-2 pr-3">{r.totalTrades}</td>
                       <td className="py-2 pr-3">{r.elapsedMs}</td>
                       <td className="py-2 pr-3">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/backtest/${r.strategyId}`, { state: { useHistorySnapshot: true, rawResult: r.rawResult, backtestParams: r.backtestParams, from: '/symbol-backtest' } })}>查看详情</Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            // 清理 state 中的函数，避免 History.pushState 克隆失败
+                            const stripFns = (o) => {
+                              if (Array.isArray(o)) return o.map(stripFns)
+                              if (o && typeof o === 'object') {
+                                const out = {}
+                                for (const k in o) {
+                                  const v = o[k]
+                                  if (typeof v === 'function') continue
+                                  out[k] = stripFns(v)
+                                }
+                                return out
+                              }
+                              return o
+                            }
+                            navigate(`/backtest/${r.strategyId}`, {
+                              state: stripFns({ useHistorySnapshot: true, rawResult: r.rawResult, backtestParams: r.backtestParams, from: '/symbol-backtest' })
+                            })
+                          }}
+                        >查看详情</Button>
                       </td>
                     </tr>
                   ))}

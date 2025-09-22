@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, ComposedChart, Cell } from 'recharts'
 import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Activity, Calendar, Clock, BarChart3, List, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStrategyListStore } from '../store/strategyListStore'
 import { formatTradesWithFees as fmtTradesFees, buildDailyAssetsFromRows, computeMetricsFromTrades as computeFromTrades, computeMetricsFromAssets as computeFromAssets } from '../utils/metrics'
@@ -248,6 +248,39 @@ export function BacktestResultPage() {
     return result
   }
   const dailyPriceData = buildDailyPriceData(backtestResult?.priceSeries)
+  // 计算 MACD 指标（基于日收盘价）
+  const macdData = useMemo(() => {
+    if (!dailyPriceData || dailyPriceData.length === 0) return []
+    const closes = dailyPriceData.map(d => Number(d.close))
+    const ema = (period) => {
+      const k = 2 / (period + 1)
+      const out = []
+      let prev = closes[0]
+      for (let i = 0; i < closes.length; i++) {
+        const v = i === 0 ? closes[0] : (closes[i] * k + prev * (1 - k))
+        out.push(v)
+        prev = v
+      }
+      return out
+    }
+    const fastP = 12, slowP = 26, signalP = 9
+    const emaFast = ema(fastP)
+    const emaSlow = ema(slowP)
+    const dif = emaFast.map((v, i) => v - emaSlow[i])
+    const signal = (() => {
+      const k = 2 / (signalP + 1)
+      const out = []
+      let prev = dif[0]
+      for (let i = 0; i < dif.length; i++) {
+        const v = i === 0 ? dif[0] : (dif[i] * k + prev * (1 - k))
+        out.push(v)
+        prev = v
+      }
+      return out
+    })()
+    const hist = dif.map((v, i) => v - signal[i])
+    return dailyPriceData.map((d, i) => ({ date: d.date, dif: Number(dif[i].toFixed(4)), dea: Number(signal[i].toFixed(4)), hist: Number(hist[i].toFixed(4)) }))
+  }, [dailyPriceData])
   // 资金曲线改为“资产口径”：股票=交易记录+价格聚合；期货=仅基于交易记录（卖出回合累计）
   const dailyAssets = useMemo(() => {
     if (isFutures) {
@@ -911,10 +944,37 @@ export function BacktestResultPage() {
                     </div>
                   )}
                 </div>
+                {/* MACD 子图 */}
+                <div className="h-40 mt-4">
+                  {macdData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={macdData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis yAxisId="left" orientation="left" />
+                        <Tooltip labelFormatter={(label) => `日期: ${label}`} />
+                        {/* DIF 与 DEA 线 */}
+                        <Line yAxisId="left" type="monotone" dataKey="dif" stroke="#f59e0b" dot={false} name="DIF" />
+                        <Line yAxisId="left" type="monotone" dataKey="dea" stroke="#10b981" dot={false} name="DEA" />
+                        {/* 柱：hist 上红下绿 */}
+                        <Bar yAxisId="left" dataKey="hist" barSize={6} name="Hist">
+                          {macdData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.hist >= 0 ? '#ef4444' : '#22c55e'} />
+                          ))}
+                        </Bar>
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      {isRunning ? '正在计算MACD...' : '暂无MACD数据'}
+                    </div>
+                  )}
+                </div>
                 <div className="mt-3 text-xs text-muted-foreground space-y-1">
                   <div>说明：</div>
                   <div>- 总资产来源：以交易记录计算（可用资金 + 持仓价值）。</div>
                   <div>- 价格来源：回测原始CSV数据（5分钟K线聚合为日收盘价折线）。</div>
+                  <div>- MACD 计算：基于日收盘价，参数(12,26,9)，DIF/DEA线与柱状图。</div>
                   <div>- 回撤、收益率、胜率等概览指标均以交易记录为准。</div>
                 </div>
               </CardContent>
