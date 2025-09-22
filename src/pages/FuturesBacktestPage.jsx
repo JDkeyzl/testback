@@ -21,10 +21,7 @@ export function FuturesBacktestPage() {
   const [contract, setContract] = useState('p2601')
   const [timeframe, setTimeframe] = useState('5m')
   const [startDate, setStartDate] = useState('2025-01-01')
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 1)
-    return d.toISOString().slice(0,10)
-  })
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0,10))
   const [initialCapital, setInitialCapital] = useState(100000)
   const [selectedIds, setSelectedIds] = useState([])
   const [isRunning, setIsRunning] = useState(false)
@@ -46,8 +43,6 @@ export function FuturesBacktestPage() {
         setResults(pack.results)
         const p = pack.params || {}
         if (p.timeframe) setTimeframe(p.timeframe)
-        if (p.startDate) setStartDate(p.startDate)
-        if (p.endDate) setEndDate(p.endDate)
         if (p.initialCapital) setInitialCapital(p.initialCapital)
       } else {
         setResults([])
@@ -59,7 +54,7 @@ export function FuturesBacktestPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/v1/data/sources')
+        const r = await fetch('/api/v1/data/sources')
         if (r.ok) {
           const data = await r.json()
           const arr = Array.isArray(data?.sources) ? data.sources : []
@@ -73,7 +68,7 @@ export function FuturesBacktestPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/v1/futures/contracts')
+        const r = await fetch('/api/v1/futures/contracts')
         if (r.ok) {
           const data = await r.json()
           setContracts(Array.isArray(data?.list) ? data.list : [])
@@ -124,36 +119,56 @@ export function FuturesBacktestPage() {
           initialCapital,
           strategy: strat.strategy || strat
         }
-        const res = await fetch('http://localhost:8000/api/v1/backtest/futures', {
+        const res = await fetch('/api/v1/backtest/futures', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data?.detail || '回测失败')
 
-        // 统一资产口径：基于交易记录 + 日资产序列计算指标
-        const fmtRows = fmtTradesFees(Array.isArray(data?.trades) ? data.trades : [], initialCapital)
-        const priceSeries = Array.isArray(data?.price_series) ? data.price_series : []
-        // 聚合为日收盘价
-        const priceDaily = (() => {
-          const m = new Map()
-          for (const p of priceSeries) {
-            const day = String(p.timestamp || p.time || p.date).slice(0, 10)
-            const t = new Date(p.timestamp || p.time || p.date)
-            if (!m.has(day) || t > m.get(day).t) m.set(day, { t, close: Number(p.close) })
+        // 期货口径：统一以“实际交易记录”为准（仅依据成交回合，不使用权益曲线）
+        const trades = Array.isArray(data?.trades) ? data.trades : []
+        const initial = Number(data?.initial_capital ?? initialCapital) || 0
+        // 构建“按卖出日累计盈亏”的资产序列
+        const dayPnL = new Map()
+        for (const t of trades) {
+          if (String(t?.action) !== 'sell') continue
+          const d = String(t?.timestamp || t?.date || '').slice(0,10)
+          const v = Number(t?.pnl || 0)
+          dayPnL.set(d, (dayPnL.get(d) || 0) + v)
+        }
+        const series = Array.from(dayPnL.entries()).sort((a,b)=>a[0].localeCompare(b[0]))
+        let acc = initial
+        const assets = []
+        for (const [d, pnl] of series) {
+          acc += pnl
+          assets.push({ date: d, totalAssets: acc })
+        }
+        const lastEq = assets.length ? assets[assets.length-1].totalAssets : initial
+        const totalReturn = initial > 0 ? (lastEq - initial) / initial : 0
+        const maxDrawdown = (() => {
+          if (!assets.length) return 0
+          let peak = assets[0].totalAssets
+          let mdd = 0
+          for (const a of assets) {
+            const v = a.totalAssets
+            if (v > peak) peak = v
+            const dd = peak > 0 ? (peak - v) / peak : 0
+            if (dd > mdd) mdd = dd
           }
-          return Array.from(m.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([day, v])=>({ date: day, close: v.close }))
+          return mdd
         })()
-        const dailyAssets = buildDailyAssetsFromRows(fmtRows, priceDaily, startDate, endDate, initialCapital)
-        const aMetrics = computeFromAssets(dailyAssets)
-        const tMetrics = computeFromTrades(fmtRows)
+        const sellTrades = trades.filter(t => String(t?.action) === 'sell' && t?.pnl != null)
+        const wins = sellTrades.filter(t => Number(t.pnl) > 0).length
+        const winRate = sellTrades.length ? (wins / sellTrades.length) : 0
+        const totalTrades = sellTrades.length // 回合数=卖出笔数
 
         rows.push({
           strategyId: sid,
           strategyName: strat.name || strat.title || '未命名策略',
-          totalReturn: aMetrics.totalReturn || 0,
-          maxDrawdown: aMetrics.maxDrawdown || 0,
-          winRate: tMetrics.winRate || 0,
-          totalTrades: tMetrics.totalTrades || 0,
+          totalReturn: totalReturn || 0,
+          maxDrawdown: maxDrawdown || 0,
+          winRate: winRate || 0,
+          totalTrades: totalTrades || 0,
           elapsedMs: Math.round((performance.now() - t0)),
           backtestParams: { 
             symbol: contract, 
@@ -166,12 +181,13 @@ export function FuturesBacktestPage() {
             name: strat.name || strat.title || '未命名策略'
           },
           symbol: contract,
-          symbolLabel: contract
+          symbolLabel: contract,
+          rawResult: data
         })
       }
       rows.sort((a,b)=> (b.totalReturn - a.totalReturn))
       setResults(rows)
-      setTimeout(() => batchStore.setResultsFor(contract, rows, { timeframe, startDate, endDate, initialCapital }), 0)
+      try { batchStore.setResultsFor(contract, rows, { timeframe, startDate, endDate, initialCapital }) } catch {}
     } catch (e) {
       alert('回测失败：' + (e?.message || e))
     } finally {
@@ -273,14 +289,14 @@ export function FuturesBacktestPage() {
                   const map = { '1m': '1', '5m': '5', '15m': '15', '30m': '30', '1h': '60' }
                   const period = map[timeframe] || '5'
                   const q = new URLSearchParams({ symbol: contract, period, startDate, endDate, save: 'true', name: '' }).toString()
-                  const url = `http://localhost:8000/api/v1/futures/data?${q}`
+                  const url = `/api/v1/futures/data?${q}`
                   const r = await fetch(url)
                   const data = await r.json()
                   if (!r.ok || !data?.ok) throw new Error(data?.detail || '拉取失败')
                   const tip = data?.range?.partial ? '（提示：第三方接口返回区间少于请求区间）' : ''
                   alert(`已获取 ${data.count} 条数据${data.csv?`，已保存：${data.csv}`:''}${tip}`)
                   try {
-                    const refresh = await fetch('http://localhost:8000/api/v1/data/sources')
+                    const refresh = await fetch('/api/v1/data/sources')
                     if (refresh.ok) {
                       const d = await refresh.json()
                       setSources(Array.isArray(d?.sources) ? d.sources : [])
@@ -356,7 +372,7 @@ export function FuturesBacktestPage() {
                       <td className="py-2 pr-3">{r.totalTrades}</td>
                       <td className="py-2 pr-3">{r.elapsedMs}</td>
                       <td className="py-2 pr-3">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/backtest/${r.strategyId}`, { state: { backtestParams: r.backtestParams, from: '/futures-backtest', resultsSnapshot: results } })}>查看详情</Button>
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/backtest/${r.strategyId}`, { state: { useHistorySnapshot: true, rawResult: r.rawResult, backtestParams: r.backtestParams, from: '/futures-backtest' } })}>查看详情</Button>
                       </td>
                     </tr>
                   ))}

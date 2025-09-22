@@ -134,7 +134,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
       setStatusMessage('正在加载股票数据...')
       let usedEnd = endDate
       try {
-        const infoRes = await fetch(`http://localhost:8000/api/v1/data/info/${symbol || '002130'}`)
+        const infoRes = await fetch(`/api/v1/data/info/${symbol || '002130'}`)
         if (infoRes.ok) {
           const info = await infoRes.json()
           const lastDataDate = String(info?.end_date || '').split(' ')[0]
@@ -143,7 +143,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
       } catch {}
 
       setStatusMessage('正在执行策略回测...')
-      const response = await fetch('http://localhost:8000/api/v1/backtest/real', {
+      const response = await fetch('/api/v1/backtest/real', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           strategy: strategyData,
@@ -225,7 +225,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
 
           // 尝试调用后端API
           try {
-            const response = await fetch('http://localhost:8000/api/v1/backtest', {
+            const response = await fetch('/api/v1/backtest', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

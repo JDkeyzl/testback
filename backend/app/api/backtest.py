@@ -127,6 +127,42 @@ async def real_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"回测执行失败: {str(e)}")
 
+@router.post("/backtest/stocks")
+async def stocks_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    股票回测端点（与期货分离）。保持现有 RealBacktestEngine 行为，稳态迁移。
+    请求体：{ strategy, symbol, timeframe, startDate, endDate, initialCapital, positionManagement?, debug? }
+    """
+    try:
+        strategy = request.get("strategy")
+        if not strategy:
+            raise HTTPException(status_code=400, detail="缺少 strategy 字段")
+
+        symbol = request.get("symbol") or "002130"
+        timeframe = request.get("timeframe", "1d")
+        start_date = request.get("startDate") or "2025-01-01"
+        end_date = request.get("endDate") or None
+        initial_capital = float(request.get("initialCapital", 100000.0))
+        position_management = request.get("positionManagement", "full")
+        debug = bool(request.get("debug", False))
+
+        # 直接复用现有股票引擎
+        result = run_real_backtest(
+            strategy=strategy,
+            symbol=str(symbol),
+            timeframe=str(timeframe),
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital,
+            position_management=position_management,
+            debug=debug,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"股票回测执行失败: {str(e)}")
+
 @router.post("/backtest/futures")
 async def futures_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
     """

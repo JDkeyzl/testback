@@ -316,15 +316,36 @@ class FuturesBacktestEngine:
 
         # 指标
         total_return = (equity - self.initial_capital) / self.initial_capital if self.initial_capital > 0 else 0.0
-        sell_trades = [t for t in trades if t['action'] == 'sell' and t.get('pnl') is not None]
-        wins = [t for t in sell_trades if float(t.get('pnl', 0)) > 0]
-        win_rate = (len(wins) / len(sell_trades)) if sell_trades else 0.0
+        # 胜率按“成交回合”统计：一买一卖为一回合
+        rounds = 0
+        wins_round = 0
+        running_qty = 0
+        running_entry = None
+        for t in trades:
+            if t['action'] == 'buy':
+                running_qty += int(t.get('quantity') or 0)
+                if running_entry is None:
+                    running_entry = float(t.get('price') or 0)
+            elif t['action'] == 'sell':
+                if running_qty > 0 and running_entry is not None:
+                    rounds += 1
+                    if float(t.get('pnl') or 0) > 0:
+                        wins_round += 1
+                running_qty = 0
+                running_entry = None
+        win_rate = (wins_round / rounds) if rounds > 0 else 0.0
         profit_loss_ratio = 0.0
-        if sell_trades:
-            win_vals = [float(t['pnl']) for t in wins] or [0.0]
-            loss_vals = [abs(float(t['pnl'])) for t in sell_trades if float(t['pnl']) < 0] or [0.0]
-            if sum(loss_vals) > 0:
-                profit_loss_ratio = abs(np.mean(win_vals) / np.mean(loss_vals)) if np.mean(loss_vals) != 0 else 0.0
+        # 基于回合估算盈亏比（仅用于展示，避免未定义变量）
+        try:
+            round_pnls = [float(t.get('pnl') or 0) for t in trades if t['action']=='sell']
+            wins_vals = [p for p in round_pnls if p > 0]
+            loss_vals = [abs(p) for p in round_pnls if p < 0]
+            if loss_vals:
+                pl = abs((np.mean(wins_vals) if wins_vals else 0.0) / (np.mean(loss_vals) if loss_vals else 1.0))
+                if np.isfinite(pl):
+                    profit_loss_ratio = float(pl)
+        except Exception:
+            profit_loss_ratio = 0.0
 
         # 汇总容量统计
         if debug and stats['capacity']['max_open_samples']:
@@ -339,7 +360,8 @@ class FuturesBacktestEngine:
             'win_rate': round(self._safe_num(win_rate), 4),
             'profit_loss_ratio': round(self._safe_num(profit_loss_ratio), 4),
             'max_drawdown': self._max_drawdown(equity_curve),
-            'total_trades': int(len(trades)),
+            # 交易次数按回合计数，避免买卖各计一笔造成数量翻倍
+            'total_trades': int(rounds),
             'trades': trades,
             'equity_curve': equity_curve,
         }

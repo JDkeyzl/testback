@@ -61,7 +61,7 @@ export function BacktestModal({
   useEffect(() => {
     const fetchSources = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/v1/data/sources')
+        const res = await fetch('/api/v1/data/sources')
         if (res.ok) {
           const data = await res.json()
           setSources(Array.isArray(data?.sources) ? data.sources : [])

@@ -28,10 +28,7 @@ export function SymbolBacktestPage() {
   const [selectedStock, setSelectedStock] = useState(null)
   const [timeframe, setTimeframe] = useState('1d')
   const [startDate, setStartDate] = useState('2025-01-01')
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 1)
-    return d.toISOString().slice(0,10)
-  })
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0,10))
   const [initialCapital, setInitialCapital] = useState(100000)
   const [selectedIds, setSelectedIds] = useState([])
   const [isRunning, setIsRunning] = useState(false)
@@ -46,8 +43,6 @@ export function SymbolBacktestPage() {
         setResults(pack.results)
         const p = pack.params || {}
         if (p.timeframe) setTimeframe(p.timeframe)
-        if (p.startDate) setStartDate(p.startDate)
-        if (p.endDate) setEndDate(p.endDate)
         if (p.initialCapital) setInitialCapital(p.initialCapital)
       } else {
         setResults([])
@@ -59,7 +54,7 @@ export function SymbolBacktestPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/v1/data/sources')
+        const r = await fetch('/api/v1/data/sources')
         if (r.ok) {
           const data = await r.json()
           const arr = Array.isArray(data?.sources) ? data.sources : []
@@ -76,7 +71,7 @@ export function SymbolBacktestPage() {
       try {
         let ok = false
         try {
-          const r = await fetch('http://localhost:8000/api/v1/data/stocklist')
+          const r = await fetch('/api/v1/data/stocklist')
           if (r.ok) {
             const data = await r.json()
             setStockList(Array.isArray(data?.list) ? data.list : [])
@@ -197,7 +192,7 @@ export function SymbolBacktestPage() {
         // 夹取 endDate 到数据末日
         let usedEnd = endDate
         try {
-          const infoRes = await fetch(`http://localhost:8000/api/v1/data/info/${symbol}`)
+          const infoRes = await fetch(`/api/v1/data/info/${symbol}`)
           if (infoRes.ok) {
             const info = await infoRes.json()
             const lastDataDate = String(info?.end_date || '').split(' ')[0]
@@ -206,7 +201,7 @@ export function SymbolBacktestPage() {
         } catch {}
 
         const t0 = Date.now()
-        const resp = await fetch('http://localhost:8000/api/v1/backtest/real', {
+        const resp = await fetch('/api/v1/backtest/stocks', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             strategy: s.strategy,
@@ -252,12 +247,12 @@ export function SymbolBacktestPage() {
             winRate,
             totalTrades,
             elapsedMs,
-            backtestParams: { strategyId: s.id, strategy: s.strategy, symbol, timeframe, startDate, endDate: usedEnd, initialCapital }
+            backtestParams: { strategyId: s.id, strategy: s.strategy, symbol, timeframe, startDate, endDate: usedEnd, initialCapital },
+            rawResult: result
           }
           setResults(prev => {
             const next = [...prev, row].sort((a,b) => b.totalReturn - a.totalReturn)
-            // 避免在setState的render阶段触发zustand更新，延后到宏任务
-            try { setTimeout(() => batchStore.setResultsFor(symbol, next, { symbol, symbolName: selectedStock?.nameZh, timeframe, startDate, endDate: usedEnd, initialCapital }), 0) } catch {}
+            try { batchStore.setResultsFor(symbol, next, { symbol, symbolName: selectedStock?.nameZh, timeframe, startDate, endDate: usedEnd, initialCapital }) } catch {}
             return next
           })
           try {
@@ -386,7 +381,7 @@ export function SymbolBacktestPage() {
                   const codeFull = selectedStock?.codeFull && selectedStock.codeFull.includes('.')
                     ? selectedStock.codeFull
                     : (symbol.startsWith('6') ? `sh.${symbol}` : `sz.${symbol}`)
-                  const res = await fetch('http://localhost:8000/api/v1/data/fetch', {
+                  const res = await fetch('/api/v1/data/fetch', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ codeFull, name: selectedStock?.nameZh || symbol, startDate, endDate, timeframe })
                   })
@@ -395,7 +390,7 @@ export function SymbolBacktestPage() {
                   alert('拉取完成：' + (data.csv || ''))
                   // 刷新本地数据源列表
                   try {
-                    const refresh = await fetch('http://localhost:8000/api/v1/data/sources')
+                    const refresh = await fetch('/api/v1/data/sources')
                     if (refresh.ok) {
                       const d = await refresh.json()
                       setSources(Array.isArray(d?.sources) ? d.sources : [])
@@ -417,14 +412,14 @@ export function SymbolBacktestPage() {
                 try {
                   setStatus('正在拉取期货数据...')
                   const q = new URLSearchParams({ symbol: fut, period: per, startDate, endDate, save: 'true' }).toString()
-                  const url = `http://localhost:8000/api/v1/futures/data?${q}`
+                  const url = `/api/v1/futures/data?${q}`
                   const r = await fetch(url)
                   const data = await r.json()
                   if (!r.ok || !data?.ok) throw new Error(data?.detail || '期货数据拉取失败')
                   alert(`已获取 ${data.count} 条数据${data.csv?`，已保存：${data.csv}`:''}`)
                   // 成功保存CSV后刷新本地数据源，便于直接选择
                   try {
-                    const refresh = await fetch('http://localhost:8000/api/v1/data/sources')
+                    const refresh = await fetch('/api/v1/data/sources')
                     if (refresh.ok) {
                       const d = await refresh.json()
                       setSources(Array.isArray(d?.sources) ? d.sources : [])
@@ -499,7 +494,7 @@ export function SymbolBacktestPage() {
                       <td className="py-2 pr-3">{r.totalTrades}</td>
                       <td className="py-2 pr-3">{r.elapsedMs}</td>
                       <td className="py-2 pr-3">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/backtest/${r.strategyId}`, { state: { backtestParams: r.backtestParams, from: '/symbol-backtest', resultsSnapshot: results } })}>查看详情</Button>
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/backtest/${r.strategyId}`, { state: { useHistorySnapshot: true, rawResult: r.rawResult, backtestParams: r.backtestParams, from: '/symbol-backtest' } })}>查看详情</Button>
                       </td>
                     </tr>
                   ))}

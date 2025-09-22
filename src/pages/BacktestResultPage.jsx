@@ -25,6 +25,7 @@ export function BacktestResultPage() {
   
   // 从路由状态获取回测参数，或使用URL参数
   const backtestParams = location.state?.backtestParams || { strategyId }
+  const rawSnapshot = location.state?.rawResult
   // 允许从路由状态直接提供策略配置（支持策略库临时回测）
   const strategyFromStore = backtestParams?.strategyId ? getStrategy(backtestParams.strategyId) : null
   const strategy = strategyFromStore || (backtestParams?.strategy ? { id: backtestParams.strategyId || 'temp', name: backtestParams.name || '临时策略', strategy: backtestParams.strategy } : null)
@@ -202,23 +203,25 @@ export function BacktestResultPage() {
       return list.map((t) => {
         const ts = t.timestamp || t.date || ''
         const dateStr = ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : ''
+        const dateKey = String(ts).slice(0, 10) // 统一用 YYYY-MM-DD 对齐日资产
         if (t.action === 'buy') pos += Number(t.quantity || 0)
         else if (t.action === 'sell') pos = Math.max(0, pos - Number(t.quantity || 0))
         return {
           timestamp: ts,
           date: ts ? new Date(ts).toLocaleDateString('zh-CN') : ts,
+          dateKey,
           time: dateStr,
           action: t.action,
           price: Number(t.price || 0).toFixed(2),
           quantity: Number(t.quantity || 0),
-          amount: Number(t.amount || 0).toFixed(2), // 期货这里为费用
+          amount: Number(t.amount || 0).toFixed(2),
           pnl: t.pnl == null ? '-' : (Number(t.pnl) >= 0 ? `+¥${Number(t.pnl).toFixed(2)}` : `-¥${Math.abs(Number(t.pnl)).toFixed(2)}`),
           pnlClass: t.pnl == null ? '' : (Number(t.pnl) >= 0 ? 'text-red-600' : 'text-green-600'),
           pnlValue: t.pnl == null ? null : Number(t.pnl),
-          balance: '-',
+          balance: 0, // 数值0，避免 NaN
           position: pos,
-          securityValue: '0.00',
-          totalAssets: '-',
+          securityValue: 0,
+          totalAssets: 0,
           avgCost: '-'
         }
       })
@@ -245,19 +248,26 @@ export function BacktestResultPage() {
     return result
   }
   const dailyPriceData = buildDailyPriceData(backtestResult?.priceSeries)
-  // 资金曲线改为“资产口径”：股票=交易记录+价格聚合；期货=后端权益曲线（逐日盯市）
+  // 资金曲线改为“资产口径”：股票=交易记录+价格聚合；期货=仅基于交易记录（卖出回合累计）
   const dailyAssets = useMemo(() => {
-    if (isFutures && backtestResult?.equityCurve?.length) {
-      const map = new Map()
-      for (const p of backtestResult.equityCurve) {
-        const ts = String(p.timestamp || p.date || '')
-        const d = ts.slice(0, 10)
-        const t = new Date(ts)
-        const equity = Number(p.equity)
-        const price = Number(p.price || 0)
-        if (!map.has(d) || t > map.get(d).t) map.set(d, { t, date: d, totalAssets: equity, cash: 0, position: 0, price })
+    if (isFutures) {
+      // 仅用交易记录（卖出回合）构建阶梯型资产序列
+      const list = Array.isArray(backtestResult?.trades) ? backtestResult.trades : []
+      const dayPnL = new Map()
+      for (const t of list) {
+        if (String(t?.action) !== 'sell') continue
+        const d = String(t?.timestamp || t?.date || '').slice(0, 10)
+        const v = Number(t?.pnl || 0)
+        dayPnL.set(d, (dayPnL.get(d) || 0) + v)
       }
-      return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date))
+      const initial = safeParams.initialCapital || 0
+      let acc = initial
+      const out = []
+      for (const [d, pnl] of Array.from(dayPnL.entries()).sort((a,b)=>a[0].localeCompare(b[0]))) {
+        acc += pnl
+        out.push({ date: d, totalAssets: acc, cash: acc, position: 0, price: 0 })
+      }
+      return out
     }
     return buildDailyAssetsFromRows(tradesData, dailyPriceData, safeParams.startDate, safeParams.endDate, safeParams.initialCapital)
   }, [isFutures, backtestResult, tradesData, dailyPriceData, safeParams.startDate, safeParams.endDate, safeParams.initialCapital])
@@ -367,33 +377,34 @@ export function BacktestResultPage() {
   // 如果从历史进入并携带快照，则直接使用，不再重新回测
   useEffect(() => {
     const snap = location.state?.useHistorySnapshot
-    if (snap && !backtestResult) {
+    if (rawSnapshot && !backtestResult) {
       try {
+        const r = rawSnapshot
         const formatted = {
           metrics: {
-            totalReturn: snap?.summary?.totalReturn ?? 0,
-            annualReturn: snap?.summary?.totalReturn ?? 0,
-            maxDrawdown: snap?.summary?.maxDrawdown ?? 0,
+            totalReturn: r?.total_return ?? 0,
+            annualReturn: r?.total_return ?? 0,
+            maxDrawdown: r?.max_drawdown ?? 0,
             sharpeRatio: 0,
-            winRate: 0,
+            winRate: r?.win_rate ?? 0,
             profitLossRatio: 0,
-            totalTrades: snap?.summary?.totalTrades ?? 0,
+            totalTrades: r?.total_trades ?? 0,
             winningTrades: 0,
             losingTrades: 0
           },
-          equityCurve: snap?.equityCurve || [],
-          priceSeries: snap?.priceSeries || [],
-          trades: snap?.trades || [],
-          dataInfo: snap?.dataInfo || null
+          equityCurve: r?.equity_curve || [],
+          priceSeries: r?.price_series || [],
+          trades: r?.trades || [],
+          dataInfo: r?.data_info || null
         }
         setBacktestResult(formatted)
       } catch {}
     }
-  }, [location.state, backtestResult])
+  }, [rawSnapshot, backtestResult])
 
   // 运行回测
   const runBacktest = useCallback(async () => {
-    if (location.state?.useHistorySnapshot) return
+    if (location.state?.useHistorySnapshot || rawSnapshot) return
     if (!backtestParams || !strategy) {
       console.log('BacktestResultPage: 缺少参数或策略，无法运行回测', {
         hasBacktestParams: !!backtestParams,
@@ -417,7 +428,7 @@ export function BacktestResultPage() {
       // 预取数据信息，若数据不足目标日期，自动夹取至数据末日
       let usedEndDate = safeParams.endDate
       try {
-        const infoRes = await fetch(`http://localhost:8000/api/v1/data/info/${safeParams.symbol}`)
+        const infoRes = await fetch(`/api/v1/data/info/${safeParams.symbol}`)
         if (infoRes.ok) {
           const info = await infoRes.json()
           const lastDataDate = String(info?.end_date || '').split(' ')[0]
@@ -426,7 +437,7 @@ export function BacktestResultPage() {
           }
         }
       } catch {}
-
+      
       const requestBody = {
         strategy: safeParams.strategy || strategy.strategy,
         symbol: safeParams.symbol,
@@ -438,8 +449,14 @@ export function BacktestResultPage() {
       }
       
       console.log('BacktestResultPage: 发送回测请求', requestBody)
+      if (snapshot) {
+        console.log('BacktestResultPage: 来自批量页的快照', {
+          found: Array.isArray(snapshot) && snapshot.length,
+          matched: Array.isArray(snapshot) ? snapshot.find(r => r?.backtestParams?.strategyId === requestBody.strategyId) : null
+        })
+      }
       
-      const url = isFutures ? 'http://localhost:8000/api/v1/backtest/futures' : 'http://localhost:8000/api/v1/backtest/real'
+      const url = isFutures ? '/api/v1/backtest/futures' : '/api/v1/backtest/real'
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -453,6 +470,13 @@ export function BacktestResultPage() {
         
         const result = await response.json()
         console.log('BacktestResultPage: 回测成功', result)
+        console.log('BacktestResultPage: Result counts', {
+          trades: (result.trades || []).length,
+          equityCurve: (result.equity_curve || []).length,
+          priceSeries: (result.price_series || []).length,
+          requestBody,
+          url
+        })
         
         // 转换数据格式以匹配前端显示
         const formattedResult = {
@@ -482,7 +506,7 @@ export function BacktestResultPage() {
             requestBody
           })
         } catch {}
-
+        
         setBacktestResult(formattedResult)
         setDataInfo(result.data_info)
         setStatusMessage('回测完成！')
@@ -541,6 +565,7 @@ export function BacktestResultPage() {
         }
       } else {
         const errorText = await response.text()
+        console.error('BacktestResultPage: 回测失败', { status: response.status, url, body: requestBody, errorText })
         throw new Error(`回测失败: ${errorText}`)
       }
     } catch (err) {
