@@ -482,12 +482,6 @@ export function BacktestResultPage() {
       }
       
       console.log('BacktestResultPage: 发送回测请求', requestBody)
-      if (snapshot) {
-        console.log('BacktestResultPage: 来自批量页的快照', {
-          found: Array.isArray(snapshot) && snapshot.length,
-          matched: Array.isArray(snapshot) ? snapshot.find(r => r?.backtestParams?.strategyId === requestBody.strategyId) : null
-        })
-      }
       
       const url = isFutures ? '/api/v1/backtest/futures' : '/api/v1/backtest/real'
       const response = await fetch(url, {

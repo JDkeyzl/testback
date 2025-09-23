@@ -92,3 +92,7 @@ docker compose up -d
 - 权限：执行 `sudo usermod -aG docker $USER && newgrp docker`，避免每次都用 sudo。
 
 
+
+
+快速部署前端代码，不拉依赖
+ sudo docker compose up -d --no-deps --build frontend
