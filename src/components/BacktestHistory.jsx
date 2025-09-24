@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card'
 import { Button } from './ui/button'
 import { useBacktestHistoryStore } from '../store/backtestHistoryStore'
-import { BarChart3, Clock, TrendingUp, TrendingDown, Calendar, RefreshCw, ExternalLink, Trash2 } from 'lucide-react'
+import { BarChart3, Clock, TrendingUp, TrendingDown, Calendar, RefreshCw, ExternalLink, Trash2, Info } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip'
+import { strategyLibrary } from '../data/strategyLibrary'
 
 export function BacktestHistory() {
   const navigate = useNavigate()
@@ -44,6 +46,39 @@ export function BacktestHistory() {
             <CardTitle className="text-base flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span>{arr[0]?.strategyName || '未命名策略'}</span>
+              {/* 说明 Tooltip */}
+              {(() => {
+                const first = arr[0] || {}
+                const libItem = strategyLibrary.find(s => s.id === (first.strategyId || ''))
+                const snap = first.params?.strategySnapshot || {}
+                const name = first.strategyName || libItem?.name
+                const description = snap.description || libItem?.description
+                const scenarios = snap.scenarios || libItem?.scenarios
+                const tips = snap.tips || libItem?.tips
+                const hasInfo = description || scenarios || tips
+                if (!hasInfo) return null
+                return (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="策略说明"
+                          className="p-1 text-muted-foreground hover:text-foreground"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-xs leading-5">
+                        {name && <div className="font-medium mb-1">{name}</div>}
+                        {description && <div className="mb-1">说明：{description}</div>}
+                        {scenarios && <div className="mb-1">适用：{scenarios}</div>}
+                        {tips && <div>建议：{tips}</div>}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              })()}
               <span className="text-xs text-muted-foreground">（{arr.length} 次）</span>
             </CardTitle>
             <CardDescription className="text-xs">按时间倒序展示最近回测</CardDescription>
@@ -54,7 +89,12 @@ export function BacktestHistory() {
                 <div key={r.id} className="rounded-md border border-border/60 p-3 hover:bg-muted/30 transition">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{r.params?.timeframe} · {new Date(r.createdAt).toLocaleString()}</div>
+                      <div className="text-sm font-medium truncate">
+                        {r.params?.symbolName ? `${r.params.symbolName}（${r.params?.symbol || ''}）` : (r.params?.symbol ? `（${r.params.symbol}）` : '标的未知')}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        {r.params?.timeframe} · {new Date(r.createdAt).toLocaleString()}
+                      </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                         <span className={`inline-flex items-center gap-1 ${colorPct(r.summary?.totalReturn)}`}>
                           <TrendingUp className="h-3 w-3" /> 收益 {formatPct(r.summary?.totalReturn)}
@@ -76,7 +116,7 @@ export function BacktestHistory() {
                         size="sm"
                         className="h-8 w-8 p-0"
                         title="查看详情"
-                        onClick={() => navigate(r.links?.toResultRoute || `/backtest/${r.strategyId}`, { state: { backtestParams: { ...r.params, strategyId: r.strategyId, strategy: r.params?.strategySnapshot }, useHistorySnapshot: { summary: r.summary, trades: r.trades, equityCurve: r.equityCurve, priceSeries: r.priceSeries, dataInfo: r.dataInfo } } })}
+                        onClick={() => navigate(r.links?.toResultRoute || `/backtest/${r.strategyId}`, { state: { backtestParams: { ...r.params, strategyId: r.strategyId, strategy: r.params?.strategySnapshot, name: r.strategyName }, useHistorySnapshot: { summary: r.summary, trades: r.trades, equityCurve: r.equityCurve, priceSeries: r.priceSeries, dataInfo: r.dataInfo }, disableHistoryLog: true } })}
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>

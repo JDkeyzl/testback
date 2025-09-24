@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, ComposedChart, Cell } from 'recharts'
 import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Activity, Calendar, Clock, BarChart3, List, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStrategyListStore } from '../store/strategyListStore'
+import { strategyLibrary } from '../data/strategyLibrary'
 import { formatTradesWithFees as fmtTradesFees, buildDailyAssetsFromRows, computeMetricsFromTrades as computeFromTrades, computeMetricsFromAssets as computeFromAssets } from '../utils/metrics'
 import { useBacktestHistoryStore } from '../store/backtestHistoryStore'
 
@@ -26,9 +27,13 @@ export function BacktestResultPage() {
   // 从路由状态获取回测参数，或使用URL参数
   const backtestParams = location.state?.backtestParams || { strategyId }
   const rawSnapshot = location.state?.rawResult
+  const snapState = location.state?.useHistorySnapshot
   // 允许从路由状态直接提供策略配置（支持策略库临时回测）
   const strategyFromStore = backtestParams?.strategyId ? getStrategy(backtestParams.strategyId) : null
-  const strategy = strategyFromStore || (backtestParams?.strategy ? { id: backtestParams.strategyId || 'temp', name: backtestParams.name || '临时策略', strategy: backtestParams.strategy } : null)
+  const strategyFromLib = (!strategyFromStore && backtestParams?.strategyId) ? (strategyLibrary || []).find(s => s.id === backtestParams.strategyId) : null
+  const strategy = strategyFromStore
+    || (backtestParams?.strategy ? { id: backtestParams.strategyId || 'temp', name: backtestParams.name || '临时策略', strategy: backtestParams.strategy }
+    : (strategyFromLib ? { id: strategyFromLib.id, name: strategyFromLib.name, strategy: strategyFromLib.strategy } : null))
 
   // 统一默认参数，避免直接打开路由时参数缺失导致回测异常
   const todayStr = (() => { const d = new Date(); return d.toISOString().slice(0,10) })()
@@ -47,6 +52,17 @@ export function BacktestResultPage() {
     return (location.state?.from === '/futures-backtest') || !/^\d{6}$/.test(sym)
   }, [safeParams.symbol, location.state])
   
+  const strategyDisplayName = strategy?.name || backtestParams?.name || '未命名策略'
+
+  const hasSnapData = useMemo(() => {
+    const s = snapState
+    if (!s) return false
+    const hasTrades = Array.isArray(s.trades) && s.trades.length > 0
+    const hasEquity = Array.isArray(s.equityCurve) && s.equityCurve.length > 0
+    const hasPrice = Array.isArray(s.priceSeries) && s.priceSeries.length > 0
+    return hasTrades || hasEquity || hasPrice
+  }, [snapState])
+
   console.log('BacktestResultPage: 策略获取调试', {
     backtestParams,
     strategyId,
@@ -335,11 +351,11 @@ export function BacktestResultPage() {
 
   // 区间对比新增比值（结束/开始），>1 红，<1 绿，=1 中性；百分比整数
   const fundRatio = initialCap > 0 ? strategyLast / initialCap : 0
-  const fundRatioPct = Math.round((fundRatio - 1) * 100)
+  const fundRatioPct = Number(((fundRatio - 1) * 100).toFixed(2))
   const fundRatioClass = fundRatio > 1 ? 'text-red-600' : (fundRatio < 1 ? 'text-green-600' : 'text-muted-foreground')
 
   const priceOpenCloseRatio = startOpen > 0 ? lastClose / startOpen : 0
-  const priceOpenClosePct = Math.round((priceOpenCloseRatio - 1) * 100)
+  const priceOpenClosePct = Number(((priceOpenCloseRatio - 1) * 100).toFixed(2))
   const priceOpenCloseClass = priceOpenCloseRatio > 1 ? 'text-red-600' : (priceOpenCloseRatio < 1 ? 'text-green-600' : 'text-muted-foreground')
 
   // 从交易记录计算概览指标（与交易记录保持一致）
@@ -407,9 +423,8 @@ export function BacktestResultPage() {
     window.scrollTo({ top: height, behavior: 'smooth' })
   }
 
-  // 如果从历史进入并携带快照，则直接使用，不再重新回测
+  // 如果从历史进入并携带快照或批量页原始结果，则优先使用；若快照不完整则允许后续触发回测
   useEffect(() => {
-    const snap = location.state?.useHistorySnapshot
     if (rawSnapshot && !backtestResult) {
       try {
         const r = rawSnapshot
@@ -433,11 +448,34 @@ export function BacktestResultPage() {
         setBacktestResult(formatted)
       } catch {}
     }
-  }, [rawSnapshot, backtestResult])
+    if (snapState && hasSnapData && !backtestResult) {
+      try {
+        const s = snapState?.summary || {}
+        const formatted = {
+          metrics: {
+            totalReturn: s.totalReturn ?? 0,
+            annualReturn: s.totalReturn ?? 0,
+            maxDrawdown: s.maxDrawdown ?? 0,
+            sharpeRatio: 0,
+            winRate: s.winRate ?? 0,
+            profitLossRatio: s.profitLossRatio ?? 0,
+            totalTrades: s.totalTrades ?? 0,
+            winningTrades: 0,
+            losingTrades: 0
+          },
+          equityCurve: Array.isArray(snapState.equityCurve) ? snapState.equityCurve : [],
+          priceSeries: Array.isArray(snapState.priceSeries) ? snapState.priceSeries : [],
+          trades: Array.isArray(snapState.trades) ? snapState.trades : [],
+          dataInfo: snapState.dataInfo || null
+        }
+        setBacktestResult(formatted)
+      } catch {}
+    }
+  }, [rawSnapshot, backtestResult, snapState, hasSnapData])
 
   // 运行回测
   const runBacktest = useCallback(async () => {
-    if (location.state?.useHistorySnapshot || rawSnapshot) return
+    if (rawSnapshot || hasSnapData) return
     if (!backtestParams || !strategy) {
       console.log('BacktestResultPage: 缺少参数或策略，无法运行回测', {
         hasBacktestParams: !!backtestParams,
@@ -540,7 +578,8 @@ export function BacktestResultPage() {
 
         // 写入回测历史记录（前端本地持久化，可扩展后端）
         try {
-          if (!hasLoggedRef.current) {
+          const disableHistoryLog = !!location.state?.disableHistoryLog
+          if (!hasLoggedRef.current && !disableHistoryLog) {
             // 基于这次返回结果即时计算概要，避免依赖旧的组件状态
             const tradesRowsLog = formattedResult.trades ? formatTrades(formattedResult.trades) : []
             const equityFromTradesLog = tradesRowsLog.length > 0
@@ -567,6 +606,7 @@ export function BacktestResultPage() {
                 endDate: usedEndDate,
                 initialCapital: backtestParams.initialCapital,
                 symbol: safeParams.symbol,
+                symbolName: dataInfo?.name_zh || dataInfo?.name || null,
                 strategySnapshot: backtestParams.strategy || strategy?.strategy
               },
               summary: {
@@ -579,6 +619,11 @@ export function BacktestResultPage() {
                 priceStart: firstCloseLog,
                 priceEnd: lastCloseLog
               },
+              // 直接在记录中存入快照，便于历史页无请求回放
+              trades: Array.isArray(formattedResult.trades) ? formattedResult.trades : [],
+              equityCurve: Array.isArray(formattedResult.equityCurve) ? formattedResult.equityCurve : [],
+              priceSeries: Array.isArray(formattedResult.priceSeries) ? formattedResult.priceSeries : [],
+              dataInfo: formattedResult.dataInfo || null,
               links: {
                 toResultRoute: `/backtest/${backtestParams.strategyId || strategy?.id || 'temp'}`
               },
@@ -619,8 +664,8 @@ export function BacktestResultPage() {
     }
   }, [backtestParams, strategy, backtestResult, runBacktest])
 
-  // 如果没有回测参数或策略，显示加载状态
-  if (!backtestParams || !strategy) {
+  // 若没有回测结果，且既无参数也无策略（且无快照），显示加载
+  if (!backtestResult && (!backtestParams || !strategy) && !location.state?.useHistorySnapshot && !rawSnapshot) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -649,7 +694,7 @@ export function BacktestResultPage() {
                 </Button>
                 <h1 className="text-xl font-semibold">回测结果</h1>
                 <p className="text-sm text-muted-foreground">
-                  {strategy.name} - {backtestParams.startDate} 至 {backtestParams.endDate}
+                  {strategyDisplayName} - {backtestParams.startDate} 至 {backtestParams.endDate}
                 </p>
                 <div className="text-xs text-muted-foreground mt-1">
                   策略ID: {safeParams.strategyId} | 周期: {safeParams.timeframe} | 初始资金: ¥{safeParams.initialCapital?.toLocaleString()}
@@ -682,7 +727,7 @@ export function BacktestResultPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm text-muted-foreground">策略名称</div>
-                <div className="font-medium">{strategy.name}</div>
+                <div className="font-medium">{strategyDisplayName}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">策略ID</div>
@@ -1006,12 +1051,12 @@ export function BacktestResultPage() {
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
                     <span className="w-28 md:w-32 text-right">资金涨跌幅</span>
                     <span className="text-center">：</span>
-                    <span className={fundRatioClass}>{fundRatioPct >= 0 ? '+' : ''}{fundRatioPct}%</span>
+                    <span className={fundRatioClass}>{fundRatioPct >= 0 ? '+' : ''}{fundRatioPct.toFixed(2)}%</span>
                   </div>
                   <div className="grid grid-cols-[max-content_8px_1fr] items-center gap-x-1 gap-y-1">
                     <span className="w-28 md:w-32 text-right">股价涨跌幅</span>
                     <span className="text-center">：</span>
-                    <span className={priceOpenCloseClass}>{priceOpenClosePct >= 0 ? '+' : ''}{priceOpenClosePct}%</span>
+                    <span className={priceOpenCloseClass}>{priceOpenClosePct >= 0 ? '+' : ''}{priceOpenClosePct.toFixed(2)}%</span>
                   </div>
                 </div>
               </CardContent>

@@ -291,10 +291,10 @@ export function SymbolBacktestPage() {
             addRecord({
               strategyId: s.id,
               strategyName: s.name,
-              params: row.backtestParams,
+              params: { ...row.backtestParams, symbolName: selectedStock?.nameZh },
               summary: { totalReturn, maxDrawdown, winRate, totalTrades, finalEquity },
               links: { toResultRoute: `/backtest/${s.id}` },
-              meta: { symbol }
+              meta: { symbol, symbolName: selectedStock?.nameZh }
             })
           } catch {}
         } else {
@@ -501,7 +501,7 @@ export function SymbolBacktestPage() {
                               try { batchStore.setResultsFor(symbol, next, { symbol, symbolName: selectedStock?.nameZh, timeframe, startDate, endDate: usedEnd, initialCapital }) } catch {}
                               return next
                             })
-                            try { addRecord({ strategyId: s.id, strategyName: s.name, params: row.backtestParams, summary: { totalReturn, maxDrawdown, winRate, totalTrades, finalEquity }, links: { toResultRoute: `/backtest/${s.id}` }, meta: { symbol } }) } catch {}
+                            try { addRecord({ strategyId: s.id, strategyName: s.name, params: { ...row.backtestParams, symbolName: selectedStock?.nameZh }, summary: { totalReturn, maxDrawdown, winRate, totalTrades, finalEquity }, links: { toResultRoute: `/backtest/${s.id}` }, meta: { symbol, symbolName: selectedStock?.nameZh } }) } catch {}
                           } else {
                             const err = await resp.text(); console.error('批量回测失败', s.name, err)
                           }

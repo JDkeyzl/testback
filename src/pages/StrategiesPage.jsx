@@ -5,8 +5,6 @@ import { Button } from '../components/ui/button'
 import { StrategyList } from '../components/StrategyList'
 import { StrategyBuilder } from '../components/StrategyBuilder'
 import { BacktestModal } from '../components/BacktestModal'
-import { BacktestHistory } from '../components/BacktestHistory'
-import { useBacktestHistoryStore } from '../store/backtestHistoryStore'
 import { ArrowLeft, Plus, List, Settings, BarChart3, RefreshCw } from 'lucide-react'
 
 export function StrategiesPage() {
@@ -18,7 +16,7 @@ export function StrategiesPage() {
   const [selectedStrategy, setSelectedStrategy] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const strategyBuilderRef = useRef(null)
-  const { clearAll: clearHistory, records: historyRecords } = useBacktestHistoryStore()
+  
 
   // 动态计算昨天（YYYY-MM-DD）
   const getYesterday = useCallback(() => {
@@ -201,30 +199,7 @@ export function StrategiesPage() {
       <div className="container mx-auto px-4 py-6">
         {activeTab === 'list' && (
           <div className="max-w-6xl mx-auto">
-            {/* 回测记录 */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold text-foreground">回测记录</div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (historyRecords?.length === 0) return
-                      if (window.confirm('确认清空所有回测记录吗？此操作不可恢复。')) {
-                        clearHistory()
-                      }
-                    }}
-                    className="text-xs px-2 py-1 rounded border border-border hover:bg-muted disabled:opacity-50"
-                    disabled={!historyRecords || historyRecords.length === 0}
-                    aria-label="一键清空回测记录"
-                  >
-                    清空记录
-                  </button>
-                </div>
-              </div>
-              <BacktestHistory />
-            </div>
-
+            
             <StrategyList onBacktest={handleBacktest} />
           </div>
         )}
