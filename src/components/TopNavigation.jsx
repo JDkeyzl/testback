@@ -81,15 +81,7 @@ export function TopNavigation() {
             </>
           )}
           
-          {/* 功能按钮 */}
-          <Button variant="outline" size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            导入策略
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            导出结果
-          </Button>
+          {/* 功能按钮（简化：保留设置与股票回测，移除 导入策略 / 导出结果 / 期货回测） */}
           <Button variant="outline" size="sm">
             <Settings className="h-4 w-4 mr-2" />
             设置
@@ -98,10 +90,6 @@ export function TopNavigation() {
             <Button variant="default" size="sm" onClick={() => navigate('/symbol-backtest')}>
               <BarChart3 className="h-4 w-4 mr-2" />
               股票回测
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/futures-backtest')}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              期货回测
             </Button>
           </div>
           {/* 顶部全局“开始回测”按钮已移除，保留页内的回测入口 */}
