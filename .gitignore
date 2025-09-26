@@ -1,3 +1,23 @@
+# Ignore generated data files and runtime artifacts
+
+# Data CSVs (keep stockList dictionary tracked)
+data/**
+!data/stockList/**
+
+# Keep directory markers
+!data/.gitkeep
+!data/features/.gitkeep
+
+# Logs and local outputs
+*.out
+*.log
+
+# Node and Python caches
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
 # Dependencies
 node_modules/
 npm-debug.log*
