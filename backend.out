@@ -1,0 +1,2451 @@
+INFO:     Will watch for changes in these directories: ['/Users/ranka/projects/testback']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [44174] using WatchFiles
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [44216]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 TestBack API 启动中...
+INFO:     127.0.0.1:52926 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52927 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52933 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52952 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52954 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52958 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52964 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52966 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52973 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52974 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52978 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52999 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53000 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53002 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53008 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53010 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53016 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53018 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53022 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53030 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53034 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53038 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53042 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53188 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 三六零-601360.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/三六零-601360.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 1008 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53197 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53718 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53720 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53808 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53810 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53857 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53906 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53911 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53956 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53965 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54288 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54290 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54381 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54383 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54429 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54431 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54451 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:54464 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56632 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56641 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56645 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56763 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56765 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56851 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56853 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56899 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56901 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59289 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59291 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63753 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63760 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63772 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63774 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63776 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63778 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63834 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63939 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63941 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64030 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64032 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64130 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64136 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64188 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64190 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64192 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64194 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64214 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 大北农-002385.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/大北农-002385.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 5904 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:64227 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64287 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64289 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64291 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64293 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64295 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64299 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64301 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64305 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64317 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64321 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64325 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64329 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64411 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-02-01 00:00:00 至 2025-07-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:64547 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49530 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49534 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49550 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49552 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49554 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49562 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49611 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49613 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49898 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49900 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 沃尔核材-002130.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/沃尔核材-002130.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 492 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 492 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 492 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:49998 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50657 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50659 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51518 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51520 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51622 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51624 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51682 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51684 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53367 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53369 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54461 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54467 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54578 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54580 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54642 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54646 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55405 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55407 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55463 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55465 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55469 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55473 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55544 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 三六零-601360.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/三六零-601360.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 84 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 80 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:55558 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56169 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56173 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56237 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56239 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59889 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59891 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62611 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62613 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62615 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62617 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62664 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 80 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62673 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52242 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52244 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52246 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52248 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52333 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52335 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52386 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52452 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-05-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52596 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58874 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58876 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58944 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60738 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60740 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60777 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60778 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60780 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60784 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60788 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60794 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60796 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60800 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60824 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60826 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60830 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60834 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60867 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 80 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:60907 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62306 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62308 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62395 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64062 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64064 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64105 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64108 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64110 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64112 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 80 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:64170 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64688 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64690 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64726 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64728 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64752 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 大北农-002385.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/大北农-002385.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 738 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 120 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:64761 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49195 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49197 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49267 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49269 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49505 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49507 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49527 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 120 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:49540 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50028 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50030 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50102 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50108 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50214 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50216 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50248 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50250 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50262 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 120 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:50271 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50892 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50963 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50965 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51114 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51116 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51152 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51154 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51168 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 120 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:51177 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52803 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52805 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52861 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52863 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53032 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53034 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56643 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56645 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56765 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56767 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56833 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56835 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56876 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56878 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56923 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:56971 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:56975 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57088 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57097 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:57121 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:57134 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57900 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57902 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57960 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57962 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58049 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58051 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58110 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58114 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58181 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58183 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58234 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:58238 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59485 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59487 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59495 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59566 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59568 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59579 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59606 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59610 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59614 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59638 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59642 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59646 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59692 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59700 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59818 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60747 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60749 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:60757 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60828 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60830 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:60839 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61236 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61238 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:61247 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-07-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 3888 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-07-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:61297 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 4992 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:61301 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 624 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:61354 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62085 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62089 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62097 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:62490 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62494 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62502 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62615 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62624 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62677 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-28 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62750 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-27 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:62758 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63421 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63423 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:63425 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-07-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 3888 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-07-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:63509 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:63513 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:63583 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64987 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64989 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:64997 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65043 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65045 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:65056 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65275 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65277 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:65281 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65318 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65320 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:65322 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-07-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 3888 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-07-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:65433 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 4992 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:65441 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 624 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:65476 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49729 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49731 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 624 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:49739 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49796 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49798 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 624 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:49808 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49904 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49906 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 624 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:49910 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-06-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 384 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-06-03 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:50112 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 264 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:50120 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50618 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50620 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 264 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:50628 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50662 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50664 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 264 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:50673 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51256 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51258 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 264 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:51262 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 378 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:51442 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51936 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 378 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:51947 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51987 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51989 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 378 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:51997 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52052 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52054 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-07-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 378 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-07-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52062 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52112 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52114 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52116 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:52134 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52136 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52144 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52172 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1008 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52184 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 84 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 10:30:00 至 2025-04-30 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52244 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52551 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52557 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52561 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52602 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52608 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52613 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52669 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:52679 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53079 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53081 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53090 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53128 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53132 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53143 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53202 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53204 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53208 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-05-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 1872 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-05-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53232 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 2832 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-06-27 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53240 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-07-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 3888 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-07-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53244 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 4992 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-08-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53252 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:35:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53256 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:53326 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54189 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54191 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:54201 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54241 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54243 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:54254 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54555 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54559 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 09:55:00 至 2025-09-25 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:54563 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55266 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55267 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55352 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 三六零-601360.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/三六零-601360.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 124 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:55356 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55360 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:55364 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55368 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55372 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55376 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:55380 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55384 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:55388 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55392 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55396 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55400 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:55404 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55408 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55412 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55416 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:55420 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55424 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55428 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55432 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:55436 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55440 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:55444 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55502 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55520 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55532 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:55536 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55540 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:55544 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55548 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55552 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55557 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:55561 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55565 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:55569 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55573 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55577 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55581 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:55585 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55589 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55593 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55597 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:55601 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55605 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:55609 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55613 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:55617 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:55621 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:55625 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55857 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55858 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56330 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56331 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56396 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56397 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57674 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57700 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:57704 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57708 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:57712 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57716 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57720 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57724 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:57728 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57732 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:57736 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57740 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57744 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57748 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:57756 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57760 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57764 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57768 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:57772 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57776 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57780 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57784 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:57788 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57792 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:57796 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57830 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:57834 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57838 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:57842 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57846 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57850 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57854 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:57858 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57862 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:57866 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57870 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57874 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57878 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:57882 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57886 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57890 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57894 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:57898 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57902 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:57906 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57910 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:57914 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:57918 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:57922 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57997 - "POST /api/v1/data/fetch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58011 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58019 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:58023 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58027 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:58031 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58035 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:58043 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58047 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:58051 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58055 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:58059 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58063 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:58067 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58071 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:58075 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58079 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:58083 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58087 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:58091 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58095 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:58099 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58103 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:58107 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:58111 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 124 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 20 条记录
+INFO:backend.app.real_backtest_engine:数据时间范围: 2025-04-01 15:00:00 至 2025-04-29 15:00:00
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:58115 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58535 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58536 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58697 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58698 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'backend/app/real_backtest_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [44216]
+🛑 TestBack API 关闭中...
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [24965]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend/app/real_backtest_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24965]
+🚀 TestBack API 启动中...
+🛑 TestBack API 关闭中...
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [25046]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 TestBack API 启动中...
+INFO:     127.0.0.1:58912 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'backend/app/real_backtest_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [25046]
+🛑 TestBack API 关闭中...
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [25632]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 TestBack API 启动中...
+INFO:     127.0.0.1:59419 - "GET /api/v1/data/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59420 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 三六零-601360.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/三六零-601360.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 123 条数据记录
+INFO:     127.0.0.1:59456 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 三六零-601360.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/三六零-601360.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 123 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:59460 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59464 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:59468 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59472 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59476 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59480 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:59484 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59488 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:59492 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59496 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59500 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59504 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:59508 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59512 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59516 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59520 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:59524 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59528 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59532 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59536 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:59540 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59544 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-09-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:59548 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59595 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:59599 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59607 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=5, slow=20, signal=5, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:59611 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59615 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59619 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59623 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=30, operator=<
+INFO:     127.0.0.1:59627 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59631 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: macd
+INFO:backend.app.real_backtest_engine:MACD策略参数: fast=12, slow=26, signal=9, mode=golden_cross, threshold=0.0, operator=>
+INFO:     127.0.0.1:59635 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59639 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59643 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59647 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=2, operator=>
+INFO:     127.0.0.1:59651 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59655 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 4
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 4
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 0, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59659 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59663 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=200, threshold=0, operator=>
+INFO:     127.0.0.1:59667 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59671 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: bollinger
+INFO:backend.app.real_backtest_engine:布林带策略参数: period=20, std_dev=2
+INFO:     127.0.0.1:59675 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59679 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 6
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 6
+INFO:backend.app.real_backtest_engine:条件节点: 3, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: volume
+INFO:backend.app.real_backtest_engine:Volume策略参数: period=5, multiplier=1.5, operator=>
+INFO:     127.0.0.1:59683 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:     127.0.0.1:59687 - "GET /api/v1/data/info/601360 HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 601360
+INFO:backend.app.real_backtest_engine:原始数据量: 123 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-06-25 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 57 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 5
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 5
+INFO:backend.app.real_backtest_engine:条件节点: 2, 逻辑节点: 1, 动作节点: 2
+INFO:backend.app.real_backtest_engine:执行条件策略: ma
+INFO:backend.app.real_backtest_engine:MA策略参数: period=60, threshold=0, operator=>
+INFO:     127.0.0.1:59691 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59734 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59738 - "GET /api/v1/futures/contracts HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 大北农-002385.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/大北农-002385.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 5904 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-04-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 960 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59742 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-07-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 3888 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59773 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:从缓存加载数据: 002385
+INFO:backend.app.real_backtest_engine:原始数据量: 5904 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 4992 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59777 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK
+INFO:backend.app.data_loader:找到匹配文件: 大北农-002385.csv
+INFO:backend.app.data_loader:正在加载数据文件: /Users/ranka/projects/testback/data/大北农-002385.csv
+INFO:backend.app.data_loader:数据验证通过
+INFO:backend.app.data_loader:成功加载 738 条数据记录
+INFO:backend.app.real_backtest_engine:原始数据量: 738 条记录
+INFO:backend.app.real_backtest_engine:过滤时间范围: 2025-04-01 00:00:00 至 2025-08-30 00:00:00
+INFO:backend.app.real_backtest_engine:过滤后数据量: 624 条记录
+INFO:backend.app.real_backtest_engine:策略类型: simple_ma, 节点数: 1
+INFO:backend.app.real_backtest_engine:执行自定义策略，节点数: 1
+INFO:backend.app.real_backtest_engine:条件节点: 1, 逻辑节点: 0, 动作节点: 0
+INFO:backend.app.real_backtest_engine:执行条件策略: rsi
+INFO:backend.app.real_backtest_engine:RSI策略参数: period=14, threshold=-999999, operator=>
+INFO:     127.0.0.1:59793 - "POST /api/v1/backtest/stocks HTTP/1.1" 200 OK

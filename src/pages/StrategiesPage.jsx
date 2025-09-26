@@ -190,6 +190,16 @@ export function StrategiesPage() {
                   <span>策略构建</span>
                 </Button>
               </div>
+              {activeTab === 'builder' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/grid-lab')}
+                  className="flex items-center space-x-2"
+                >
+                  <span>网格实验室</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

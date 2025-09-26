@@ -184,18 +184,14 @@ export function BacktestResultPage() {
       // 计算总资产（可用资金 + 证券价值）
       const totalAssets = currentBalance + securityValue
       
+      // 避免时区/解析偏移：直接使用后端字符串
+      const rawTs = String(trade.timestamp || trade.time || trade.date || '')
+      const normTs = rawTs.replace('T', ' ')
+      const dateStr = normTs.includes(' ') ? normTs.split(' ')[0] : (normTs || '')
       return {
-        timestamp: trade.timestamp || trade.date,
-        date: trade.timestamp ? new Date(trade.timestamp).toLocaleDateString('zh-CN') : trade.date,
-        time: trade.timestamp ? new Date(trade.timestamp).toLocaleString('zh-CN', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }) : trade.date,
+        timestamp: normTs,
+        date: dateStr,
+        time: normTs,
         action: trade.action,
         price: trade.price.toFixed(2),
         quantity: trade.quantity,

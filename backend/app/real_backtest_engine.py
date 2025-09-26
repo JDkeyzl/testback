@@ -1168,21 +1168,16 @@ def run_real_backtest(strategy: Dict[str, Any], symbol: str = "002130", timefram
     # 加载数据并过滤时间范围
     data = load_stock_data(symbol, timeframe)
     
-    # 过滤时间范围
+    # 过滤时间范围（严格使用前端选择的区间；若无数据则直接报错）
     if start_date and end_date:
         start_dt = pd.to_datetime(start_date)
         end_dt = pd.to_datetime(end_date)
         logger.info(f"原始数据量: {len(data)} 条记录")
         logger.info(f"过滤时间范围: {start_dt} 至 {end_dt}")
-        
         data = data[(data['timestamp'] >= start_dt) & (data['timestamp'] <= end_dt)]
         logger.info(f"过滤后数据量: {len(data)} 条记录")
-        
-        if len(data) > 0:
-            logger.info(f"数据时间范围: {data['timestamp'].min()} 至 {data['timestamp'].max()}")
-        else:
-            logger.warning("过滤后没有数据，使用原始数据")
-            data = load_stock_data(symbol, timeframe)
+        if len(data) == 0:
+            raise ValueError("过滤后数据量不足，至少需要10条记录")
     
     # 放宽最小样本量限制：<50 时仍可运行，<10 才报错
     if len(data) < 10:

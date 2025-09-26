@@ -229,6 +229,48 @@ export const strategyLibrary = [
       start_date: '2025-01-01', end_date: '2025-12-31', initial_capital: 100000
     }
   },
+  
+  // 11) 网格交易策略（参数以 meta 形式提供，滤波用现有节点近似表达）
+  {
+    id: 'lib-grid-trading',
+    name: '网格交易策略',
+    description: '价格区间划分网格，跌破买入、上触卖出；含趋势/波动过滤与止损。',
+    principle: '在震荡区间内通过低买高卖获取价差；趋势/波动过滤用于避免单边与假突破。',
+    scenarios: '震荡市、高波动但非单边行情。',
+    tips: '避免在强单边趋势中使用；建议配合风险控制。',
+    recommended: '5m~1h',
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    strategy: {
+      // 网格核心参数（前端可用于展示/编辑；当前引擎暂不执行该元参数）
+      meta: {
+        grid: {
+          upDownPct: 0.10,        // 上下幅度 ±10%
+          numGrids: 10,           // 网格数量
+          positionMode: 'quarter',// 全仓/half/third/quarter
+          lotSize: 100,           // 最小单位100股
+          useTrendFilter: true,   // 启用MA60过滤
+          useVolFilter: true,     // 启用布林带收窄过滤
+          stopLossPct: 0.05       // 累计浮亏止损 5%
+        }
+      },
+      // 用节点近似表达过滤器：价格在MA60之上与布林收窄（以布林节点占位）
+      nodes: [
+        { id: 'ma60_up', type: 'condition', position: { x: 80, y: 120 }, data: { nodeType: 'condition', subType: 'ma', type: 'ma', period: 60, threshold: 0, operator: '>', timeframe: '5m' } },
+        { id: 'boll_narrow', type: 'condition', position: { x: 80, y: 200 }, data: { nodeType: 'condition', subType: 'bollinger', type: 'bollinger', period: 20, stdDev: 2, condition: 'narrow', widthThresholdPct: 0.03, timeframe: '5m' } },
+        { id: 'and', type: 'logic', position: { x: 250, y: 160 }, data: { type: 'and' } },
+        // 占位买卖动作：实际网格买卖由 meta 参数定义（当前引擎不执行，仅占位）
+        { id: 'buy', type: 'action', position: { x: 400, y: 140 }, data: { nodeType: 'action', subType: 'buy', type: 'buy', quantity: 100, priceType: 'market' } },
+        { id: 'sell', type: 'action', position: { x: 400, y: 220 }, data: { nodeType: 'action', subType: 'sell', type: 'sell', quantity: 100, priceType: 'market' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'ma60_up', target: 'and' },
+        { id: 'e2', source: 'boll_narrow', target: 'and' },
+        { id: 'e3', source: 'and', target: 'buy' },
+        { id: 'e4', source: 'and', target: 'sell' },
+      ],
+      start_date: '2025-01-01', end_date: '2025-12-31', initial_capital: 100000
+    }
+  },
 ]
 // 预置“策略库” - 八大经典交易系统（用现有指标近似实现）
 

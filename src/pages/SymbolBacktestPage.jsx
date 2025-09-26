@@ -221,16 +221,8 @@ export function SymbolBacktestPage() {
       let completed = 0
       for (const s of toRun) {
         setStatus(`正在回测：${s.name} (${completed+1}/${toRun.length})`)
-        // 夹取 endDate 到数据末日
+        // 使用用户选择的结束日期，不做夹取
         let usedEnd = endDate
-        try {
-          const infoRes = await fetch(`/api/v1/data/info/${symbol}`)
-          if (infoRes.ok) {
-            const info = await infoRes.json()
-            const lastDataDate = String(info?.end_date || '').split(' ')[0]
-            if (lastDataDate) usedEnd = usedEnd && usedEnd > lastDataDate ? lastDataDate : usedEnd
-          }
-        } catch {}
 
         const t0 = Date.now()
         const resp = await fetch('/api/v1/backtest/stocks', {
@@ -269,7 +261,7 @@ export function SymbolBacktestPage() {
           const totalTrades = metrics.totalTrades
           const finalEquity = Number((initialCapital * (1 + totalReturn)).toFixed(2))
           const symbolLabel = `${selectedStock?.nameZh || symbol}（${symbol}）`
-          const row = {
+            const row = {
             strategyId: s.id,
             strategyName: s.name,
             symbol,
@@ -287,7 +279,7 @@ export function SymbolBacktestPage() {
             try { batchStore.setResultsFor(symbol, next, { symbol, symbolName: selectedStock?.nameZh, timeframe, startDate, endDate: usedEnd, initialCapital }) } catch {}
             return next
           })
-          try {
+            try {
             addRecord({
               strategyId: s.id,
               strategyName: s.name,

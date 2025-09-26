@@ -86,6 +86,10 @@ export function TopNavigation() {
             <Settings className="h-4 w-4 mr-2" />
             设置
           </Button>
+          {/* 网格交易入口：位于 设置 与 股票回测 之间 */}
+          <Button variant="outline" size="sm" onClick={() => navigate('/grid-lab')}>
+            网格交易
+          </Button>
           <div className="flex items-center gap-2">
             <Button variant="default" size="sm" onClick={() => navigate('/symbol-backtest')}>
               <BarChart3 className="h-4 w-4 mr-2" />

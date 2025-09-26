@@ -33,10 +33,14 @@ export function formatTradesWithFees(trades, initialCapital) {
 
     const securityValue = position * price
     const totalAssets = balance + securityValue
+    // 避免本地时区解析偏移：统一直接使用后端时间字符串
+    const rawTs = String(t.timestamp || t.time || t.date || '')
+    const normTs = rawTs.replace('T', ' ')
+    const dateStr = normTs.includes(' ') ? normTs.split(' ')[0] : (normTs || '')
     rows.push({
-      timestamp: ts,
-      date: t.timestamp ? new Date(t.timestamp).toLocaleDateString('zh-CN') : t.date,
-      time: t.timestamp ? new Date(t.timestamp).toLocaleString('zh-CN', { hour12: false }) : t.date,
+      timestamp: normTs,
+      date: dateStr,
+      time: normTs,
       action: t.action,
       price: price.toFixed(2),
       quantity: qty,

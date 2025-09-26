@@ -139,7 +139,7 @@ async def stocks_backtest_endpoint(request: Dict[str, Any]) -> Dict[str, Any]:
             raise HTTPException(status_code=400, detail="缺少 strategy 字段")
 
         symbol = request.get("symbol") or "002130"
-        timeframe = request.get("timeframe", "1d")
+        timeframe = request.get("timeframe", "5m")
         start_date = request.get("startDate") or "2025-01-01"
         end_date = request.get("endDate") or None
         initial_capital = float(request.get("initialCapital", 100000.0))
