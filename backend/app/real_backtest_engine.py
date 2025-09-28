@@ -158,6 +158,7 @@ class RealBacktestEngine:
         sl_type = str(stop_cfg.get('type') or 'pct')  # 'pct' | 'amount'
         sl_value = float(stop_cfg.get('value') or 0.0)
         sl_action = str(stop_cfg.get('action') or 'sell_all')  # 'sell_all' | 'reduce_half'
+        sl_mode = str(stop_cfg.get('mode') or 'close')  # 'close' | 'intrabar' | 'next_open'
         
         logger.info(f"策略类型: {strategy_type}, 节点数: {len(nodes)}")
         
@@ -167,7 +168,7 @@ class RealBacktestEngine:
             return self._run_simple_ma_strategy(data, current_capital, position, trades, equity_curve, position_management)
         else:
             # 有节点时使用自定义策略
-            return self._run_custom_strategy(data, strategy, current_capital, position, trades, equity_curve, position_management, (sl_type, sl_value, sl_action))
+            return self._run_custom_strategy(data, strategy, current_capital, position, trades, equity_curve, position_management, (sl_type, sl_value, sl_action, sl_mode))
     
     def _run_simple_ma_strategy(self, data: pd.DataFrame, current_capital: float, 
                                position: int, trades: List[Dict], equity_curve: List[Dict], 
@@ -342,7 +343,7 @@ class RealBacktestEngine:
                            current_capital: float, position: int, 
                            trades: List[Dict], equity_curve: List[Dict], 
                            position_management: str = "full",
-                           stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
+                           stop_loss_cfg: Optional[Tuple] = None) -> Dict[str, Any]:
         """
         运行自定义策略（基于节点）
         
@@ -522,7 +523,11 @@ class RealBacktestEngine:
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
-                sl_type, sl_value, sl_action = stop_loss_cfg
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
                 current_equity = current_capital + (position * current_price)
                 max_loss = 0.0
                 if sl_type == 'pct' and sl_value > 0:
@@ -574,7 +579,7 @@ class RealBacktestEngine:
                          current_capital: float, position: int, 
                          trades: List[Dict], equity_curve: List[Dict], 
                          position_management: str = "full",
-                         stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
+                         stop_loss_cfg: Optional[Tuple] = None) -> Dict[str, Any]:
         """执行RSI策略"""
         period = node_data.get("period", 14)
         threshold = node_data.get("threshold", 30)
@@ -682,7 +687,11 @@ class RealBacktestEngine:
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
-                sl_type, sl_value, sl_action = stop_loss_cfg
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
                 current_equity = current_capital + (position * current_price)
                 max_loss = 0.0
                 if sl_type == 'pct' and sl_value > 0:
@@ -738,7 +747,7 @@ class RealBacktestEngine:
                                current_capital: float, position: int, 
                                trades: List[Dict], equity_curve: List[Dict], 
                                position_management: str = "full",
-                               stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
+                               stop_loss_cfg: Optional[Tuple] = None) -> Dict[str, Any]:
         """执行布林带策略"""
         period = node_data.get("period", 20)
         std_dev = node_data.get("stdDev", 2)
@@ -813,7 +822,11 @@ class RealBacktestEngine:
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
-                sl_type, sl_value, sl_action = stop_loss_cfg
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
                 current_equity = current_capital + (position * current_price)
                 max_loss = 0.0
                 if sl_type == 'pct' and sl_value > 0:
@@ -864,7 +877,7 @@ class RealBacktestEngine:
                            current_capital: float, position: int,
                            trades: List[Dict], equity_curve: List[Dict],
                            position_management: str = "full",
-                           stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
+                           stop_loss_cfg: Optional[Tuple] = None) -> Dict[str, Any]:
         """执行 MACD 策略
         参数（来自前端节点 data）:
           - fast: 快线周期，默认 12
@@ -992,7 +1005,11 @@ class RealBacktestEngine:
 
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
-                sl_type, sl_value, sl_action = stop_loss_cfg
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
                 # 以开仓成本（含手续费）衡量未实现亏损
                 current_value = position * current_price
                 unrealized_loss_amount = max(0.0, open_position_cost - current_value)
@@ -1009,7 +1026,27 @@ class RealBacktestEngine:
                     else:
                         qty = position
                     if qty > 0:
-                        revenue = qty * current_price
+                        # 选择止损成交价
+                        sell_price = current_price
+                        if sl_mode == 'next_open':
+                            if i + 1 < len(data):
+                                sell_price = float(data.iloc[i+1]['open'])
+                        elif sl_mode == 'intrabar':
+                            try:
+                                bar_low = float(row['low'])
+                                bar_high = float(row['high'])
+                            except Exception:
+                                bar_low = current_price
+                                bar_high = current_price
+                            # 计算达到止损阈值的目标价（忽略手续费近似）
+                            if sl_type == 'amount':
+                                target_price = max(0.0, (open_position_cost - sl_value) / max(position, 1))
+                            else:  # pct
+                                target_price = max(0.0, (open_position_cost * (1 - sl_value / 100.0)) / max(position, 1))
+                            # 限定在当根K线的波动区间内（若跳空超出区间，则用区间边界近似）
+                            sell_price = min(bar_high, max(bar_low, target_price))
+
+                        revenue = qty * sell_price
                         commission = revenue * self.commission_rate
                         net_revenue = revenue - commission
                         sell_cost = open_position_cost * (qty / position) if position > 0 else 0.0
@@ -1020,7 +1057,7 @@ class RealBacktestEngine:
                         trades.append({
                             "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                             "action": "sell",
-                            "price": round(current_price, 2),
+                            "price": round(sell_price, 2),
                             "quantity": qty,
                             "amount": round(net_revenue, 2),
                             "pnl": round(pnl, 2),
@@ -1053,7 +1090,7 @@ class RealBacktestEngine:
                           current_capital: float, position: int, 
                           trades: List[Dict], equity_curve: List[Dict], 
                           position_management: str = "full",
-                          stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
+                          stop_loss_cfg: Optional[Tuple] = None) -> Dict[str, Any]:
         """执行VWAP策略"""
         # 从节点数据获取参数
         period = node_data.get("period", 20)
@@ -1128,7 +1165,11 @@ class RealBacktestEngine:
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
-                sl_type, sl_value, sl_action = stop_loss_cfg
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
                 current_equity = current_capital + (position * current_price)
                 max_loss = 0.0
                 if sl_type == 'pct' and sl_value > 0:
@@ -1171,7 +1212,7 @@ class RealBacktestEngine:
                             current_capital: float, position: int, 
                             trades: List[Dict], equity_curve: List[Dict], 
                             position_management: str = "full",
-                            stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
+                            stop_loss_cfg: Optional[Tuple] = None) -> Dict[str, Any]:
         """执行成交量策略"""
         # 从节点数据获取参数
         period = node_data.get("period", 5)
@@ -1223,7 +1264,11 @@ class RealBacktestEngine:
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
-                sl_type, sl_value, sl_action = stop_loss_cfg
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
                 current_equity = current_capital + (position * current_price)
                 max_loss = 0.0
                 if sl_type == 'pct' and sl_value > 0:
