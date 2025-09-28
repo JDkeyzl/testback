@@ -267,6 +267,24 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
           } catch (e) {
             console.warn('StrategyBuilder: 同步节点参数到store失败', e)
           }
+
+          // 恢复并填充已保存的止损配置（策略级）
+          try {
+            const savedSL = strategy.strategy?.meta?.stop_loss
+            if (savedSL && (typeof savedSL === 'object')) {
+              const type = savedSL.type === 'amount' ? 'amount' : 'pct'
+              const action = savedSL.action === 'reduce_half' ? 'reduce_half' : 'sell_all'
+              const valueNum = Number(savedSL.value)
+              setStopLoss({
+                type,
+                action,
+                value: Number.isFinite(valueNum) ? valueNum : (type === 'pct' ? 5 : 500)
+              })
+              console.log('StrategyBuilder: 已恢复止损配置', { type, action, value: valueNum })
+            }
+          } catch (e) {
+            console.warn('StrategyBuilder: 恢复止损配置失败', e)
+          }
         } else {
           console.log('StrategyBuilder: 未找到策略数据，使用默认配置')
         }
