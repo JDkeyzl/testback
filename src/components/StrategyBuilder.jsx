@@ -53,15 +53,8 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
     return `${yyyy}-${mm}-${dd}`
   }
 
-  const [strategyParams, setStrategyParams] = useState(() => {
-    const saved = localStorage.getItem('strategyParams')
-    return saved ? JSON.parse(saved) : {
-      startDate: '2024-01-01',
-      endDate: getYesterday(),
-      initialCapital: 100000,
-      positionManagement: 'full' // 仓位管理：full, half, third, quarter
-    }
-  })
+  // 止损参数（仅策略层配置）
+  const [stopLoss, setStopLoss] = useState({ type: 'pct', value: 5, action: 'sell_all' })
   
   // Toast管理函数
   const addToast = (message, type = 'info', duration = 3000) => {
@@ -69,29 +62,9 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
     setToasts(prev => [...prev, { id, message, type, duration }])
   }
 
-  // 保存策略参数到localStorage
-  useEffect(() => {
-    localStorage.setItem('strategyParams', JSON.stringify(strategyParams))
-  }, [strategyParams])
+  useEffect(() => {}, [stopLoss])
 
-  // 迁移旧数据：如果本地存在旧的结束时间为固定 '2024-12-31' 或晚于今天，则修正为昨天
-  useEffect(() => {
-    const raw = localStorage.getItem('strategyParams')
-    if (!raw) return
-    try {
-      const parsed = JSON.parse(raw)
-      const y = getYesterday()
-      const needFix = parsed && (
-        parsed.endDate === '2024-12-31' ||
-        (parsed.endDate && parsed.endDate > y)
-      )
-      if (needFix) {
-        const fixed = { ...parsed, endDate: y }
-        localStorage.setItem('strategyParams', JSON.stringify(fixed))
-        setStrategyParams(prev => ({ ...prev, endDate: y }))
-      }
-    } catch {}
-  }, [])
+  useEffect(() => {}, [])
   
   const removeToast = (id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
@@ -519,10 +492,14 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
         source: edge.source,
         target: edge.target
       })),
-      start_date: '2023-01-01',
-      end_date: '2023-12-31',
-      initial_capital: 100000.0,
-      commission_rate: 0.001
+      // 将止损参数写入策略元数据
+      meta: {
+        stop_loss: {
+          type: stopLoss.type, // 'pct' | 'amount'
+          value: Number(stopLoss.value) || 0,
+          action: stopLoss.action // 'sell_all' | 'reduce_half'
+        }
+      }
     }
     
     // 生成策略名称
@@ -637,49 +614,39 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
             <div className="max-w-6xl mx-auto h-full flex items-center">
               <div className="w-full">
                 <div className="flex items-center justify-between mb-3">
-                  {/* 去掉页面下方的快速回测按钮，仅保留标题 */}
-                  <h3 className="text-sm font-semibold text-foreground/80">策略参数配置</h3>
+                  <h3 className="text-sm font-semibold text-foreground/80">策略参数配置（止损）</h3>
                   <div />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-foreground/70">回测开始时间</label>
-                    <Input
-                      type="date"
-                      value={strategyParams.startDate}
-                      onChange={(e) => setStrategyParams(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="w-full h-8 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-foreground/70">回测结束时间</label>
-                    <Input
-                      type="date"
-                      value={strategyParams.endDate}
-                      onChange={(e) => setStrategyParams(prev => ({ ...prev, endDate: e.target.value }))}
-                      className="w-full h-8 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-foreground/70">初始资金</label>
-                    <Input
-                      type="number"
-                      value={strategyParams.initialCapital}
-                      onChange={(e) => setStrategyParams(prev => ({ ...prev, initialCapital: Number(e.target.value) }))}
-                      className="w-full h-8 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-foreground/70">仓位管理</label>
+                    <label className="text-xs font-medium text-foreground/70">止损类型</label>
                     <select
-                      value={strategyParams.positionManagement}
-                      onChange={(e) => setStrategyParams(prev => ({ ...prev, positionManagement: e.target.value }))}
+                      value={stopLoss.type}
+                      onChange={(e)=>setStopLoss(prev=>({...prev,type:e.target.value}))}
                       className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                     >
-                      <option value="full">全仓</option>
-                      <option value="half">半仓</option>
-                      <option value="third">1/3 仓</option>
-                      <option value="quarter">1/4 仓</option>
+                      <option value="pct">百分比(%)</option>
+                      <option value="amount">资金额(¥)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">止损值</label>
+                    <Input
+                      type="number"
+                      value={stopLoss.value}
+                      onChange={(e)=>setStopLoss(prev=>({...prev,value:e.target.value}))}
+                      className="w-full h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">触发动作</label>
+                    <select
+                      value={stopLoss.action}
+                      onChange={(e)=>setStopLoss(prev=>({...prev,action:e.target.value}))}
+                      className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                    >
+                      <option value="sell_all">卖出全部</option>
+                      <option value="reduce_half">减半仓位</option>
                     </select>
                   </div>
                 </div>
