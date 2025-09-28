@@ -300,6 +300,11 @@ async def fetch_stock_data(body: Dict[str, Any]) -> Dict[str, Any]:
                 resolved = cand[0]
         if not resolved:
             raise HTTPException(status_code=500, detail=f"脚本执行成功但未找到CSV：期望 {expected}；stdout: {proc.stdout[-500:]} ")
+        # 新数据生成后清空数据缓存，确保后续读取能命中新文件
+        try:
+            data_loader.clear_cache()
+        except Exception:
+            pass
         return {"ok": True, "stdout": proc.stdout, "csv": str(resolved), "code": code, "name": name}
     except HTTPException:
         raise

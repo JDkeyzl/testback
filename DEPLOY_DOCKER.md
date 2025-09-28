@@ -99,3 +99,8 @@ docker compose up -d
 
  sudo docker compose up -d --no-deps --build frontend
  sudo docker compose up -d --no-deps --build backend
+
+
+## 前后端 有依赖变动
+sudo docker compose build --pull --no-cache backend frontend
+sudo docker compose up -d --force-recreate backend frontend
