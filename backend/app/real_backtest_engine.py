@@ -1037,7 +1037,8 @@ class RealBacktestEngine:
     def _run_vwap_strategy(self, data: pd.DataFrame, node_data: Dict, 
                           current_capital: float, position: int, 
                           trades: List[Dict], equity_curve: List[Dict], 
-                          position_management: str = "full") -> Dict[str, Any]:
+                          position_management: str = "full",
+                          stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
         """执行VWAP策略"""
         # 从节点数据获取参数
         period = node_data.get("period", 20)
@@ -1110,6 +1111,37 @@ class RealBacktestEngine:
                 
                 position = 0
             
+            # 止损检查
+            if position > 0 and (stop_loss_cfg is not None):
+                sl_type, sl_value, sl_action = stop_loss_cfg
+                current_equity = current_capital + (position * current_price)
+                max_loss = 0.0
+                if sl_type == 'pct' and sl_value > 0:
+                    max_loss = self.initial_capital * (sl_value / 100.0)
+                elif sl_type == 'amount' and sl_value > 0:
+                    max_loss = sl_value
+                if max_loss > 0 and (self.initial_capital - current_equity) >= max_loss:
+                    if sl_action == 'reduce_half' and position > 0:
+                        qty = max(self.market.min_lot(), (position // 2) // self.market.min_lot() * self.market.min_lot())
+                    else:
+                        qty = position
+                    revenue = qty * current_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"]) * (qty/position if position>0 else 1)
+                    pnl = net_revenue - buy_cost
+                    current_capital += net_revenue
+                    position -= qty
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(current_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "止损"
+                    })
+
             # 记录资金曲线
             current_equity = current_capital + (position * current_price)
             equity_curve.append({
@@ -1123,7 +1155,8 @@ class RealBacktestEngine:
     def _run_volume_strategy(self, data: pd.DataFrame, node_data: Dict, 
                             current_capital: float, position: int, 
                             trades: List[Dict], equity_curve: List[Dict], 
-                            position_management: str = "full") -> Dict[str, Any]:
+                            position_management: str = "full",
+                            stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
         """执行成交量策略"""
         # 从节点数据获取参数
         period = node_data.get("period", 5)
@@ -1173,6 +1206,37 @@ class RealBacktestEngine:
                             "pnl": None
                         })
             
+            # 止损检查
+            if position > 0 and (stop_loss_cfg is not None):
+                sl_type, sl_value, sl_action = stop_loss_cfg
+                current_equity = current_capital + (position * current_price)
+                max_loss = 0.0
+                if sl_type == 'pct' and sl_value > 0:
+                    max_loss = self.initial_capital * (sl_value / 100.0)
+                elif sl_type == 'amount' and sl_value > 0:
+                    max_loss = sl_value
+                if max_loss > 0 and (self.initial_capital - current_equity) >= max_loss:
+                    if sl_action == 'reduce_half' and position > 0:
+                        qty = max(self.market.min_lot(), (position // 2) // self.market.min_lot() * self.market.min_lot())
+                    else:
+                        qty = position
+                    revenue = qty * current_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"]) * (qty/position if position>0 else 1)
+                    pnl = net_revenue - buy_cost
+                    current_capital += net_revenue
+                    position -= qty
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(current_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "止损"
+                    })
+
             # 记录资金曲线
             current_equity = current_capital + (position * current_price)
             equity_curve.append({
