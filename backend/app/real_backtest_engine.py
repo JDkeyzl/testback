@@ -909,6 +909,7 @@ class RealBacktestEngine:
                 return x != y
             return x > y
 
+        open_position_cost = 0.0  # 当前持仓的总成本（含手续费），用于精确计算止损和收益
         for i in range(max(slow, signal) + 1, len(data)):
             row = data.iloc[i]
             prev = data.iloc[i-1]
@@ -957,6 +958,7 @@ class RealBacktestEngine:
                     if total_cost <= current_capital:
                         current_capital -= total_cost
                         position += shares_to_buy
+                        open_position_cost += total_cost
                         trades.append({
                             "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                             "action": "buy",
@@ -967,52 +969,65 @@ class RealBacktestEngine:
                         })
 
             elif sell_cross and position > 0:
-                revenue = position * current_price
+                qty = position
+                revenue = qty * current_price
                 commission = revenue * self.commission_rate
                 net_revenue = revenue - commission
-                buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
-                pnl = net_revenue - buy_cost
+                # 以当前持仓成本计算本次卖出盈亏
+                sell_cost = open_position_cost * (qty / position) if position > 0 else 0.0
+                pnl = net_revenue - sell_cost
                 current_capital += net_revenue
                 trades.append({
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "action": "sell",
                     "price": round(current_price, 2),
-                    "quantity": position,
+                    "quantity": qty,
                     "amount": round(net_revenue, 2),
                     "pnl": round(pnl, 2)
                 })
-                position = 0
+                position -= qty
+                open_position_cost -= sell_cost
+                if position == 0:
+                    open_position_cost = 0.0
 
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
                 sl_type, sl_value, sl_action = stop_loss_cfg
-                current_equity = current_capital + (position * current_price)
-                max_loss = 0.0
+                # 以开仓成本（含手续费）衡量未实现亏损
+                current_value = position * current_price
+                unrealized_loss_amount = max(0.0, open_position_cost - current_value)
+                trigger = False
                 if sl_type == 'pct' and sl_value > 0:
-                    max_loss = self.initial_capital * (sl_value / 100.0)
+                    # 按开仓成本百分比
+                    trigger = unrealized_loss_amount >= (open_position_cost * (sl_value / 100.0))
                 elif sl_type == 'amount' and sl_value > 0:
-                    max_loss = sl_value
-                if max_loss > 0 and (self.initial_capital - current_equity) >= max_loss:
+                    trigger = unrealized_loss_amount >= sl_value
+                if trigger:
                     if sl_action == 'reduce_half' and position > 0:
                         qty = max(self.market.min_lot(), (position // 2) // self.market.min_lot() * self.market.min_lot())
+                        qty = min(qty, position)
                     else:
                         qty = position
-                    revenue = qty * current_price
-                    commission = revenue * self.commission_rate
-                    net_revenue = revenue - commission
-                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"]) * (qty/position if position>0 else 1)
-                    pnl = net_revenue - buy_cost
-                    current_capital += net_revenue
-                    position -= qty
-                    trades.append({
-                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        "action": "sell",
-                        "price": round(current_price, 2),
-                        "quantity": qty,
-                        "amount": round(net_revenue, 2),
-                        "pnl": round(pnl, 2),
-                        "note": "止损"
-                    })
+                    if qty > 0:
+                        revenue = qty * current_price
+                        commission = revenue * self.commission_rate
+                        net_revenue = revenue - commission
+                        sell_cost = open_position_cost * (qty / position) if position > 0 else 0.0
+                        pnl = net_revenue - sell_cost
+                        current_capital += net_revenue
+                        position -= qty
+                        open_position_cost -= sell_cost
+                        trades.append({
+                            "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            "action": "sell",
+                            "price": round(current_price, 2),
+                            "quantity": qty,
+                            "amount": round(net_revenue, 2),
+                            "pnl": round(pnl, 2),
+                            "note": "止损"
+                        })
+                        if position == 0:
+                            open_position_cost = 0.0
 
             # 记录资金曲线（适度抽样）
             if i % 5 == 0:
