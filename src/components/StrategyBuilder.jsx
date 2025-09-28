@@ -54,7 +54,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   }
 
   // 止损参数（仅策略层配置）
-  const [stopLoss, setStopLoss] = useState({ type: 'pct', value: 5, action: 'sell_all' })
+  const [stopLoss, setStopLoss] = useState({ type: 'pct', value: 5, action: 'sell_all', mode: 'close' })
   
   // Toast管理函数
   const addToast = (message, type = 'info', duration = 3000) => {
@@ -275,12 +275,14 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
               const type = savedSL.type === 'amount' ? 'amount' : 'pct'
               const action = savedSL.action === 'reduce_half' ? 'reduce_half' : 'sell_all'
               const valueNum = Number(savedSL.value)
+              const mode = (['intrabar','next_open','close'].includes(savedSL.mode)) ? savedSL.mode : 'close'
               setStopLoss({
                 type,
                 action,
-                value: Number.isFinite(valueNum) ? valueNum : (type === 'pct' ? 5 : 500)
+                value: Number.isFinite(valueNum) ? valueNum : (type === 'pct' ? 5 : 500),
+                mode
               })
-              console.log('StrategyBuilder: 已恢复止损配置', { type, action, value: valueNum })
+              console.log('StrategyBuilder: 已恢复止损配置', { type, action, value: valueNum, mode })
             }
           } catch (e) {
             console.warn('StrategyBuilder: 恢复止损配置失败', e)
@@ -515,7 +517,8 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
         stop_loss: {
           type: stopLoss.type, // 'pct' | 'amount'
           value: Number(stopLoss.value) || 0,
-          action: stopLoss.action // 'sell_all' | 'reduce_half'
+          action: stopLoss.action, // 'sell_all' | 'reduce_half'
+          mode: stopLoss.mode || 'close' // 'close' | 'intrabar' | 'next_open'
         }
       }
     }
@@ -635,7 +638,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                   <h3 className="text-sm font-semibold text-foreground/80">策略参数配置（止损）</h3>
                   <div />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-foreground/70">止损类型</label>
                     <select
@@ -665,6 +668,18 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                     >
                       <option value="sell_all">卖出全部</option>
                       <option value="reduce_half">减半仓位</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground/70">止损模式</label>
+                    <select
+                      value={stopLoss.mode}
+                      onChange={(e)=>setStopLoss(prev=>({...prev,mode:e.target.value}))}
+                      className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                    >
+                      <option value="close">收盘触发</option>
+                      <option value="intrabar">K线内触发</option>
+                      <option value="next_open">次开触发</option>
                     </select>
                   </div>
                 </div>
