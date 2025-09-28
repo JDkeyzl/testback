@@ -819,13 +819,13 @@ class RealBacktestEngine:
             gc = (prev['macd_dif'] <= prev['macd_dea']) and (row['macd_dif'] > row['macd_dea'])
             dc = (prev['macd_dif'] >= prev['macd_dea']) and (row['macd_dif'] < row['macd_dea'])
             if mode == 'golden_cross':
-                # 入场：金叉；出场：死叉（默认对腿）
+                # 入场：金叉；出场：死叉
                 buy_cross = gc
                 sell_cross = dc
             elif mode == 'death_cross':
-                # 亦采用金叉入场、死叉出场，确保完整交易回合
-                buy_cross = gc
-                sell_cross = dc
+                # 入场：死叉；出场：金叉（与金叉模式相反）
+                buy_cross = dc
+                sell_cross = gc
             elif mode == 'zero_above':
                 buy_cross = (prev['macd_dif'] <= 0) and (row['macd_dif'] > 0)
                 sell_cross = dc  # 离场用死叉
