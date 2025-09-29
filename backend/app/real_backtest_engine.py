@@ -167,6 +167,10 @@ class RealBacktestEngine:
             self.pre_holiday_clearance = bool(meta.get('holiday_clearance') or False)
         except Exception:
             self.pre_holiday_clearance = False
+        try:
+            self.holiday_include_weekend = bool(meta.get('holiday_include_weekend') or False)
+        except Exception:
+            self.holiday_include_weekend = False
         
         logger.info(f"策略类型: {strategy_type}, 节点数: {len(nodes)}")
         
@@ -979,7 +983,7 @@ class RealBacktestEngine:
                         next_d = (timestamp + timedelta(days=1)).date()
                     except Exception:
                         next_d = None
-                    if next_d and self._is_holiday(next_d):
+                    if next_d and self._is_holiday_day(next_d):
                         pre_holiday_block_new_entry = True
 
             if buy_cross and position == 0 and not pre_holiday_block_new_entry:
@@ -1096,7 +1100,7 @@ class RealBacktestEngine:
                         next_d = (timestamp + timedelta(days=1)).date()
                     except Exception:
                         next_d = None
-                    if next_d and self._is_holiday(next_d):
+                    if next_d and self._is_holiday_day(next_d):
                         qty = position
                         revenue = qty * current_price
                         commission = revenue * self.commission_rate
@@ -1459,12 +1463,17 @@ class RealBacktestEngine:
         except Exception:
             pass
         return set()
-    @classmethod
-    def _is_holiday(cls, d: datetime.date) -> bool:
-        # 周末或在法定节假日名单
-        if d.weekday() >= 5:
-            return True
-        return d.strftime('%Y-%m-%d') in cls._get_cn_holidays_set()
+    def _is_holiday_day(self, d: datetime.date) -> bool:
+        """根据配置判断是否为节假日：
+        - 默认仅使用法定节假日名单（holidays_cn.json）
+        - 若 strategy.meta.holiday_include_weekend = True，则周末也视为节假日
+        """
+        try:
+            if getattr(self, 'holiday_include_weekend', False) and d.weekday() >= 5:
+                return True
+        except Exception:
+            pass
+        return d.strftime('%Y-%m-%d') in self._get_cn_holidays_set()
     @staticmethod
     def _is_end_of_trading_day(i: int, data: pd.DataFrame) -> bool:
         if i + 1 >= len(data):
