@@ -938,6 +938,7 @@ class RealBacktestEngine:
             timestamp = row['timestamp']
             h = row['macd_hist']
             hp = prev['macd_hist']
+            did_trade_this_bar = False
 
             if pd.isna(h) or pd.isna(hp):
                 continue
@@ -970,7 +971,18 @@ class RealBacktestEngine:
                 buy_cross = (hp <= threshold) and cmp(h, threshold, operator)
                 sell_cross = dc
 
-            if buy_cross and position == 0:
+            # 若节前清盘开启，且本bar为交易日最后一根且下一天为节假日，则禁止在本bar新开仓，避免买入后立刻清仓
+            pre_holiday_block_new_entry = False
+            if getattr(self, 'pre_holiday_clearance', False):
+                if self._is_end_of_trading_day(i, data):
+                    try:
+                        next_d = (timestamp + timedelta(days=1)).date()
+                    except Exception:
+                        next_d = None
+                    if next_d and self._is_holiday(next_d):
+                        pre_holiday_block_new_entry = True
+
+            if buy_cross and position == 0 and not pre_holiday_block_new_entry:
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 if shares_to_buy >= self.market.min_lot():
                     cost = shares_to_buy * current_price
@@ -988,8 +1000,9 @@ class RealBacktestEngine:
                             "amount": round(total_cost, 2),
                             "pnl": None
                         })
+                        did_trade_this_bar = True
 
-            elif sell_cross and position > 0:
+            elif (not did_trade_this_bar) and sell_cross and position > 0:
                 qty = position
                 revenue = qty * current_price
                 commission = revenue * self.commission_rate
@@ -1010,9 +1023,10 @@ class RealBacktestEngine:
                 open_position_cost -= sell_cost
                 if position == 0:
                     open_position_cost = 0.0
+                did_trade_this_bar = True
 
             # 止损检查
-            if position > 0 and (stop_loss_cfg is not None):
+            if (not did_trade_this_bar) and position > 0 and (stop_loss_cfg is not None):
                 if len(stop_loss_cfg) >= 4:
                     sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
                 else:
@@ -1073,9 +1087,10 @@ class RealBacktestEngine:
                         })
                         if position == 0:
                             open_position_cost = 0.0
+                        did_trade_this_bar = True
 
             # 节前清盘：在交易日结束且下一自然日为节假日/周末时清仓
-            if getattr(self, 'pre_holiday_clearance', False) and position > 0:
+            if (not did_trade_this_bar) and getattr(self, 'pre_holiday_clearance', False) and position > 0:
                 if self._is_end_of_trading_day(i, data):
                     try:
                         next_d = (timestamp + timedelta(days=1)).date()
