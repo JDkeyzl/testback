@@ -55,6 +55,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
 
   // 止损参数（仅策略层配置）
   const [stopLoss, setStopLoss] = useState({ type: 'pct', value: 5, action: 'sell_all', mode: 'close' })
+  const [holidayClear, setHolidayClear] = useState(false)
   
   // Toast管理函数
   const addToast = (message, type = 'info', duration = 3000) => {
@@ -284,8 +285,9 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
               })
               console.log('StrategyBuilder: 已恢复止损配置', { type, action, value: valueNum, mode })
             }
+            setHolidayClear(!!strategy.strategy?.meta?.holiday_clearance)
           } catch (e) {
-            console.warn('StrategyBuilder: 恢复止损配置失败', e)
+            console.warn('StrategyBuilder: 恢复止损/节前清盘配置失败', e)
           }
         } else {
           console.log('StrategyBuilder: 未找到策略数据，使用默认配置')
@@ -519,7 +521,8 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
           value: Number(stopLoss.value) || 0,
           action: stopLoss.action, // 'sell_all' | 'reduce_half'
           mode: stopLoss.mode || 'close' // 'close' | 'intrabar' | 'next_open'
-        }
+        },
+        holiday_clearance: !!holidayClear
       }
     }
     
@@ -682,6 +685,10 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                       <option value="next_open">次开触发</option>
                     </select>
                   </div>
+                  <label className="flex items-center gap-2 text-xs pt-6">
+                    <input type="checkbox" checked={holidayClear} onChange={(e)=>setHolidayClear(e.target.checked)} />
+                    节前清盘（中国法定节假日前清仓）
+                  </label>
                 </div>
               </div>
             </div>

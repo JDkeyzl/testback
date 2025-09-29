@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 import logging
 from .data_loader import load_stock_data
+from functools import lru_cache
+import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +162,11 @@ class RealBacktestEngine:
         sl_value = float(stop_cfg.get('value') or 0.0)
         sl_action = str(stop_cfg.get('action') or 'sell_all')  # 'sell_all' | 'reduce_half'
         sl_mode = str(stop_cfg.get('mode') or 'close')  # 'close' | 'intrabar' | 'next_open'
+        # 节前清盘（策略级）
+        try:
+            self.pre_holiday_clearance = bool(meta.get('holiday_clearance') or False)
+        except Exception:
+            self.pre_holiday_clearance = False
         
         logger.info(f"策略类型: {strategy_type}, 节点数: {len(nodes)}")
         
@@ -1066,6 +1074,35 @@ class RealBacktestEngine:
                         if position == 0:
                             open_position_cost = 0.0
 
+            # 节前清盘：在交易日结束且下一自然日为节假日/周末时清仓
+            if getattr(self, 'pre_holiday_clearance', False) and position > 0:
+                if self._is_end_of_trading_day(i, data):
+                    try:
+                        next_d = (timestamp + timedelta(days=1)).date()
+                    except Exception:
+                        next_d = None
+                    if next_d and self._is_holiday(next_d):
+                        qty = position
+                        revenue = qty * current_price
+                        commission = revenue * self.commission_rate
+                        net_revenue = revenue - commission
+                        sell_cost = open_position_cost * (qty / position) if position > 0 else 0.0
+                        pnl = net_revenue - sell_cost
+                        current_capital += net_revenue
+                        position -= qty
+                        open_position_cost -= sell_cost
+                        trades.append({
+                            "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            "action": "sell",
+                            "price": round(current_price, 2),
+                            "quantity": qty,
+                            "amount": round(net_revenue, 2),
+                            "pnl": round(pnl, 2),
+                            "note": "节前清盘"
+                        })
+                        if position == 0:
+                            open_position_cost = 0.0
+
             # 记录资金曲线（适度抽样）
             if i % 5 == 0:
                 current_equity = current_capital + (position * current_price)
@@ -1391,6 +1428,38 @@ class RealBacktestEngine:
                 "close": round(float(row['close']), 2)
             })
         return series
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _get_cn_holidays_set() -> set:
+        """获取中国法定节假日日期集合（YYYY-MM-DD）。读取 data/holidays_cn.json（数组）。"""
+        try:
+            base_dir = os.getcwd()
+            json_path = os.path.join(base_dir, 'data', 'holidays_cn.json')
+            if os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    arr = json.load(f)
+                if isinstance(arr, list):
+                    return set(str(x) for x in arr)
+        except Exception:
+            pass
+        return set()
+    @classmethod
+    def _is_holiday(cls, d: datetime.date) -> bool:
+        # 周末或在法定节假日名单
+        if d.weekday() >= 5:
+            return True
+        return d.strftime('%Y-%m-%d') in cls._get_cn_holidays_set()
+    @staticmethod
+    def _is_end_of_trading_day(i: int, data: pd.DataFrame) -> bool:
+        if i + 1 >= len(data):
+            return True
+        try:
+            cur = data.iloc[i]['timestamp'].date()
+            nxt = data.iloc[i+1]['timestamp'].date()
+            return nxt != cur
+        except Exception:
+            return False
 
 # 全局回测引擎实例
 backtest_engine = RealBacktestEngine()
