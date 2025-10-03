@@ -445,13 +445,6 @@ export function StockSelectionPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      {/* 顶部模式切换（移至页面容器内部，避免遮挡） */}
-      <div className="absolute left-0 right-0 top-0 z-10 px-4 py-2 pointer-events-none">
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <Button size="sm" variant={viewMode==='manage'?'default':'outline'} onClick={()=>setViewMode('manage')}>股票池管理</Button>
-          <Button size="sm" variant={viewMode==='backtest'?'default':'outline'} onClick={()=>setViewMode('backtest')}>批量回测</Button>
-        </div>
-      </div>
       {/* 左：股票池管理 */}
       <div className={`w-1/3 border-r border-border p-4 overflow-auto`}> 
         <div className="flex items-center justify-between mb-3">
