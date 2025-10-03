@@ -298,7 +298,7 @@ class RealBacktestEngine:
             avg_loss = float(np.mean(losses_pnls)) if len(losses_pnls) > 0 else 0.0
             if avg_loss == 0.0:
                 profit_loss_ratio = 0.0
-        else:
+            else:
                 try:
                     profit_loss_ratio = abs(avg_win / avg_loss)
                     if not np.isfinite(profit_loss_ratio):
@@ -1383,7 +1383,7 @@ class RealBacktestEngine:
             avg_loss = float(np.mean(losses_pnls)) if len(losses_pnls) > 0 else 0.0
             if avg_loss == 0.0:
                 profit_loss_ratio = 0.0
-        else:
+            else:
                 try:
                     profit_loss_ratio = abs(avg_win / avg_loss)
                     if not np.isfinite(profit_loss_ratio):
