@@ -3,6 +3,7 @@
 # Data CSVs (keep stockList dictionary tracked)
 data/**
 !data/stockList/**
+!data/holidays_cn.json
 
 # Keep directory markers
 !data/.gitkeep
