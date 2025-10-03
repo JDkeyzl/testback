@@ -14187,3 +14187,43 @@ INFO:     Finished server process [69927]
 INFO:     Started server process [69936]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend/app/api/backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [69936]
+🚀 TestBack API 启动中...
+🛑 TestBack API 关闭中...
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [72318]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 TestBack API 启动中...
+INFO:     127.0.0.1:61732 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'backend/app/api/backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [72318]
+🛑 TestBack API 关闭中...
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [72531]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 TestBack API 启动中...
+INFO:     127.0.0.1:61787 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'backend/app/api/backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [72531]
+🛑 TestBack API 关闭中...
+/Users/ranka/projects/testback/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [73053]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 TestBack API 启动中...
+INFO:     127.0.0.1:62227 - "GET /api/v1/data/stocklist HTTP/1.1" 200 OK

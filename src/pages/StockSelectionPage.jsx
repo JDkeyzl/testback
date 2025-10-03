@@ -575,8 +575,8 @@ export function StockSelectionPage() {
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th className="text-left px-3 py-2">代码</th>
                   <th className="text-left px-3 py-2">名称</th>
+                  <th className="text-left px-3 py-2">代码</th>
                   <th className="text-left px-3 py-2">行业</th>
                 </tr>
               </thead>
@@ -594,8 +594,8 @@ export function StockSelectionPage() {
                         onChange={()=>toggleCheck(it.code)} 
                       />
                     </td>
-                    <td className="px-3 py-2">{it.code}</td>
                     <td className="px-3 py-2">{it.code_name}</td>
+                    <td className="px-3 py-2">{String(it.code || '').replace(/^(sh\.|sz\.)/, '')}</td>
                     <td className="px-3 py-2">{it.industry || '-'}</td>
                   </tr>
                 ))}

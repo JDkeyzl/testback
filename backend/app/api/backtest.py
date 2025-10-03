@@ -214,15 +214,37 @@ async def list_data_sources() -> Dict[str, Any]:
 
 @router.get("/data/stocklist")
 async def get_stock_list() -> Dict[str, Any]:
-    """返回 data/stockList/all_pure_stock.json 的内容"""
+    """返回股票列表，优先使用包含行业的文件。
+
+    优先顺序：
+    1) data/stockList/all_stock_with_industry.json
+    2) data/stockList/all_pure_stock.json
+    """
     try:
         project_root = Path(__file__).resolve().parents[3]
-        json_path = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
-        if not json_path.exists():
+        with_industry = project_root / 'data' / 'stockList' / 'all_stock_with_industry.json'
+        pure = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
+
+        data: list = []
+        if with_industry.exists():
+            with open(with_industry, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        elif pure.exists():
+            with open(pure, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        else:
             raise HTTPException(status_code=404, detail="股票列表文件不存在")
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return {"list": data}
+
+        # 确保字段存在，industry 若缺失则置为 ''
+        normalized = []
+        for it in (data or []):
+            if isinstance(it, dict):
+                normalized.append({
+                    'code': it.get('code'),
+                    'code_name': it.get('code_name') or it.get('name') or '',
+                    'industry': it.get('industry') or it.get('industryClassification') or ''
+                })
+        return {"list": normalized or data}
     except HTTPException:
         raise
     except Exception as e:
