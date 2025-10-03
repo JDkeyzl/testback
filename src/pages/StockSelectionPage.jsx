@@ -95,16 +95,24 @@ export function StockSelectionPage() {
     async function load() {
       try {
         // 优先后端接口，其次本地 JSON（带行业）
-        const r = await fetch('/api/v1/data/stocklist')
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 4000)
+        const r = await fetch('/api/v1/data/stocklist', { signal: controller.signal })
+        clearTimeout(timeoutId)
         if (r.ok) {
           const data = await r.json()
           if (!cancelled) setStockList(Array.isArray(data?.list) ? data.list : [])
-        } else {
-          const r2 = await fetch('/data/stockList/all_stock_with_industry.json')
-          if (r2.ok) {
-            const data2 = await r2.json()
-            if (!cancelled) setStockList(Array.isArray(data2) ? data2 : [])
-          }
+          return
+        }
+      } catch (err) {
+        // 后端不可用/网络错误时，走本地静态文件兜底
+        console.warn('stocklist api failed, fallback to static json', err)
+      }
+      try {
+        const r2 = await fetch('/data/stockList/all_stock_with_industry.json')
+        if (r2.ok) {
+          const data2 = await r2.json()
+          if (!cancelled) setStockList(Array.isArray(data2) ? data2 : [])
         }
       } catch {}
     }
@@ -208,7 +216,20 @@ export function StockSelectionPage() {
   const addCheckedToPool = () => {
     const codes = Object.entries(checked).filter(([, v]) => v).map(([c]) => c)
     if (!selectedPoolId || codes.length === 0) return
-    addStocksToPool(selectedPoolId, codes)
+    // 查询当前池已有数量，提示并截断
+    const pool = pools.find(p => p.id === selectedPoolId)
+    const currentCount = pool ? (pool.codes?.length || 0) : 0
+    if (currentCount >= 50) {
+      alert('单个股票池最多 50 支股票')
+      return
+    }
+    const remaining = Math.max(0, 50 - currentCount)
+    const toAdd = codes.slice(0, remaining)
+    if (toAdd.length < codes.length) {
+      alert(`已达上限，最多还能加入 ${remaining} 支`)
+    }
+    if (toAdd.length === 0) return
+    addStocksToPool(selectedPoolId, toAdd)
     setChecked({})
   }
 

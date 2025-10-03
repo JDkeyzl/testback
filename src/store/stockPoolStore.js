@@ -29,7 +29,9 @@ export const useStockPoolStore = create(persist(
         if (p.id !== id) return p
         const codeSet = new Set(p.codes)
         ;(codes || []).forEach(c => { if (c) codeSet.add(c) })
-        return { ...p, codes: Array.from(codeSet), user_id: p.user_id || state.defaultUserId }
+        // 限制最多 50 支
+        const limited = Array.from(codeSet).slice(0, 50)
+        return { ...p, codes: limited, user_id: p.user_id || state.defaultUserId }
       })
     })),
 
