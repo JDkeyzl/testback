@@ -38,7 +38,7 @@ export function NodeToolbar({ onAddNode, onClearAll, onSave, onLoad }) {
       <div className="flex items-center space-x-2">
         <Button size="sm" variant="outline" onClick={onSave}>
           <Download className="h-4 w-4 mr-2" />
-          保存策略1
+          保存策略
         </Button>
         <Button size="sm" variant="outline" onClick={onLoad}>
           <Upload className="h-4 w-4 mr-2" />

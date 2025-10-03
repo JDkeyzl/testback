@@ -9,6 +9,7 @@ import { SymbolBacktestPage } from './pages/SymbolBacktestPage'
 import { FuturesBacktestPage } from './pages/FuturesBacktestPage'
 import { BacktestHistoryPage } from './pages/BacktestHistoryPage'
 import { GridStrategyPage } from './pages/GridStrategyPage'
+import { StockSelectionPage } from './pages/StockSelectionPage'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/futures-backtest" element={<FuturesBacktestPage />} />
           <Route path="/history" element={<BacktestHistoryPage />} />
           <Route path="/grid-lab" element={<GridStrategyPage />} />
+          <Route path="/stock-selection" element={<StockSelectionPage />} />
           <Route path="/test-autofix" element={<TestAutoFix />} />
           <Route path="*" element={<Navigate to="/welcome" replace />} />
         </Routes>

@@ -96,8 +96,6 @@ docker compose up -d
 
 快速部署前端代码，不拉依赖
  sudo docker compose up -d --no-deps --build frontend
-
- sudo docker compose up -d --no-deps --build frontend
  sudo docker compose up -d --no-deps --build backend
 
 

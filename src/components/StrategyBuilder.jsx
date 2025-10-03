@@ -56,6 +56,8 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
   // 止损参数（仅策略层配置）
   const [stopLoss, setStopLoss] = useState({ type: 'pct', value: 5, action: 'sell_all', mode: 'close' })
   const [holidayClear, setHolidayClear] = useState(false)
+  const [weekendClear, setWeekendClear] = useState(false)
+  const [stopLossEnabled, setStopLossEnabled] = useState(true)
   
   // Toast管理函数
   const addToast = (message, type = 'info', duration = 3000) => {
@@ -277,15 +279,18 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
               const action = savedSL.action === 'reduce_half' ? 'reduce_half' : 'sell_all'
               const valueNum = Number(savedSL.value)
               const mode = (['intrabar','next_open','close'].includes(savedSL.mode)) ? savedSL.mode : 'close'
+              const enabled = typeof savedSL.enabled === 'boolean' ? savedSL.enabled : (Number(valueNum) > 0)
               setStopLoss({
                 type,
                 action,
                 value: Number.isFinite(valueNum) ? valueNum : (type === 'pct' ? 5 : 500),
                 mode
               })
+              setStopLossEnabled(enabled)
               console.log('StrategyBuilder: 已恢复止损配置', { type, action, value: valueNum, mode })
             }
             setHolidayClear(!!strategy.strategy?.meta?.holiday_clearance)
+            setWeekendClear(!!strategy.strategy?.meta?.holiday_include_weekend)
           } catch (e) {
             console.warn('StrategyBuilder: 恢复止损/节前清盘配置失败', e)
           }
@@ -518,11 +523,13 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
       meta: {
         stop_loss: {
           type: stopLoss.type, // 'pct' | 'amount'
-          value: Number(stopLoss.value) || 0,
+          value: stopLossEnabled ? (Number(stopLoss.value) || 0) : 0,
           action: stopLoss.action, // 'sell_all' | 'reduce_half'
-          mode: stopLoss.mode || 'close' // 'close' | 'intrabar' | 'next_open'
+          mode: stopLoss.mode || 'close', // 'close' | 'intrabar' | 'next_open'
+          enabled: !!stopLossEnabled
         },
-        holiday_clearance: !!holidayClear
+        holiday_clearance: stopLossEnabled ? !!holidayClear : false,
+        holiday_include_weekend: stopLossEnabled ? !!weekendClear : false
       }
     }
     
@@ -634,20 +641,28 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
           </div>
           
           {/* 策略参数配置区域 - 与画布同宽度 */}
-          <div className="bg-card border-t border-border p-4 flex-shrink-0" style={{ height: '120px' }}>
-            <div className="max-w-6xl mx-auto h-full flex items-center">
+          <div className="bg-card border-t border-border p-4 flex-shrink-0">
+            <div className="max-w-6xl mx-auto">
               <div className="w-full">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-foreground/80">策略参数配置（止损）</h3>
-                  <div />
+                  <h3 className="text-sm font-semibold text-foreground/80">策略止损设置</h3>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={stopLossEnabled}
+                      onChange={(e)=>setStopLossEnabled(e.target.checked)}
+                    />
+                    启用止损（开关影响所有止损与清仓设置）
+                  </label>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-foreground/70">止损类型</label>
                     <select
                       value={stopLoss.type}
                       onChange={(e)=>setStopLoss(prev=>({...prev,type:e.target.value}))}
                       className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                      disabled={!stopLossEnabled}
                     >
                       <option value="pct">百分比(%)</option>
                       <option value="amount">资金额(¥)</option>
@@ -660,6 +675,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                       value={stopLoss.value}
                       onChange={(e)=>setStopLoss(prev=>({...prev,value:e.target.value}))}
                       className="w-full h-8 text-xs"
+                      disabled={!stopLossEnabled}
                     />
                   </div>
                   <div className="space-y-2">
@@ -668,6 +684,7 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                       value={stopLoss.action}
                       onChange={(e)=>setStopLoss(prev=>({...prev,action:e.target.value}))}
                       className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                      disabled={!stopLossEnabled}
                     >
                       <option value="sell_all">卖出全部</option>
                       <option value="reduce_half">减半仓位</option>
@@ -679,20 +696,29 @@ export const StrategyBuilder = React.forwardRef((props, ref) => {
                       value={stopLoss.mode}
                       onChange={(e)=>setStopLoss(prev=>({...prev,mode:e.target.value}))}
                       className="w-full h-8 text-xs px-3 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                      disabled={!stopLossEnabled}
                     >
                       <option value="close">收盘触发</option>
                       <option value="intrabar">K线内触发</option>
                       <option value="next_open">次开触发</option>
                     </select>
                   </div>
-                  <label className="flex items-center gap-2 text-xs pt-6">
-                    <input type="checkbox" checked={holidayClear} onChange={(e)=>setHolidayClear(e.target.checked)} />
-                    节前清盘（中国法定节假日前清仓）
-                  </label>
+                  {/* 第二行：清盘选项 */}
+                  <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="checkbox" checked={holidayClear} onChange={(e)=>setHolidayClear(e.target.checked)} disabled={!stopLossEnabled} />
+                      节前清仓（中国法定节假日前清仓）
+                    </label>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="checkbox" checked={weekendClear} onChange={(e)=>setWeekendClear(e.target.checked)} disabled={!stopLossEnabled} />
+                      周末清仓
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
 
         {/* 右侧：节点编辑面板 - 只在选中节点时显示 */}

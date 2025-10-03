@@ -336,7 +336,7 @@ class RealBacktestEngine:
             cp["returns"] = safe_num(p.get("returns", 0))
             cp["price"] = safe_num(p.get("price", 0))
             clean_equity.append(cp)
-
+        
         return {
             "initial_capital": self.initial_capital,
             "final_equity": safe_num(round(final_equity, 2)),
@@ -568,7 +568,7 @@ class RealBacktestEngine:
                         "pnl": round(pnl, 2),
                         "note": "止损"
                     })
-
+            
             # 记录资金曲线
             if i % 10 == 0:
                 current_equity = current_capital + (position * current_price)
@@ -731,7 +731,7 @@ class RealBacktestEngine:
                         "pnl": round(pnl, 2),
                         "note": "止损"
                     })
-
+            
             # 记录资金曲线
             if i % 10 == 0:
                 current_equity = current_capital + (position * current_price)
@@ -866,7 +866,7 @@ class RealBacktestEngine:
                         "pnl": round(pnl, 2),
                         "note": "止损"
                     })
-
+            
             # 记录资金曲线
             if i % 10 == 0:
                 current_equity = current_capital + (position * current_price)
@@ -1130,7 +1130,7 @@ class RealBacktestEngine:
                     "equity": round(current_equity, 2),
                     "price": round(current_price, 2)
                 })
-
+        
         return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
     
     def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
@@ -1253,7 +1253,7 @@ class RealBacktestEngine:
                         "pnl": round(pnl, 2),
                         "note": "止损"
                     })
-
+            
             # 记录资金曲线
             current_equity = current_capital + (position * current_price)
             equity_curve.append({
@@ -1351,8 +1351,8 @@ class RealBacktestEngine:
                         "amount": round(net_revenue, 2),
                         "pnl": round(pnl, 2),
                         "note": "止损"
-                    })
-
+                        })
+            
             # 记录资金曲线
             current_equity = current_capital + (position * current_price)
             equity_curve.append({

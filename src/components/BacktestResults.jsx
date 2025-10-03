@@ -223,34 +223,77 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
             throw new Error('请先添加策略节点')
           }
 
-          // 尝试调用后端API
+          // 优先使用真实股票回测端点（与股票池详情一致）
           try {
-            const response = await fetch('/api/v1/backtest', {
+            const usedParams = {
+              symbol: backtestParams?.symbol || symbol || '002130',
+              timeframe: backtestParams?.timeframe || timeframe || '1d',
+              startDate: backtestParams?.startDate || startDate || '2024-01-01',
+              endDate: backtestParams?.endDate || endDate || '2024-12-31',
+              initialCapital: backtestParams?.initialCapital || initialCapital || 100000,
+              strategyId: backtestParams?.strategyId || strategyId || null,
+              strategy: strategyData,
+            }
+
+            const response = await fetch('/api/v1/backtest/stocks', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                strategy: strategyData
-              })
+              body: JSON.stringify(usedParams)
             })
 
             if (response.ok) {
               const result = await response.json()
-              console.log('BacktestResults: API回测成功', result)
-              setBacktestResult(result)
+              // 统一交易口径：基于 trades.amount
+              const rows = fmtTradesFees(result.trades || [], usedParams.initialCapital)
+              // 日线价格
+              const priceSeries = Array.isArray(result.price_series) ? result.price_series : []
+              const dailyMap = new Map()
+              for (const p of priceSeries) {
+                const ts = p.timestamp || p.date || ''
+                const d = String(ts).split(' ')[0]
+                dailyMap.set(d, Number(p.close))
+              }
+              const dailyPrices = []
+              for (const [date, close] of dailyMap.entries()) dailyPrices.push({ date, close })
+              const dailyAssets = buildDailyAssetsFromRows(rows, dailyPrices, usedParams.startDate, usedParams.endDate, usedParams.initialCapital)
+              const mTrades = computeFromTrades(rows)
+              const mAssets = computeFromAssets(dailyAssets)
+
+              const formatted = {
+                metrics: {
+                  totalReturn: mAssets.totalReturn,
+                  annualReturn: mAssets.totalReturn,
+                  maxDrawdown: mAssets.maxDrawdown,
+                  sharpeRatio: 0,
+                  winRate: mTrades.winRate,
+                  profitLossRatio: 0,
+                  totalTrades: mTrades.totalTrades,
+                  winningTrades: mTrades.winningTrades,
+                  losingTrades: mTrades.losingTrades
+                },
+                equityCurve: dailyAssets.map(a => ({ date: a.date, equity: a.totalAssets })),
+                priceSeries: result.price_series || [],
+                trades: rows,
+                dataInfo: result.data_info || null,
+                initial_capital: usedParams.initialCapital,
+                final_equity: dailyAssets.length ? dailyAssets[dailyAssets.length-1].totalAssets : usedParams.initialCapital
+              }
+              setBacktestResult(formatted)
+              setDataInfo(result.data_info)
               setActiveTab('overview')
               return
             } else {
-              console.warn('BacktestResults: API调用失败，状态码:', response.status)
+              console.warn('BacktestResults: /backtest/stocks API调用失败，状态码:', response.status)
               const errorText = await response.text()
               console.warn('BacktestResults: API错误响应:', errorText)
             }
           } catch (apiError) {
-            console.warn('BacktestResults: API调用异常，使用模拟数据:', apiError)
+            console.warn('BacktestResults: /backtest/stocks API调用异常，使用模拟数据:', apiError)
           }
 
-          // 如果API调用失败，使用模拟数据
+          // 兜底：使用模拟数据
           const mockResult = generateMockBacktestResult()
           setBacktestResult(mockResult)
           setActiveTab('overview')
@@ -373,27 +416,33 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
     let avgCost = 0 // 平均成本
     
     return trades.map(trade => {
+      const priceNum = Number(trade.price)
+      const price = Number.isFinite(priceNum) ? priceNum : 0
+      const quantityNum = Number(trade.quantity)
+      const quantity = Number.isFinite(quantityNum) ? quantityNum : 0
+      const amountNum = Number(trade.amount)
+      const amount = Number.isFinite(amountNum) ? amountNum : 0
       let pnlDisplay = '-'
       let pnlClass = ''
       let newBalance = currentBalance
       
       if (trade.action === 'buy') {
         // 买入：更新持仓和平均成本
-        const newPosition = position + trade.quantity
+        const newPosition = position + quantity
         const newAvgCost = position > 0 
-          ? (avgCost * position + trade.price * trade.quantity) / newPosition
-          : trade.price
+          ? (avgCost * position + price * quantity) / newPosition
+          : price
         
         position = newPosition
         avgCost = newAvgCost
-        newBalance = currentBalance - trade.amount
+        newBalance = currentBalance - amount
         pnlDisplay = '-'
         pnlClass = ''
       } else if (trade.action === 'sell') {
         // 卖出：计算实际盈亏
-        const pnl = (trade.price - avgCost) * trade.quantity
-        position = Math.max(0, position - trade.quantity)
-        newBalance = currentBalance + trade.amount
+        const pnl = (price - avgCost) * quantity
+        position = Math.max(0, position - quantity)
+        newBalance = currentBalance + amount
         
         if (pnl > 0) {
           pnlDisplay = `+¥${pnl.toFixed(2)}`
@@ -407,7 +456,7 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
       }
       
       currentBalance = newBalance
-      const securityValue = position * trade.price
+      const securityValue = position * price
       const totalAssets = currentBalance + securityValue
       
       return {
@@ -419,12 +468,12 @@ export function BacktestResults({ externalStrategyData = null, strategyId = null
           second: '2-digit'
         }) : trade.date,
         action: trade.action,
-        price: trade.price.toFixed(2),
-        quantity: trade.quantity,
-        amount: trade.amount.toFixed(2),
+        price: price.toFixed(2),
+        quantity: quantity,
+        amount: amount.toFixed(2),
         pnl: pnlDisplay,
         pnlClass: pnlClass,
-        pnlValue: trade.action === 'sell' ? Number((trade.price - avgCost) * trade.quantity) : null,
+        pnlValue: trade.action === 'sell' ? Number((price - avgCost) * quantity) : null,
         balance: currentBalance.toFixed(2),
         position: position,
         avgCost: avgCost.toFixed(2),

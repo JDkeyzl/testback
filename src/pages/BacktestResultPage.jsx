@@ -62,7 +62,7 @@ export function BacktestResultPage() {
     const hasPrice = Array.isArray(s.priceSeries) && s.priceSeries.length > 0
     return hasTrades || hasEquity || hasPrice
   }, [snapState])
-
+  
   console.log('BacktestResultPage: 策略获取调试', {
     backtestParams,
     strategyId,

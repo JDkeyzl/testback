@@ -3,77 +3,166 @@
 > vite --host 0.0.0.0
 
 
-  VITE v5.4.19  ready in 177 ms
+  VITE v5.4.19  ready in 165 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.168.110.127:5173/
-  ➜  Network: http://198.18.0.65:5173/
+  ➜  Network: http://198.18.0.13:5173/
   ➜  press h + enter to show help
-3:16:34 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:16:50 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:16:58 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:18:27 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:18:47 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:18:54 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:26:57 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:27:19 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:27:36 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:27:44 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:36:40 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:53:02 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:53:03 PM [vite] ✨ new dependencies optimized: react-financial-charts
-3:53:03 PM [vite] ✨ optimized dependencies changed. reloading
-3:53:13 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:53:34 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:53:53 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-3:54:13 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:00:29 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:00:30 PM [vite] ✨ new dependencies optimized: d3-time-format, d3-format
-4:00:30 PM [vite] ✨ optimized dependencies changed. reloading
-4:00:43 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:01:43 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:04:36 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:07:28 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:07:50 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:08:02 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:14:27 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:18:23 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:18:48 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:19:01 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:21:48 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:24:25 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:24:40 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-4:38:42 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:06:10 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:06:10 PM [vite] Internal server error: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx: Unexpected token, expected "}" (787:10)
+3:12:20 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:20 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:20 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:20 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:28 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:28 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:28 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:28 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:41 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:41 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:41 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:41 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:41 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:41 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:43 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:43 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:43 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:43 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:45 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:45 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:45 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:45 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:58 AM [vite] http proxy error: /api/v1/data/sources
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:12:58 AM [vite] http proxy error: /api/v1/data/stocklist
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:13:11 AM [vite] http proxy error: /api/v1/backtest/stocks
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:13:11 AM [vite] http proxy error: /api/v1/backtest/stocks
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:13:37 AM [vite] http proxy error: /api/v1/data/fetch
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+3:46:33 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+3:49:31 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+3:49:37 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+4:12:28 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+4:12:52 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+4:12:54 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+4:27:36 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+4:28:04 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+4:29:17 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+7:59:27 PM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+8:00:40 PM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+8:00:56 PM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+8:23:03 PM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+8:23:15 PM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+8:23:18 PM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:44:56 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:45:13 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:47:11 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:52:34 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:52:34 AM [vite] Internal server error: /Users/ranka/projects/testback/src/components/StrategyBuilder.jsx: Unterminated JSX contents. (732:10)
 
-  785 |             ]
-  786 |           }}
-> 787 |           fontSize={11}
+  730 |       {/* Toast通知 */}
+  731 |       <ToastContainer toasts={toasts} onRemove={removeToast} />
+> 732 |     </div>
       |           ^
-  788 |           textFill="#0f172a"
-  789 |           stroke="#94a3b8"
-  790 |           fill="#ffffff"
+  733 |   )
+  734 | })
+  735 |
   Plugin: vite:react-babel
-  File: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx:787:10
-  785|              ]
-  786|            }}
-  787|            fontSize={11}
+  File: /Users/ranka/projects/testback/src/components/StrategyBuilder.jsx:732:10
+  730|        {/* Toast通知 */}
+  731|        <ToastContainer toasts={toasts} onRemove={removeToast} />
+  732|      </div>
      |            ^
-  788|            textFill="#0f172a"
-  789|            stroke="#94a3b8"
+  733|    )
+  734|  })
       at constructor (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:367:19)
       at JSXParserMixin.raise (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6630:19)
-      at JSXParserMixin.unexpected (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6650:16)
-      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6930:12)
-      at JSXParserMixin.jsxParseExpressionContainer (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4670:10)
-      at JSXParserMixin.jsxParseAttributeValue (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4637:21)
-      at JSXParserMixin.jsxParseAttribute (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4686:38)
-      at JSXParserMixin.jsxParseOpeningElementAfterName (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4700:28)
-      at JSXParserMixin.jsxParseOpeningElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4695:17)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4719:33)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
+      at JSXParserMixin.jsxReadToken (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4481:20)
+      at JSXParserMixin.getTokenFromCode (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4807:12)
+      at JSXParserMixin.nextToken (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5813:10)
+      at JSXParserMixin.next (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5723:10)
+      at JSXParserMixin.eat (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5727:12)
+      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6929:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4713:10)
+      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4728:37)
       at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
       at JSXParserMixin.jsxParseElement (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4782:17)
       at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4792:19)
@@ -110,38 +199,38 @@
       at JSXParserMixin.parseBlockBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13314:10)
       at JSXParserMixin.parseBlock (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13302:10)
       at JSXParserMixin.parseFunctionBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12106:24)
-      at JSXParserMixin.parseFunctionBodyAndFinish (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12092:10)
-      at /Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13450:12
-5:06:23 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:06:24 PM [vite] Internal server error: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx: Unexpected token, expected "}" (787:10)
+      at JSXParserMixin.parseArrowExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12081:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11691:12)
+      at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4797:20)
+2:53:42 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:53:42 AM [vite] Internal server error: /Users/ranka/projects/testback/src/components/StrategyBuilder.jsx: Unterminated JSX contents. (732:10)
 
-  785 |             ]
-  786 |           }}
-> 787 |           fontSize={11}
+  730 |       {/* Toast通知 */}
+  731 |       <ToastContainer toasts={toasts} onRemove={removeToast} />
+> 732 |     </div>
       |           ^
-  788 |           textFill="#0f172a"
-  789 |           stroke="#94a3b8"
-  790 |           fill="#ffffff"
+  733 |   )
+  734 | })
+  735 | export default StrategyBuilder
   Plugin: vite:react-babel
-  File: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx:787:10
-  785|              ]
-  786|            }}
-  787|            fontSize={11}
+  File: /Users/ranka/projects/testback/src/components/StrategyBuilder.jsx:732:10
+  730|        {/* Toast通知 */}
+  731|        <ToastContainer toasts={toasts} onRemove={removeToast} />
+  732|      </div>
      |            ^
-  788|            textFill="#0f172a"
-  789|            stroke="#94a3b8"
+  733|    )
+  734|  })
       at constructor (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:367:19)
       at JSXParserMixin.raise (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6630:19)
-      at JSXParserMixin.unexpected (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6650:16)
-      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6930:12)
-      at JSXParserMixin.jsxParseExpressionContainer (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4670:10)
-      at JSXParserMixin.jsxParseAttributeValue (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4637:21)
-      at JSXParserMixin.jsxParseAttribute (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4686:38)
-      at JSXParserMixin.jsxParseOpeningElementAfterName (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4700:28)
-      at JSXParserMixin.jsxParseOpeningElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4695:17)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4719:33)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
+      at JSXParserMixin.jsxReadToken (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4481:20)
+      at JSXParserMixin.getTokenFromCode (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4807:12)
+      at JSXParserMixin.nextToken (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5813:10)
+      at JSXParserMixin.next (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5723:10)
+      at JSXParserMixin.eat (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5727:12)
+      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6929:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4713:10)
+      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4728:37)
       at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
       at JSXParserMixin.jsxParseElement (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4782:17)
       at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4792:19)
@@ -178,38 +267,38 @@
       at JSXParserMixin.parseBlockBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13314:10)
       at JSXParserMixin.parseBlock (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13302:10)
       at JSXParserMixin.parseFunctionBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12106:24)
-      at JSXParserMixin.parseFunctionBodyAndFinish (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12092:10)
-      at /Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13450:12
-5:06:35 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:06:35 PM [vite] Internal server error: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx: Unexpected token, expected "}" (787:10)
+      at JSXParserMixin.parseArrowExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12081:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11691:12)
+      at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4797:20)
+2:54:43 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:54:43 AM [vite] Internal server error: /Users/ranka/projects/testback/src/components/StrategyBuilder.jsx: Unterminated JSX contents. (732:10)
 
-  785 |             ]
-  786 |           }}
-> 787 |           fontSize={11}
+  730 |       {/* Toast通知 */}
+  731 |       <ToastContainer toasts={toasts} onRemove={removeToast} />
+> 732 |     </div>
       |           ^
-  788 |           textFill="#0f172a"
-  789 |           stroke="#94a3b8"
-  790 |           fill="#ffffff"
+  733 |   )
+  734 | })
+  735 |
   Plugin: vite:react-babel
-  File: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx:787:10
-  785|              ]
-  786|            }}
-  787|            fontSize={11}
+  File: /Users/ranka/projects/testback/src/components/StrategyBuilder.jsx:732:10
+  730|        {/* Toast通知 */}
+  731|        <ToastContainer toasts={toasts} onRemove={removeToast} />
+  732|      </div>
      |            ^
-  788|            textFill="#0f172a"
-  789|            stroke="#94a3b8"
+  733|    )
+  734|  })
       at constructor (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:367:19)
       at JSXParserMixin.raise (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6630:19)
-      at JSXParserMixin.unexpected (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6650:16)
-      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6930:12)
-      at JSXParserMixin.jsxParseExpressionContainer (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4670:10)
-      at JSXParserMixin.jsxParseAttributeValue (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4637:21)
-      at JSXParserMixin.jsxParseAttribute (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4686:38)
-      at JSXParserMixin.jsxParseOpeningElementAfterName (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4700:28)
-      at JSXParserMixin.jsxParseOpeningElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4695:17)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4719:33)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
+      at JSXParserMixin.jsxReadToken (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4481:20)
+      at JSXParserMixin.getTokenFromCode (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4807:12)
+      at JSXParserMixin.nextToken (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5813:10)
+      at JSXParserMixin.next (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5723:10)
+      at JSXParserMixin.eat (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:5727:12)
+      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6929:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4713:10)
+      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4728:37)
       at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
       at JSXParserMixin.jsxParseElement (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4782:17)
       at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4792:19)
@@ -246,160 +335,13 @@
       at JSXParserMixin.parseBlockBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13314:10)
       at JSXParserMixin.parseBlock (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13302:10)
       at JSXParserMixin.parseFunctionBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12106:24)
-      at JSXParserMixin.parseFunctionBodyAndFinish (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12092:10)
-      at /Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13450:12
-5:06:47 PM [vite] Pre-transform error: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx: Unexpected token, expected "}" (787:10)
-
-  785 |             ]
-  786 |           }}
-> 787 |           fontSize={11}
-      |           ^
-  788 |           textFill="#0f172a"
-  789 |           stroke="#94a3b8"
-  790 |           fill="#ffffff"
-5:06:48 PM [vite] Internal server error: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx: Unexpected token, expected "}" (787:10)
-
-  785 |             ]
-  786 |           }}
-> 787 |           fontSize={11}
-      |           ^
-  788 |           textFill="#0f172a"
-  789 |           stroke="#94a3b8"
-  790 |           fill="#ffffff"
-  Plugin: vite:react-babel
-  File: /Users/ranka/projects/testback/src/pages/GridStrategyPage.jsx:787:10
-  785|              ]
-  786|            }}
-  787|            fontSize={11}
-     |            ^
-  788|            textFill="#0f172a"
-  789|            stroke="#94a3b8"
-      at constructor (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:367:19)
-      at JSXParserMixin.raise (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6630:19)
-      at JSXParserMixin.unexpected (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6650:16)
-      at JSXParserMixin.expect (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:6930:12)
-      at JSXParserMixin.jsxParseExpressionContainer (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4670:10)
-      at JSXParserMixin.jsxParseAttributeValue (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4637:21)
-      at JSXParserMixin.jsxParseAttribute (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4686:38)
-      at JSXParserMixin.jsxParseOpeningElementAfterName (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4700:28)
-      at JSXParserMixin.jsxParseOpeningElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4695:17)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4719:33)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
-      at JSXParserMixin.jsxParseElementAt (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4731:32)
-      at JSXParserMixin.jsxParseElement (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4782:17)
-      at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4792:19)
-      at JSXParserMixin.parseExprSubscripts (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11081:23)
-      at JSXParserMixin.parseUpdate (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11066:21)
-      at JSXParserMixin.parseMaybeUnary (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11046:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10899:61)
-      at JSXParserMixin.parseExprOps (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10904:23)
-      at JSXParserMixin.parseMaybeConditional (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10881:23)
-      at JSXParserMixin.parseMaybeAssign (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10831:21)
-      at /Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10800:39
-      at JSXParserMixin.allowInAnd (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12432:12)
-      at JSXParserMixin.parseMaybeAssignAllowIn (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10800:17)
-      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12499:17)
-      at JSXParserMixin.parseParenAndDistinguishExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11679:28)
+      at JSXParserMixin.parseArrowExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12081:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11691:12)
       at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11331:23)
       at JSXParserMixin.parseExprAtom (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:4797:20)
-      at JSXParserMixin.parseExprSubscripts (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11081:23)
-      at JSXParserMixin.parseUpdate (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11066:21)
-      at JSXParserMixin.parseMaybeUnary (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:11046:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10899:61)
-      at JSXParserMixin.parseExprOps (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10904:23)
-      at JSXParserMixin.parseMaybeConditional (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10881:23)
-      at JSXParserMixin.parseMaybeAssign (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10831:21)
-      at JSXParserMixin.parseExpressionBase (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10784:23)
-      at /Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10780:39
-      at JSXParserMixin.allowInAnd (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12427:16)
-      at JSXParserMixin.parseExpression (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:10780:17)
-      at JSXParserMixin.parseReturnStatement (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13147:28)
-      at JSXParserMixin.parseStatementContent (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12803:21)
-      at JSXParserMixin.parseStatementLike (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12772:17)
-      at JSXParserMixin.parseStatementListItem (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12752:17)
-      at JSXParserMixin.parseBlockOrModuleBlockBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13321:61)
-      at JSXParserMixin.parseBlockBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13314:10)
-      at JSXParserMixin.parseBlock (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13302:10)
-      at JSXParserMixin.parseFunctionBody (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12106:24)
-      at JSXParserMixin.parseFunctionBodyAndFinish (/Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:12092:10)
-      at /Users/ranka/projects/testback/node_modules/@babel/parser/lib/index.js:13450:12
-5:11:18 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:11:35 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:11:43 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:36:33 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:36:47 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:43:41 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:49:23 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:49:38 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:56:09 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-5:58:18 PM [vite] page reload src/main.jsx
-6:01:21 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:01:34 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:02:23 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:04:14 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:04:29 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:04:52 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:07:03 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:07:16 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:07:48 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:14:06 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:14:19 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:14:55 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:18:58 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:19:10 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:20:11 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:27:51 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:28:13 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:28:27 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:28:34 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:32:12 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:32:24 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:32:41 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:32:53 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:33:04 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:37:59 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:38:13 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:38:18 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:42:31 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:42:45 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:44:17 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:47:17 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:47:32 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:47:50 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:48:33 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:51:18 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:51:31 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:51:43 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:57:22 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:57:33 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:57:41 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-6:58:31 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:01:26 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:01:38 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:01:59 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:04:38 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:04:46 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:06:58 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:09:30 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:09:39 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:09:50 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:11:26 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:11:35 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:11:47 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:13:10 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:13:18 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:13:30 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:17:05 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:17:13 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:18:22 PM [vite] hmr update /src/pages/GridStrategyPage.jsx, /src/index.css
-7:20:38 PM [vite] hmr update /src/components/TopNavigation.jsx, /src/index.css
-7:20:45 PM [vite] hmr update /src/components/TopNavigation.jsx, /src/index.css
-7:20:52 PM [vite] hmr update /src/components/TopNavigation.jsx, /src/index.css
-7:24:12 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
-7:24:25 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
-7:29:17 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
-7:31:18 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
-7:31:54 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
-7:32:44 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
-7:34:38 PM [vite] hmr update /src/pages/SymbolBacktestPage.jsx, /src/index.css
+2:55:40 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:55:54 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:56:30 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+2:59:49 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+3:00:19 AM [vite] hmr update /src/components/StrategyBuilder.jsx, /src/index.css
+3:03:48 AM [vite] hmr update /src/components/NodeToolbar.jsx, /src/index.css
