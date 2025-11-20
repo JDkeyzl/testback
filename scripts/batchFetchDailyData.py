@@ -47,8 +47,14 @@ def batch_fetch_daily_data(
     else:
         output_dir = Path(output_dir)
     
-    # 创建输出目录
+    # 创建输出目录和子目录（10个子目录，每个最多500个文件）
     output_dir.mkdir(parents=True, exist_ok=True)
+    subdirs = [output_dir / f'stocks_{i}' for i in range(10)]
+    for subdir in subdirs:
+        subdir.mkdir(parents=True, exist_ok=True)
+    
+    # 用于跟踪每个子目录的文件数量
+    subdir_file_counts = {i: 0 for i in range(10)}
     
     # 读取股票字典
     if not dict_path.exists():
@@ -121,7 +127,19 @@ def batch_fetch_daily_data(
             
             # 安全文件名
             safe_name = "".join(ch for ch in name if ch.isalnum() or ch in ('-', '_', '.', '·', '（', '）')).strip() or "NONAME"
-            csv_path = output_dir / f"{safe_name}-{code}.csv"
+            
+            # 根据文件数量分配到子目录（每个子目录最多500个文件）
+            # 找到文件数量最少的子目录
+            min_count = min(subdir_file_counts.values())
+            target_subdir_idx = min([i for i, count in subdir_file_counts.items() if count == min_count])
+            
+            # 如果目标子目录已满（500个），找下一个未满的
+            if subdir_file_counts[target_subdir_idx] >= 500:
+                # 找第一个未满的子目录
+                target_subdir_idx = next((i for i, count in subdir_file_counts.items() if count < 500), 0)
+            
+            target_subdir = subdirs[target_subdir_idx]
+            csv_path = target_subdir / f"{safe_name}-{code}.csv"
             
             # baostock 代码格式：sh.600000 或 sz.000001
             bs_code = f"{'sh' if code.startswith('6') else 'sz'}.{code}"
@@ -189,7 +207,10 @@ def batch_fetch_daily_data(
                 # 保存为 CSV
                 df.to_csv(csv_path, index=False, encoding='utf-8')
                 
-                print(f"✓ 成功 ({len(df)} 条)")
+                # 更新子目录文件计数
+                subdir_file_counts[target_subdir_idx] += 1
+                
+                print(f"✓ 成功 ({len(df)} 条) -> {target_subdir.name}")
                 ok_count += 1
                 
             except Exception as e:

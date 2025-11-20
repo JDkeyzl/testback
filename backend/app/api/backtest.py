@@ -318,6 +318,67 @@ async def get_stock_list() -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"读取股票列表失败: {str(e)}")
 
+@router.post("/data/split-stocks")
+async def split_stocks_files_api() -> Dict[str, Any]:
+    """
+    切分现有的stocks文件到10个子目录
+    每个子目录最多500个文件
+    """
+    try:
+        # 定位脚本路径
+        here = Path(__file__).resolve()
+        candidate_roots = [
+            here.parents[3] if len(here.parents) >= 4 else here.parent,
+            here.parents[2] if len(here.parents) >= 3 else here.parent,
+        ]
+        script_path = None
+        project_root = None
+        for root in candidate_roots:
+            cand = root / 'scripts' / 'split_stocks_files.py'
+            if cand.exists():
+                script_path = cand
+                project_root = root
+                break
+        
+        if script_path is None:
+            raise HTTPException(status_code=404, detail="切分脚本不存在")
+        
+        # 执行脚本
+        py_exec = get_python_executable()
+        cmd = [py_exec, str(script_path)]
+        
+        print(f"[切分文件] 执行命令: {' '.join(cmd)}")
+        print(f"[切分文件] 工作目录: {project_root}")
+        
+        proc = subprocess.run(
+            cmd,
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=600,
+            encoding='utf-8',
+            errors='replace'
+        )
+        
+        if proc.returncode != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"切分失败: {proc.stderr or proc.stdout}"
+            )
+        
+        return {
+            "ok": True,
+            "stdout": proc.stdout,
+            "message": "文件切分完成"
+        }
+        
+    except HTTPException:
+        raise
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="切分操作超时")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"切分失败: {str(e)}")
+
 @router.post("/data/batch-daily")
 async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
     """
