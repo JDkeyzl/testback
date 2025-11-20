@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Settings, Download, Upload, ArrowLeft, Home, BarChart3, History, List } from 'lucide-react'
+import { Settings, Download, Upload, ArrowLeft, Home, BarChart3, History, List, Filter } from 'lucide-react'
 
 export function TopNavigation() {
   const navigate = useNavigate()
@@ -98,6 +98,10 @@ export function TopNavigation() {
             <Button variant="outline" size="sm" onClick={() => navigate('/stock-selection')}>
               <List className="h-4 w-4 mr-2" />
               选股
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/conditional-screener')}>
+              <Filter className="h-4 w-4 mr-2" />
+              条件选股
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/history')}>
               <History className="h-4 w-4 mr-2" />

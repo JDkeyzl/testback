@@ -37,6 +37,155 @@ class FuturesMarketModel(MarketModel):
         return 1  # 期货以合约张数计（占位）
 
 class RealBacktestEngine:
+    def _execute_signal_strategy(
+        self,
+        data: pd.DataFrame,
+        warmup: int,
+        compute_indicators,
+        generate_signals,
+        debug_name: str,
+        debug_getter,
+        current_capital: float,
+        position: int,
+        trades: List[Dict],
+        equity_curve: List[Dict],
+        position_management: str = "full",
+        stop_loss_cfg: Optional[Tuple] = None,
+    ) -> Dict[str, Any]:
+        """通用执行器：负责预热、次日执行、下单与曲线记录。
+        - compute_indicators(df) -> df_with_columns
+        - generate_signals(i, df, position) -> (buy_signal, sell_signal)
+        - debug_getter(i, df) -> dict  (调试字段)
+        """
+        df = compute_indicators(data)
+        warmup = min(max(warmup, 1), max(len(df) - 1, 0))
+
+        pending_action: Optional[str] = None
+        pending_size: int = 0
+        debug_rows: List[Dict[str, Any]] = []
+
+        for i in range(warmup, len(df)):
+            row = df.iloc[i]
+            current_price = row['close']
+            timestamp = row['timestamp']
+
+            # 执行上一bar订单
+            if pending_action is not None:
+                exec_price = row['open'] if 'open' in row and pd.notna(row['open']) else current_price
+                if pending_action == 'buy' and pending_size >= self.market.min_lot():
+                    cost = pending_size * exec_price
+                    commission = cost * self.commission_rate
+                    total_cost = cost + commission
+                    if total_cost <= current_capital:
+                        current_capital -= total_cost
+                        position += pending_size
+                        trades.append({
+                            "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            "action": "buy",
+                            "price": round(exec_price, 2),
+                            "quantity": pending_size,
+                            "amount": round(total_cost, 2),
+                            "pnl": None,
+                            "note": "execute_next_bar"
+                        })
+                elif pending_action == 'sell' and position > 0:
+                    qty = position
+                    revenue = qty * exec_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
+                    pnl = net_revenue - buy_cost
+                    current_capital += net_revenue
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(exec_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "execute_next_bar"
+                    })
+                    position = 0
+                pending_action = None
+                pending_size = 0
+
+            # 生成信号（仅挂单）
+            buy_sig, sell_sig = generate_signals(i, df, position)
+            if buy_sig:
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                if shares_to_buy >= self.market.min_lot():
+                    pending_action = 'buy'
+                    pending_size = shares_to_buy
+            elif sell_sig:
+                pending_action = 'sell'
+                pending_size = 0
+
+            # 止损（与挂单不冲突，必要时也可改为 next_open）
+            if position > 0 and (stop_loss_cfg is not None):
+                if len(stop_loss_cfg) >= 4:
+                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
+                else:
+                    sl_type, sl_value, sl_action = stop_loss_cfg
+                    sl_mode = 'close'
+                current_equity = current_capital + (position * current_price)
+                max_loss = 0.0
+                if sl_type == 'pct' and sl_value > 0:
+                    max_loss = self.initial_capital * (sl_value / 100.0)
+                elif sl_type == 'amount' and sl_value > 0:
+                    max_loss = sl_value
+                if max_loss > 0 and (self.initial_capital - current_equity) >= max_loss:
+                    if sl_action == 'reduce_half' and position > 0:
+                        qty = max(self.market.min_lot(), (position // 2) // self.market.min_lot() * self.market.min_lot())
+                    else:
+                        qty = position
+                    revenue = qty * current_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"]) * (qty/position if position>0 else 1)
+                    pnl = net_revenue - buy_cost
+                    current_capital += net_revenue
+                    position -= qty
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(current_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "止损"
+                    })
+
+            # 资金曲线抽样
+            if i % 10 == 0:
+                current_equity = current_capital + (position * current_price)
+                equity_curve.append({
+                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "equity": round(current_equity, 2),
+                    "price": round(current_price, 2)
+                })
+
+            # 调试
+            try:
+                dbg_vals = debug_getter(i, df) if debug_getter else {}
+                debug_rows.append({
+                    'ts': timestamp.strftime('%Y-%m-%d'),
+                    **({k: (float(v) if v is not None and pd.notna(v) else None) for k, v in dbg_vals.items()}),
+                    'position': int(position),
+                    'pending': pending_action,
+                    'price': float(current_price)
+                })
+            except Exception:
+                pass
+
+        res = self._calculate_final_metrics(current_capital, position, df, trades, equity_curve)
+        try:
+            res.setdefault('debug', {})[debug_name] = {
+                'warmup': int(warmup),
+                'bars': debug_rows[:500]
+            }
+        except Exception:
+            pass
+        return res
     """真实数据回测引擎"""
     
     def __init__(self, initial_capital: float = 100000.0, commission_rate: float = 0.001, market: Optional[MarketModel] = None):
@@ -450,142 +599,49 @@ class RealBacktestEngine:
                         trades: List[Dict], equity_curve: List[Dict], 
                         position_management: str = "full",
                         stop_loss_cfg: Optional[Tuple[str, float, str]] = None) -> Dict[str, Any]:
-        """执行移动平均策略（双均线交叉）"""
-        # 从节点数据获取参数
-        period = node_data.get("period", 20)
-        threshold = node_data.get("threshold", 0)
-        operator = node_data.get("operator", ">")
-        
-        logger.info(f"MA策略参数: period={period}, threshold={threshold}, operator={operator}")
-        
-        # 计算短期和长期移动平均线（避免 SettingWithCopy，用副本并 assign）
+        """执行移动平均策略（双均线交叉） - 通过通用执行器执行"""
+        period = int(node_data.get("period", 20) or 20)
         short_period = min(period, 10)
         long_period = period
-        data = data.copy()
-        data = data.assign(
-            ma_short=data['close'].rolling(window=short_period).mean(),
-            ma_long=data['close'].rolling(window=long_period).mean()
+
+        def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
+            d = df.copy()
+            return d.assign(
+                ma_short=d['close'].rolling(window=short_period).mean(),
+                ma_long=d['close'].rolling(window=long_period).mean()
+            )
+
+        def gen_signals(i: int, d: pd.DataFrame, pos: int) -> Tuple[bool, bool]:
+            if i == 0:
+                return (False, False)
+            row = d.iloc[i]
+            prev = d.iloc[i-1]
+            if pd.isna(row['ma_short']) or pd.isna(row['ma_long']) or pd.isna(prev['ma_short']) or pd.isna(prev['ma_long']):
+                return (False, False)
+            golden_cross = (row['ma_short'] > row['ma_long']) and (prev['ma_short'] <= prev['ma_long'])
+            death_cross = (row['ma_short'] < row['ma_long']) and (prev['ma_short'] >= prev['ma_long'])
+            return (golden_cross and pos == 0, death_cross and pos > 0)
+
+        def dbg(i: int, d: pd.DataFrame) -> Dict[str, Any]:
+            r = d.iloc[i]
+            return {'ma_short': float(r['ma_short']) if pd.notna(r['ma_short']) else None,
+                    'ma_long': float(r['ma_long']) if pd.notna(r['ma_long']) else None}
+
+        warmup = max(long_period + 1, 20)
+        return self._execute_signal_strategy(
+            data=data,
+            warmup=warmup,
+            compute_indicators=compute_indicators,
+            generate_signals=gen_signals,
+            debug_name='ma',
+            debug_getter=dbg,
+            current_capital=current_capital,
+            position=position,
+            trades=trades,
+            equity_curve=equity_curve,
+            position_management=position_management,
+            stop_loss_cfg=stop_loss_cfg
         )
-        
-        # 回测逻辑
-        for i in range(long_period, len(data)):
-            row = data.iloc[i]
-            current_price = row['close']
-            timestamp = row['timestamp']
-            ma_short = row['ma_short']
-            ma_long = row['ma_long']
-            
-            if pd.isna(ma_short) or pd.isna(ma_long):
-                continue
-            
-            # 双均线交叉策略：短期均线上穿长期均线买入，下穿卖出
-            if i > long_period:
-                prev_ma_short = data.iloc[i-1]['ma_short']
-                prev_ma_long = data.iloc[i-1]['ma_long']
-                
-                # 金叉：短期均线上穿长期均线
-                golden_cross = (ma_short > ma_long) and (prev_ma_short <= prev_ma_long)
-                # 死叉：短期均线下穿长期均线
-                death_cross = (ma_short < ma_long) and (prev_ma_short >= prev_ma_long)
-                
-                # 买入条件：金叉且没有持仓
-                if golden_cross and position == 0:
-                    # 根据仓位管理策略计算买入股数
-                    shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
-                    
-                    if shares_to_buy >= self.market.min_lot():
-                        cost = shares_to_buy * current_price
-                        commission = cost * self.commission_rate
-                        total_cost = cost + commission
-                        
-                        if total_cost <= current_capital:
-                            current_capital -= total_cost
-                            position += shares_to_buy
-                            
-                            trades.append({
-                                "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                                "action": "buy",
-                                "price": round(current_price, 2),
-                                "quantity": shares_to_buy,
-                                "amount": round(total_cost, 2),
-                                "pnl": None
-                            })
-            
-                # 卖出条件：死叉且有持仓
-                elif death_cross and position > 0:
-                    revenue = position * current_price
-                    commission = revenue * self.commission_rate
-                    net_revenue = revenue - commission
-                    
-                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
-                    pnl = net_revenue - buy_cost
-                    
-                    current_capital += net_revenue
-                    
-                    trades.append({
-                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        "action": "sell",
-                        "price": round(current_price, 2),
-                        "quantity": position,
-                        "amount": round(net_revenue, 2),
-                        "pnl": round(pnl, 2)
-                    })
-                    
-                    position = 0
-            
-            # 止损检查
-            if position > 0 and (stop_loss_cfg is not None):
-                if len(stop_loss_cfg) >= 4:
-                    sl_type, sl_value, sl_action, sl_mode = stop_loss_cfg
-                else:
-                    sl_type, sl_value, sl_action = stop_loss_cfg
-                    sl_mode = 'close'
-                current_equity = current_capital + (position * current_price)
-                max_loss = 0.0
-                if sl_type == 'pct' and sl_value > 0:
-                    max_loss = self.initial_capital * (sl_value / 100.0)
-                elif sl_type == 'amount' and sl_value > 0:
-                    max_loss = sl_value
-                if max_loss > 0 and (self.initial_capital - current_equity) >= max_loss:
-                    # 触发止损
-                    if sl_action == 'reduce_half' and position > 0:
-                        qty = max(self.market.min_lot(), (position // 2) // self.market.min_lot() * self.market.min_lot())
-                    else:
-                        qty = position
-                    revenue = qty * current_price
-                    commission = revenue * self.commission_rate
-                    net_revenue = revenue - commission
-                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"]) * (qty/position if position>0 else 1)
-                    pnl = net_revenue - buy_cost
-                    current_capital += net_revenue
-                    position -= qty
-                    trades.append({
-                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        "action": "sell",
-                        "price": round(current_price, 2),
-                        "quantity": qty,
-                        "amount": round(net_revenue, 2),
-                        "pnl": round(pnl, 2),
-                        "note": "止损"
-                    })
-            
-            # 记录资金曲线
-            if i % 10 == 0:
-                current_equity = current_capital + (position * current_price)
-                daily_return = 0
-                
-                if len(equity_curve) > 0:
-                    prev_equity = equity_curve[-1]["equity"]
-                    daily_return = (current_equity - prev_equity) / prev_equity
-                
-                equity_curve.append({
-                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    "equity": round(current_equity, 2),
-                    "returns": round(daily_return, 4),
-                    "price": round(current_price, 2)
-                })
-        
-        return self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
     
     def _run_rsi_strategy(self, data: pd.DataFrame, node_data: Dict, 
                          current_capital: float, position: int, 
@@ -602,19 +658,37 @@ class RealBacktestEngine:
         # 计算RSI（避免 SettingWithCopy）
         data = data.copy()
         data = data.assign(rsi=self._calculate_rsi(data['close'], period))
+        # 防御：保证有足够的 warm-up 数据（至少 period+1，且不小于20）
+        warmup = max(period + 1, 20)
+        warmup = min(warmup, max(len(data) - 1, 0))
         # 调试统计
         stats = {
             'type': 'rsi',
             'params': {'period': period, 'threshold': threshold, 'operator': operator},
-            'indicator_samples': {'rsi_notna': int(data['rsi'].notna().sum())},
+            'indicator_samples': {'rsi_notna': int(data['rsi'].notna().sum()), 'warmup': int(warmup)},
             'signals': {'cond_true': 0},
             'orders': {'buy_attempts': 0, 'sell_attempts': 0, 'buys': 0, 'sells': 0},
             'rejections': {'min_lot': 0, 'insufficient_cash': 0},
             'min_lot': self.market.min_lot(),
         }
+        debug_rows: List[Dict[str, Any]] = []
+
+        # 明确初始化账户状态
+        try:
+            current_capital = float(current_capital)
+        except Exception:
+            current_capital = float(self.initial_capital)
+        try:
+            position = int(position)
+        except Exception:
+            position = 0
+
+        # 将“信号”与“执行”严格区分：默认信号次日执行
+        pending_action: Optional[str] = None  # 'buy' | 'sell' | None
+        pending_size: int = 0
         
         # 回测逻辑（使用参数化阈值与操作符）
-        for i in range(period, len(data)):
+        for i in range(warmup, len(data)):
             row = data.iloc[i]
             current_price = row['close']
             timestamp = row['timestamp']
@@ -623,15 +697,50 @@ class RealBacktestEngine:
             if pd.isna(rsi_value):
                 continue
             
-            condition_met = False
-            if operator == ">":
-                condition_met = rsi_value > threshold
-            elif operator == "<":
-                condition_met = rsi_value < threshold
-            elif operator == ">=":
-                condition_met = rsi_value >= threshold
-            elif operator == "<=":
-                condition_met = rsi_value <= threshold
+            # 先执行上一根K线的待执行订单（以本bar的开盘价，若无则用收盘价）
+            if pending_action is not None:
+                exec_price = row['open'] if 'open' in row and pd.notna(row['open']) else current_price
+                if pending_action == 'buy' and pending_size >= self.market.min_lot():
+                    cost = pending_size * exec_price
+                    commission = cost * self.commission_rate
+                    total_cost = cost + commission
+                    if total_cost <= current_capital:
+                        current_capital -= total_cost
+                        position += pending_size
+                        stats['orders']['buys'] += 1
+                        trades.append({
+                            "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            "action": "buy",
+                            "price": round(exec_price, 2),
+                            "quantity": pending_size,
+                            "amount": round(total_cost, 2),
+                            "pnl": None,
+                            "note": "execute_next_bar"
+                        })
+                    else:
+                        stats['rejections']['insufficient_cash'] += 1
+                elif pending_action == 'sell' and position > 0:
+                    qty = position
+                    revenue = qty * exec_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
+                    pnl = net_revenue - buy_cost
+                    current_capital += net_revenue
+                    stats['orders']['sells'] += 1
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(exec_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "execute_next_bar"
+                    })
+                    position = 0
+                # 清空待执行指令
+                pending_action = None
+                pending_size = 0
             
             # 参数化 RSI 交易逻辑：根据 operator/threshold 触发
             cond_buy = (position == 0 and (
@@ -642,60 +751,25 @@ class RealBacktestEngine:
             ))
             if cond_buy:
                 stats['signals']['cond_true'] += 1
-                # 根据仓位管理策略计算买入股数
+                # 生成次日执行的买入指令
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 stats['orders']['buy_attempts'] += 1
-                
                 if shares_to_buy >= self.market.min_lot():
-                    cost = shares_to_buy * current_price
-                    commission = cost * self.commission_rate
-                    total_cost = cost + commission
-                    
-                    if total_cost <= current_capital:
-                        current_capital -= total_cost
-                        position += shares_to_buy
-                        stats['orders']['buys'] += 1
-                        
-                        trades.append({
-                            "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                            "action": "buy",
-                            "price": round(current_price, 2),
-                            "quantity": shares_to_buy,
-                            "amount": round(total_cost, 2),
-                            "pnl": None
-                        })
-                    else:
-                        stats['rejections']['insufficient_cash'] += 1
+                    pending_action = 'buy'
+                    pending_size = shares_to_buy
                 else:
                     stats['rejections']['min_lot'] += 1
             
-            elif position > 0 and (
+            cond_sell = position > 0 and (
                 (operator in ('>','above') and rsi_value > threshold) or
                 (operator in ('<','below') and rsi_value < threshold) or
                 (operator == '>=' and rsi_value >= threshold) or
                 (operator == '<=' and rsi_value <= threshold)
-            ):
+            )
+            if cond_sell:
                 stats['orders']['sell_attempts'] += 1
-                revenue = position * current_price
-                commission = revenue * self.commission_rate
-                net_revenue = revenue - commission
-                
-                buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
-                pnl = net_revenue - buy_cost
-                
-                current_capital += net_revenue
-                
-                stats['orders']['sells'] += 1
-                trades.append({
-                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    "action": "sell",
-                    "price": round(current_price, 2),
-                    "quantity": position,
-                    "amount": round(net_revenue, 2),
-                    "pnl": round(pnl, 2)
-                })
-                
-                position = 0
+                pending_action = 'sell'
+                pending_size = 0
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
@@ -722,15 +796,15 @@ class RealBacktestEngine:
                     pnl = net_revenue - buy_cost
                     current_capital += net_revenue
                     position -= qty
-                    trades.append({
-                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        "action": "sell",
-                        "price": round(current_price, 2),
+                trades.append({
+                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "action": "sell",
+                    "price": round(current_price, 2),
                         "quantity": qty,
-                        "amount": round(net_revenue, 2),
+                    "amount": round(net_revenue, 2),
                         "pnl": round(pnl, 2),
                         "note": "止损"
-                    })
+                })
             
             # 记录资金曲线
             if i % 10 == 0:
@@ -747,10 +821,22 @@ class RealBacktestEngine:
                     "returns": round(daily_return, 4),
                     "price": round(current_price, 2)
                 })
+            # 记录调试行（限制体积在返回时切片）
+            try:
+                debug_rows.append({
+                    'ts': timestamp.strftime('%Y-%m-%d'),
+                    'rsi': float(rsi_value) if pd.notna(rsi_value) else None,
+                    'signal': 'buy' if cond_buy else ('sell' if cond_sell else None),
+                    'position': int(position),
+                    'pending': pending_action
+                })
+            except Exception:
+                pass
         
         res = self._calculate_final_metrics(current_capital, position, data, trades, equity_curve)
         try:
             res.setdefault('debug', {})['rsi'] = stats
+            res['debug']['bars'] = debug_rows[:500]
         except Exception:
             pass
         return res
@@ -776,9 +862,16 @@ class RealBacktestEngine:
             bb_upper=bb_middle + (bb_std * std_dev),
             bb_lower=bb_middle - (bb_std * std_dev)
         )
+        # 防御：warm-up，至少 period+1 且不小于 20
+        warmup = max(period + 1, 20)
+        warmup = min(warmup, max(len(data) - 1, 0))
+
+        # 信号次日执行
+        pending_action: Optional[str] = None
+        pending_size: int = 0
         
         # 回测逻辑（简化版）
-        for i in range(period, len(data)):
+        for i in range(warmup, len(data)):
             row = data.iloc[i]
             current_price = row['close']
             timestamp = row['timestamp']
@@ -788,49 +881,57 @@ class RealBacktestEngine:
             if pd.isna(bb_upper) or pd.isna(bb_lower):
                 continue
             
-            # 布林带策略：价格突破上轨买入，跌破下轨卖出
-            if current_price > bb_upper and position == 0:
-                # 根据仓位管理策略计算买入股数
-                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
-                
-                if shares_to_buy >= self.market.min_lot():
-                    cost = shares_to_buy * current_price
+            # 先执行上一bar的待执行订单
+            if pending_action is not None:
+                exec_price = row['open'] if 'open' in row and pd.notna(row['open']) else current_price
+                if pending_action == 'buy' and pending_size >= self.market.min_lot():
+                    cost = pending_size * exec_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
-                    
                     if total_cost <= current_capital:
                         current_capital -= total_cost
-                        position += shares_to_buy
-                        
+                        position += pending_size
                         trades.append({
                             "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                             "action": "buy",
-                            "price": round(current_price, 2),
-                            "quantity": shares_to_buy,
+                            "price": round(exec_price, 2),
+                            "quantity": pending_size,
                             "amount": round(total_cost, 2),
-                            "pnl": None
+                            "pnl": None,
+                            "note": "execute_next_bar"
                         })
+                elif pending_action == 'sell' and position > 0:
+                    qty = position
+                    revenue = qty * exec_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
+                    pnl = net_revenue - buy_cost
+                    current_capital += net_revenue
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(exec_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "execute_next_bar"
+                    })
+                    position = 0
+                pending_action = None
+                pending_size = 0
+            
+            # 布林带策略：价格突破上轨买入，跌破下轨卖出（信号次日执行）
+            if current_price > bb_upper and position == 0:
+                # 根据信号挂单，次日执行
+                shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
+                if shares_to_buy >= self.market.min_lot():
+                    pending_action = 'buy'
+                    pending_size = shares_to_buy
             
             elif current_price < bb_lower and position > 0:
-                revenue = position * current_price
-                commission = revenue * self.commission_rate
-                net_revenue = revenue - commission
-                
-                buy_cost = sum([t["amount"] for t in trades if t["action"] == "buy"])
-                pnl = net_revenue - buy_cost
-                
-                current_capital += net_revenue
-                
-                trades.append({
-                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    "action": "sell",
-                    "price": round(current_price, 2),
-                    "quantity": position,
-                    "amount": round(net_revenue, 2),
-                    "pnl": round(pnl, 2)
-                })
-                
-                position = 0
+                pending_action = 'sell'
+                pending_size = 0
             
             # 止损检查
             if position > 0 and (stop_loss_cfg is not None):
@@ -857,15 +958,15 @@ class RealBacktestEngine:
                     pnl = net_revenue - buy_cost
                     current_capital += net_revenue
                     position -= qty
-                    trades.append({
-                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        "action": "sell",
-                        "price": round(current_price, 2),
+                trades.append({
+                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "action": "sell",
+                    "price": round(current_price, 2),
                         "quantity": qty,
-                        "amount": round(net_revenue, 2),
+                    "amount": round(net_revenue, 2),
                         "pnl": round(pnl, 2),
                         "note": "止损"
-                    })
+                })
             
             # 记录资金曲线
             if i % 10 == 0:
@@ -934,8 +1035,16 @@ class RealBacktestEngine:
                 return x != y
             return x > y
 
+        # 防御：warm-up，至少 max(slow, signal)+1 且不小于 20
+        warmup = max(max(slow, signal) + 1, 20)
+        warmup = min(warmup, max(len(data) - 1, 0))
+
+        # 信号次日执行 + intrabar 止损可选
+        pending_action: Optional[str] = None
+        pending_size: int = 0
+
         open_position_cost = 0.0  # 当前持仓的总成本（含手续费），用于精确计算止损和收益
-        for i in range(max(slow, signal) + 1, len(data)):
+        for i in range(warmup, len(data)):
             row = data.iloc[i]
             prev = data.iloc[i-1]
             current_price = row['close']
@@ -989,45 +1098,56 @@ class RealBacktestEngine:
             if buy_cross and position == 0 and not pre_holiday_block_new_entry:
                 shares_to_buy = self.calculate_position_size(current_capital, current_price, position_management)
                 if shares_to_buy >= self.market.min_lot():
-                    cost = shares_to_buy * current_price
+                    pending_action = 'buy'
+                    pending_size = shares_to_buy
+
+            elif sell_cross and position > 0:
+                pending_action = 'sell'
+                pending_size = 0
+
+            # 执行上一bar的待执行订单（放在信号判断之后，以当前bar开盘价成交）
+            if pending_action is not None:
+                exec_price = row['open'] if 'open' in row and pd.notna(row['open']) else current_price
+                if pending_action == 'buy' and pending_size >= self.market.min_lot():
+                    cost = pending_size * exec_price
                     commission = cost * self.commission_rate
                     total_cost = cost + commission
                     if total_cost <= current_capital:
                         current_capital -= total_cost
-                        position += shares_to_buy
+                        position += pending_size
                         open_position_cost += total_cost
                         trades.append({
                             "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                             "action": "buy",
-                            "price": round(current_price, 2),
-                            "quantity": shares_to_buy,
+                            "price": round(exec_price, 2),
+                            "quantity": pending_size,
                             "amount": round(total_cost, 2),
-                            "pnl": None
+                            "pnl": None,
+                            "note": "execute_next_bar"
                         })
-                        did_trade_this_bar = True
-
-            elif (not did_trade_this_bar) and sell_cross and position > 0:
-                qty = position
-                revenue = qty * current_price
-                commission = revenue * self.commission_rate
-                net_revenue = revenue - commission
-                # 以当前持仓成本计算本次卖出盈亏
-                sell_cost = open_position_cost * (qty / position) if position > 0 else 0.0
-                pnl = net_revenue - sell_cost
-                current_capital += net_revenue
-                trades.append({
-                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    "action": "sell",
-                    "price": round(current_price, 2),
-                    "quantity": qty,
-                    "amount": round(net_revenue, 2),
-                    "pnl": round(pnl, 2)
-                })
-                position -= qty
-                open_position_cost -= sell_cost
-                if position == 0:
-                    open_position_cost = 0.0
-                did_trade_this_bar = True
+                elif pending_action == 'sell' and position > 0:
+                    qty = position
+                    revenue = qty * exec_price
+                    commission = revenue * self.commission_rate
+                    net_revenue = revenue - commission
+                    sell_cost = open_position_cost * (qty / position) if position > 0 else 0.0
+                    pnl = net_revenue - sell_cost
+                    current_capital += net_revenue
+                    trades.append({
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "action": "sell",
+                        "price": round(exec_price, 2),
+                        "quantity": qty,
+                        "amount": round(net_revenue, 2),
+                        "pnl": round(pnl, 2),
+                        "note": "execute_next_bar"
+                    })
+                    position -= qty
+                    open_position_cost -= sell_cost
+                    if position == 0:
+                        open_position_cost = 0.0
+                pending_action = None
+                pending_size = 0
 
             # 止损检查
             if (not did_trade_this_bar) and position > 0 and (stop_loss_cfg is not None):

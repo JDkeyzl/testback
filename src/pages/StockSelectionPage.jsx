@@ -705,24 +705,26 @@ export function StockSelectionPage() {
               </div>
             ) : '批量回测'}
           </Button>
-          {status && (
-            <div className="text-xs text-muted-foreground">
-              {status}
-              {isLoadingData && dataProgress.total > 0 && (
-                <span className="ml-2">
-                  ({dataProgress.current}/{dataProgress.total})
-                </span>
-              )}
-            </div>
-          )}
-          {isLoadingData && dataProgress.total > 0 && (
-            <div className="w-64 bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${(dataProgress.current / dataProgress.total) * 100}%` }}
-              ></div>
-            </div>
-          )}
+          <div>
+            {status && (
+              <div className="text-xs text-muted-foreground">
+                {status}
+                {isLoadingData && dataProgress.total > 0 && (
+                  <span className="ml-2">
+                    ({dataProgress.current}/{dataProgress.total})
+                  </span>
+                )}
+              </div>
+            )}
+            {isLoadingData && dataProgress.total > 0 && (
+              <div className="w-64 bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${(dataProgress.current / dataProgress.total) * 100}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
         </div>
         {/* 回测结果 Tabs 控件 */}
         <div className="flex items-center justify-between mb-2">

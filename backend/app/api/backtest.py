@@ -1,23 +1,29 @@
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from typing import Dict, Any, List, Optional
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import subprocess
 from pathlib import Path
+import uuid
+import threading
 
 from ..models.simple import SimpleBacktestRequest, SimpleBacktestResult
 from ..services.backtest_engine import BacktestEngine
 from ..real_backtest_engine import run_real_backtest
 from ..futures_backtest_engine import run_futures_backtest
-from ..data_loader import get_data_info, data_loader
+from ..data_loader import get_data_info, data_loader, load_stock_data
 from ..futures_data import get_futures_data
 import numpy as np
 import pandas as pd
 import csv
 
 router = APIRouter()
+
+# 全局任务存储（内存版，适合单机）
+screening_tasks: Dict[str, Dict[str, Any]] = {}
+tasks_lock = threading.Lock()
 @router.get("/futures/contracts")
 async def list_futures_contracts() -> Dict[str, Any]:
     """
@@ -212,6 +218,45 @@ async def list_data_sources() -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"列出数据源失败: {str(e)}")
 
+@router.get("/data/kline/{symbol}")
+async def get_kline_data(symbol: str, timeframe: str = "1d") -> Dict[str, Any]:
+    """
+    获取指定股票的K线数据（用于图表展示）
+    参数：symbol=股票代码，timeframe=周期（1d/1w等）
+    返回：{ ok: true, symbol, timeframe, data: [{timestamp, open, high, low, close, volume}] }
+    """
+    try:
+        df = load_stock_data(symbol, timeframe)
+        if df is None or df.empty:
+            raise HTTPException(status_code=404, detail=f"未找到股票 {symbol} 的数据")
+        
+        # 转为前端可用的格式
+        records = []
+        for _, row in df.iterrows():
+            try:
+                records.append({
+                    "timestamp": str(row['timestamp']),
+                    "open": float(row['open']) if pd.notna(row['open']) else 0,
+                    "high": float(row['high']) if pd.notna(row['high']) else 0,
+                    "low": float(row['low']) if pd.notna(row['low']) else 0,
+                    "close": float(row['close']) if pd.notna(row['close']) else 0,
+                    "volume": float(row['volume']) if pd.notna(row['volume']) else 0
+                })
+            except Exception:
+                continue
+        
+        return {
+            "ok": True,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "count": len(records),
+            "data": records
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取K线数据失败: {str(e)}")
+
 @router.get("/data/stocklist")
 async def get_stock_list() -> Dict[str, Any]:
     """返回股票列表，优先使用包含行业的文件。
@@ -249,6 +294,122 @@ async def get_stock_list() -> Dict[str, Any]:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"读取股票列表失败: {str(e)}")
+
+@router.post("/data/batch-daily")
+async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    批量获取A股日K数据（调用 scripts/batchFetchDailyData.py）
+    body: { days?: 365, limit?: number }
+    """
+    try:
+        days = int(body.get('days') or 365)
+        limit = body.get('limit')
+        
+        # 定位脚本路径
+        here = Path(__file__).resolve()
+        candidate_roots = [
+            here.parents[3] if len(here.parents) >= 4 else here.parent,
+            here.parents[2] if len(here.parents) >= 3 else here.parent,
+        ]
+        script_path = None
+        project_root = None
+        for root in candidate_roots:
+            cand = root / 'scripts' / 'batchFetchDailyData.py'
+            if cand.exists():
+                script_path = cand
+                project_root = root
+                break
+        if script_path is None:
+            # 尝试更多路径
+            all_roots = [here.parents[i] for i in range(min(5, len(here.parents)))]
+            checked_paths = [str(root / 'scripts' / 'batchFetchDailyData.py') for root in all_roots]
+            raise HTTPException(
+                status_code=404, 
+                detail=f"批量获取脚本不存在。已检查路径: {', '.join(checked_paths)}"
+            )
+        
+        # 执行脚本
+        py_exec = os.environ.get('PYTHON') or sys.executable or 'python3'
+        cmd = [py_exec, str(script_path), '--days', str(days)]
+        if limit:
+            cmd.extend(['--limit', str(limit)])
+        
+        print(f"[批量获取] 执行命令: {' '.join(cmd)}")
+        print(f"[批量获取] 工作目录: {project_root}")
+        
+        proc = subprocess.run(
+            cmd, 
+            cwd=str(project_root), 
+            capture_output=True, 
+            text=True, 
+            timeout=3600,
+            encoding='utf-8',
+            errors='replace'
+        )
+        
+        print(f"[批量获取] 返回码: {proc.returncode}")
+        print(f"[批量获取] stdout长度: {len(proc.stdout)}")
+        print(f"[批量获取] stderr长度: {len(proc.stderr)}")
+        
+        if proc.returncode != 0:
+            error_msg = proc.stderr or proc.stdout or "未知错误"
+            print(f"[批量获取] 错误输出: {error_msg[:500]}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"脚本执行失败 (返回码: {proc.returncode}): {error_msg[:1000]}"
+            )
+        
+        # 解析 JSON 结果
+        lines = proc.stdout.strip().split('\n')
+        json_start = -1
+        for i, line in enumerate(lines):
+            if '=== JSON RESULT ===' in line:
+                json_start = i + 1
+                break
+        
+        result = {'ok': 0, 'fail': 0, 'total': 0, 'errors': []}
+        if json_start >= 0 and json_start < len(lines):
+            try:
+                json_str = '\n'.join(lines[json_start:])
+                result = json.loads(json_str)
+                print(f"[批量获取] 解析结果: {result}")
+            except Exception as e:
+                print(f"[批量获取] JSON解析失败: {e}")
+                print(f"[批量获取] JSON内容: {json_str[:500] if 'json_str' in locals() else 'N/A'}")
+                # 即使JSON解析失败，也尝试从stdout中提取信息
+                if '完成:' in proc.stdout:
+                    # 尝试从输出中提取数字
+                    import re
+                    match = re.search(r'成功 (\d+), 失败 (\d+), 总计 (\d+)', proc.stdout)
+                    if match:
+                        result = {
+                            'ok': int(match.group(1)),
+                            'fail': int(match.group(2)),
+                            'total': int(match.group(3)),
+                            'errors': []
+                        }
+        
+        # 清缓存
+        try:
+            data_loader.clear_cache()
+        except Exception as e:
+            print(f"[批量获取] 清缓存失败: {e}")
+        
+        return {
+            "ok": True, 
+            "summary": result, 
+            "stdout": proc.stdout[-2000:] if len(proc.stdout) > 2000 else proc.stdout
+        }
+    except HTTPException:
+        raise
+    except subprocess.TimeoutExpired as e:
+        print(f"[批量获取] 超时: {e}")
+        raise HTTPException(status_code=500, detail="脚本执行超时（>1小时）")
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[批量获取] 异常: {error_trace}")
+        raise HTTPException(status_code=500, detail=f"批量获取失败: {str(e)}")
 
 @router.post("/data/fetch")
 async def fetch_stock_data(body: Dict[str, Any]) -> Dict[str, Any]:
@@ -401,3 +562,601 @@ async def fetch_futures_data(symbol: str, period: str = "5", startDate: str = No
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"期货数据获取失败: {str(e)}")
+
+@router.post("/screener/multi-macd")
+async def screener_multi_macd(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    多周期MACD共振筛选：
+    body: {
+      timeframes?: ['5m','15m','1h','1d'],
+      direction?: 'bull' | 'bear' | 'both',  // 默认 bull（全部>0）
+      symbols?: string[],                    // 可选；不传时使用本地data中的CSV可用标的
+      fast?: number, slow?: number, signal?: number
+    }
+    返回满足所有周期同向的股票清单（按最后一根K线判断趋势）。
+    """
+    try:
+        timeframes = body.get('timeframes') or ['5m', '15m', '1h', '1d']
+        direction = (body.get('direction') or 'bull').lower()
+        fast = int(body.get('fast') or 12)
+        slow = int(body.get('slow') or 26)
+        signal = int(body.get('signal') or 9)
+
+        # 候选标的
+        if isinstance(body.get('symbols'), list) and body.get('symbols'):
+            symbols = [str(x) for x in body['symbols'] if x]
+        else:
+            try:
+                entries = data_loader.list_symbols()
+                symbols = [str(e['symbol']) for e in entries if isinstance(e, dict) and e.get('kind') == 'stock' and e.get('symbol')]
+            except Exception:
+                symbols = []
+        if not symbols:
+            raise HTTPException(status_code=400, detail="没有可用的本地数据源或未提供 symbols")
+
+        # 名称映射（可选）
+        name_map: Dict[str, str] = {}
+        try:
+            project_root = Path(__file__).resolve().parents[3]
+            with_industry = project_root / 'data' / 'stockList' / 'all_stock_with_industry.json'
+            pure = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
+            data: list = []
+            if with_industry.exists():
+                data = json.loads(with_industry.read_text(encoding='utf-8'))
+            elif pure.exists():
+                data = json.loads(pure.read_text(encoding='utf-8'))
+            for it in (data or []):
+                try:
+                    code = str(it.get('code') or '')
+                    nm = str(it.get('code_name') or it.get('name') or '')
+                    if code and nm:
+                        name_map[code] = nm
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        # 兜底：用本地CSV文件名解析出的中文名补充映射
+        try:
+            entries = data_loader.list_symbols()
+            for e in (entries or []):
+                try:
+                    if not isinstance(e, dict):
+                        continue
+                    if e.get('kind') != 'stock':
+                        continue
+                    code = str(e.get('symbol') or '')
+                    nm = str(e.get('name') or '')
+                    if code and nm and not name_map.get(code):
+                        name_map[code] = nm
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        def macd_trend(df: pd.DataFrame) -> str:
+            """
+            判断MACD柱状图是否上升/下降（动能方向）
+            - bull: 柱子上升（hist[-1] > hist[-2]），动能增强
+            - bear: 柱子下降（hist[-1] < hist[-2]），动能减弱
+            - neutral: 数据不足或持平
+            """
+            if df is None or df.empty or 'close' not in df.columns:
+                return 'neutral'
+            closes = pd.to_numeric(df['close'], errors='coerce')
+            if len(closes) < max(slow, signal) + 2:  # 至少需要slow+2根K线
+                return 'neutral'
+            
+            ema_fast = closes.ewm(span=fast, adjust=False).mean()
+            ema_slow = closes.ewm(span=slow, adjust=False).mean()
+            dif = ema_fast - ema_slow
+            dea = dif.ewm(span=signal, adjust=False).mean()
+            hist = dif - dea  # MACD柱状图
+            
+            if len(hist) < 2:
+                return 'neutral'
+            
+            # 取最后两根柱子
+            last_hist = hist.iloc[-1]
+            prev_hist = hist.iloc[-2]
+            
+            if pd.isna(last_hist) or pd.isna(prev_hist):
+                return 'neutral'
+            
+            # 判断柱子变化方向
+            if last_hist > prev_hist:
+                return 'bull'  # 柱子上升，动能增强
+            elif last_hist < prev_hist:
+                return 'bear'  # 柱子下降，动能减弱
+            else:
+                return 'neutral'  # 持平
+
+        selected: List[Dict[str, Any]] = []
+        errors: List[Dict[str, Any]] = []
+        for sym in symbols:
+            tf_results: Dict[str, str] = {}
+            try:
+                for tf in timeframes:
+                    try:
+                        df = load_stock_data(sym, tf)
+                    except Exception as ee:
+                        tf_results[tf] = 'error'
+                        continue
+                    tf_results[tf] = macd_trend(df)
+                # 判定是否同向
+                signs = [s for s in tf_results.values() if s in ('bull', 'bear')]
+                if len(signs) != len(timeframes):
+                    continue
+                all_bull = all(s == 'bull' for s in signs)
+                all_bear = all(s == 'bear' for s in signs)
+                keep = False
+                if direction == 'bull':
+                    keep = all_bull
+                elif direction == 'bear':
+                    keep = all_bear
+                else:
+                    keep = (all_bull or all_bear)
+                if keep:
+                    selected.append({
+                        "code": sym,
+                        "name": name_map.get(sym) or sym,
+                        "trends": tf_results
+                    })
+            except Exception as e:
+                errors.append({"symbol": sym, "error": str(e)})
+                continue
+
+        return {
+            "ok": True,
+            "count": len(selected),
+            "timeframes": timeframes,
+            "direction": direction,
+            "items": selected,
+            "errors": errors
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"条件选股失败: {str(e)}")
+
+@router.post("/screener/multi-macd-async")
+async def start_screening_task_async(body: Dict[str, Any], background_tasks: BackgroundTasks) -> Dict[str, Any]:
+    """
+    异步启动多周期MACD共振筛选任务
+    body: { timeframes, direction, fast, slow, signal, symbols? }
+    返回: { ok: true, taskId: string }
+    """
+    task_id = str(uuid.uuid4())
+    
+    with tasks_lock:
+        screening_tasks[task_id] = {
+            "status": "running",  # running | completed | error
+            "progress": {"processed": 0, "total": 0, "matched": 0, "current": ""},
+            "results": [],
+            "errors": [],
+            "params": body,
+            "created_at": datetime.now().isoformat()
+        }
+    
+    # 后台执行筛选任务
+    background_tasks.add_task(_run_screening_task, task_id, body)
+    
+    return {"ok": True, "taskId": task_id}
+
+@router.get("/screener/status/{task_id}")
+async def get_screening_task_status(task_id: str) -> Dict[str, Any]:
+    """
+    获取筛选任务状态与进度
+    返回: { ok: true, task: {status, progress, results, errors} }
+    """
+    with tasks_lock:
+        task = screening_tasks.get(task_id)
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+    
+    return {"ok": True, "task": task}
+
+def _run_screening_task(task_id: str, params: Dict[str, Any]):
+    """
+    后台执行筛选任务（同步函数，由BackgroundTasks调用）
+    """
+    try:
+        timeframes = params.get('timeframes') or ['1d', '1w']
+        direction = (params.get('direction') or 'bull').lower()
+        fast = int(params.get('fast') or 12)
+        slow = int(params.get('slow') or 26)
+        signal_period = int(params.get('signal') or 9)
+        limit = params.get('limit')  # 限制筛选数量
+        enable_volume = bool(params.get('enableVolume', True))
+        volume_period = int(params.get('volumePeriod') or 20)
+        volume_ratio = float(params.get('volumeRatio') or 1.5)
+        enable_position = bool(params.get('enablePosition', True))
+        position_type = str(params.get('positionType') or 'bottom')  # bottom | early
+        lookback_days = int(params.get('lookbackDays') or 60)
+        price_threshold = float(params.get('priceThreshold') or 30)
+        enable_ma = bool(params.get('enableMA', False))
+        ma_short = int(params.get('maShort') or 20)
+        ma_long = int(params.get('maLong') or 30)
+        ma_relation = str(params.get('maRelation') or 'above')  # above | below
+        
+        # 候选标的
+        if isinstance(params.get('symbols'), list) and params.get('symbols'):
+            symbols = [str(x) for x in params['symbols'] if x]
+        else:
+            try:
+                entries = data_loader.list_symbols()
+                symbols = [str(e['symbol']) for e in entries if isinstance(e, dict) and e.get('kind') == 'stock' and e.get('symbol')]
+            except Exception:
+                symbols = []
+        
+        # 应用limit限制
+        if limit and isinstance(limit, int) and limit > 0:
+            symbols = symbols[:limit]
+        
+        if not symbols:
+            with tasks_lock:
+                screening_tasks[task_id]["status"] = "error"
+                screening_tasks[task_id]["errors"] = [{"error": "没有可用的本地数据源"}]
+            return
+        
+        # 更新总数
+        with tasks_lock:
+            screening_tasks[task_id]["progress"]["total"] = len(symbols)
+        
+        # 名称映射
+        name_map: Dict[str, str] = {}
+        try:
+            project_root = Path(__file__).resolve().parents[3]
+            with_industry = project_root / 'data' / 'stockList' / 'all_stock_with_industry.json'
+            pure = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
+            data: list = []
+            if with_industry.exists():
+                data = json.loads(with_industry.read_text(encoding='utf-8'))
+            elif pure.exists():
+                data = json.loads(pure.read_text(encoding='utf-8'))
+            for it in (data or []):
+                try:
+                    code_raw = str(it.get('code') or '')
+                    # 提取纯6位代码
+                    code = code_raw.split('.')[-1] if '.' in code_raw else code_raw
+                    nm = str(it.get('code_name') or it.get('name') or '')
+                    if code and nm:
+                        name_map[code] = nm
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        
+        # 兜底：用本地CSV文件名
+        try:
+            entries = data_loader.list_symbols()
+            for e in (entries or []):
+                try:
+                    if not isinstance(e, dict) or e.get('kind') != 'stock':
+                        continue
+                    code = str(e.get('symbol') or '')
+                    nm = str(e.get('name') or '')
+                    if code and nm and not name_map.get(code):
+                        name_map[code] = nm
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        
+        def macd_trend(df: pd.DataFrame) -> str:
+            """判断MACD柱状图是否上升/下降（优化版：只计算最后几根）"""
+            if df is None or df.empty or 'close' not in df.columns:
+                return 'neutral'
+            closes = pd.to_numeric(df['close'], errors='coerce').dropna()
+            if len(closes) < max(slow, signal_period) + 2:
+                return 'neutral'
+            
+            # 只取最后 slow*3 根K线计算，减少计算量
+            tail_len = min(len(closes), max(slow * 3, 100))
+            closes_tail = closes.iloc[-tail_len:]
+            
+            ema_fast = closes_tail.ewm(span=fast, adjust=False).mean()
+            ema_slow = closes_tail.ewm(span=slow, adjust=False).mean()
+            dif = ema_fast - ema_slow
+            dea = dif.ewm(span=signal_period, adjust=False).mean()
+            hist = dif - dea
+            
+            if len(hist) < 2:
+                return 'neutral'
+            
+            last_hist = hist.iloc[-1]
+            prev_hist = hist.iloc[-2]
+            
+            if pd.isna(last_hist) or pd.isna(prev_hist):
+                return 'neutral'
+            
+            if last_hist > prev_hist:
+                return 'bull'
+            elif last_hist < prev_hist:
+                return 'bear'
+            else:
+                return 'neutral'
+        
+        # 逐只筛选
+        selected: List[Dict[str, Any]] = []
+        errors: List[Dict[str, Any]] = []
+        processed = 0
+        
+        for sym in symbols:
+            # 更新当前处理的股票
+            with tasks_lock:
+                screening_tasks[task_id]["progress"]["current"] = sym
+            
+            tf_results: Dict[str, str] = {}
+            daily_df = None  # 保存日线数据用于放量判断
+            try:
+                for tf in timeframes:
+                    try:
+                        df = load_stock_data(sym, tf)
+                        if tf == '1d':
+                            daily_df = df  # 保存日线数据
+                    except Exception:
+                        tf_results[tf] = 'error'
+                        continue
+                    tf_results[tf] = macd_trend(df)
+                
+                # 判定是否同向
+                signs = [s for s in tf_results.values() if s in ('bull', 'bear')]
+                if len(signs) != len(timeframes):
+                    processed += 1
+                    continue
+                
+                all_bull = all(s == 'bull' for s in signs)
+                all_bear = all(s == 'bear' for s in signs)
+                keep = False
+                if direction == 'bull':
+                    keep = all_bull
+                elif direction == 'bear':
+                    keep = all_bear
+                else:
+                    keep = (all_bull or all_bear)
+                
+                # 放量筛选（仅在日线数据上判断）
+                volume_ok = True
+                last_volume = None
+                avg_volume = None
+                if keep and enable_volume and daily_df is not None and not daily_df.empty:
+                    try:
+                        volumes = pd.to_numeric(daily_df['volume'], errors='coerce').dropna()
+                        if len(volumes) >= volume_period + 1:
+                            last_volume = volumes.iloc[-1]
+                            avg_volume = volumes.iloc[-(volume_period+1):-1].mean()
+                            if pd.notna(last_volume) and pd.notna(avg_volume) and avg_volume > 0:
+                                volume_ok = (last_volume >= avg_volume * volume_ratio)
+                            else:
+                                volume_ok = False
+                        else:
+                            volume_ok = False  # 数据不足，不满足放量条件
+                    except Exception:
+                        volume_ok = False
+                
+                # 均线筛选（仅在日线数据上判断）
+                ma_ok = True
+                ma_short_value = None
+                ma_long_value = None
+                if keep and volume_ok and enable_ma and daily_df is not None and not daily_df.empty:
+                    try:
+                        closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                        max_ma = max(ma_short, ma_long)
+                        if len(closes) >= max_ma:
+                            # 计算均线
+                            ma_short_series = closes.rolling(window=ma_short).mean()
+                            ma_long_series = closes.rolling(window=ma_long).mean()
+                            
+                            ma_short_value = ma_short_series.iloc[-1]
+                            ma_long_value = ma_long_series.iloc[-1]
+                            
+                            if pd.notna(ma_short_value) and pd.notna(ma_long_value):
+                                if ma_relation == 'above':
+                                    ma_ok = (ma_short_value > ma_long_value)
+                                elif ma_relation == 'below':
+                                    ma_ok = (ma_short_value < ma_long_value)
+                                else:
+                                    ma_ok = True
+                            else:
+                                ma_ok = False
+                        else:
+                            ma_ok = False  # 数据不足
+                    except Exception:
+                        ma_ok = False
+                
+                # 位置筛选（仅在日线数据上判断）
+                position_ok = True
+                price_percentile = None
+                current_price = None
+                min_price = None
+                max_price = None
+                if keep and volume_ok and ma_ok and enable_position and daily_df is not None and not daily_df.empty:
+                    try:
+                        closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                        if len(closes) >= lookback_days + 1:
+                            recent_closes = closes.iloc[-lookback_days:]
+                            current_price = closes.iloc[-1]
+                            min_price = recent_closes.min()
+                            max_price = recent_closes.max()
+                            
+                            if pd.notna(current_price) and pd.notna(min_price) and pd.notna(max_price) and max_price > min_price:
+                                # 计算当前价格在区间中的位置（0-100%）
+                                price_percentile = ((current_price - min_price) / (max_price - min_price)) * 100
+                                
+                                if position_type == 'bottom':
+                                    # 底部启动：价格在前30%区间（刚脱离底部）
+                                    position_ok = (price_percentile <= price_threshold)
+                                elif position_type == 'early':
+                                    # 主升浪初期：价格在30%-60%区间（避开高位）
+                                    position_ok = (price_threshold <= price_percentile <= 60)
+                                else:
+                                    position_ok = True
+                            else:
+                                position_ok = False
+                        else:
+                            position_ok = False  # 数据不足
+                    except Exception:
+                        position_ok = False
+                
+                if keep and volume_ok and ma_ok and position_ok:
+                    result_item = {
+                        "code": sym,
+                        "name": name_map.get(sym) or sym,
+                        "directions": tf_results,
+                        "volumeInfo": {
+                            "last": float(last_volume) if pd.notna(last_volume) else None,
+                            "avg": float(avg_volume) if pd.notna(avg_volume) else None,
+                            "ratio": float(last_volume / avg_volume) if (pd.notna(last_volume) and pd.notna(avg_volume) and avg_volume > 0) else None
+                        } if enable_volume else None,
+                        "maInfo": {
+                            "short": ma_short,
+                            "long": ma_long,
+                            "maShort": float(ma_short_value) if pd.notna(ma_short_value) else None,
+                            "maLong": float(ma_long_value) if pd.notna(ma_long_value) else None,
+                            "relation": ma_relation
+                        } if enable_ma else None,
+                        "positionInfo": {
+                            "percentile": float(price_percentile) if pd.notna(price_percentile) else None,
+                            "currentPrice": float(current_price) if pd.notna(current_price) else None,
+                            "minPrice": float(min_price) if pd.notna(min_price) else None,
+                            "maxPrice": float(max_price) if pd.notna(max_price) else None,
+                            "type": position_type
+                        } if enable_position else None
+                    }
+                    selected.append(result_item)
+                    # 实时更新结果
+                    with tasks_lock:
+                        screening_tasks[task_id]["results"].append(result_item)
+                        screening_tasks[task_id]["progress"]["matched"] = len(selected)
+            
+            except Exception as e:
+                errors.append({"symbol": sym, "error": str(e)})
+            
+            processed += 1
+            # 更新进度
+            with tasks_lock:
+                screening_tasks[task_id]["progress"]["processed"] = processed
+        
+        # 任务完成
+        with tasks_lock:
+            screening_tasks[task_id]["status"] = "completed"
+            screening_tasks[task_id]["errors"] = errors[:100]
+    
+    except Exception as e:
+        with tasks_lock:
+            screening_tasks[task_id]["status"] = "error"
+            screening_tasks[task_id]["errors"] = [{"error": str(e)}]
+
+@router.post("/screener/export-csv")
+async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    导出筛选结果为CSV文件
+    body: { results: [...], direction?: string, fast?: int, slow?: int, signal?: int }
+    返回: { ok: bool, filepath: str, filename: str }
+    """
+    try:
+        results = body.get('results', [])
+        if not isinstance(results, list) or len(results) == 0:
+            raise HTTPException(status_code=400, detail="筛选结果为空")
+        
+        # 获取筛选参数（用于文件名）
+        direction = body.get('direction', 'bull')
+        fast = body.get('fast', 12)
+        slow = body.get('slow', 26)
+        signal = body.get('signal', 9)
+        
+        # 定位项目根目录
+        here = Path(__file__).resolve()
+        project_root = here.parents[3] if len(here.parents) >= 4 else here.parent
+        
+        # 创建筛选结果目录
+        output_dir = project_root / 'data' / 'screening_results'
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 生成文件名：screening_日期_数量只.csv
+        date_str = datetime.now().strftime('%Y%m%d')
+        count = len(results)
+        filename = f"screening_{date_str}_{count}只.csv"
+        filepath = output_dir / filename
+        
+        # 如果文件已存在，添加时间戳
+        if filepath.exists():
+            time_str = datetime.now().strftime('%H%M%S')
+            filename = f"screening_{date_str}_{time_str}_{count}只.csv"
+            filepath = output_dir / filename
+        
+        # 准备CSV数据
+        csv_rows = []
+        for r in results:
+            row = {
+                '股票代码': r.get('code', ''),
+                '股票名称': r.get('name', ''),
+                '日线MACD方向': r.get('directions', {}).get('1d', 'neutral'),
+                '周线MACD方向': r.get('directions', {}).get('1w', 'neutral'),
+            }
+            
+            # 添加放量信息
+            if r.get('volumeInfo'):
+                vol_info = r['volumeInfo']
+                row['放量倍数'] = vol_info.get('ratio', '')
+                row['最后一天成交量'] = vol_info.get('last', '')
+                row['均量'] = vol_info.get('avg', '')
+            else:
+                row['放量倍数'] = ''
+                row['最后一天成交量'] = ''
+                row['均量'] = ''
+            
+            # 添加均线信息
+            if r.get('maInfo'):
+                ma_info = r['maInfo']
+                row['短期均线周期'] = ma_info.get('short', '')
+                row['长期均线周期'] = ma_info.get('long', '')
+                row['短期均线值'] = ma_info.get('maShort', '')
+                row['长期均线值'] = ma_info.get('maLong', '')
+                row['均线关系'] = '上方' if ma_info.get('relation') == 'above' else '下方'
+            else:
+                row['短期均线周期'] = ''
+                row['长期均线周期'] = ''
+                row['短期均线值'] = ''
+                row['长期均线值'] = ''
+                row['均线关系'] = ''
+            
+            # 添加位置信息
+            if r.get('positionInfo'):
+                pos_info = r['positionInfo']
+                row['价格位置百分位'] = pos_info.get('percentile', '')
+                row['当前价格'] = pos_info.get('currentPrice', '')
+                row['最低价'] = pos_info.get('minPrice', '')
+                row['最高价'] = pos_info.get('maxPrice', '')
+            else:
+                row['价格位置百分位'] = ''
+                row['当前价格'] = ''
+                row['最低价'] = ''
+                row['最高价'] = ''
+            
+            csv_rows.append(row)
+        
+        # 写入CSV
+        if csv_rows:
+            fieldnames = list(csv_rows[0].keys())
+            with open(filepath, 'w', newline='', encoding='utf-8-sig') as f:  # utf-8-sig 支持Excel打开
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(csv_rows)
+        
+        # 返回相对路径（相对于项目根）
+        relative_path = filepath.relative_to(project_root)
+        
+        return {
+            "ok": True,
+            "filepath": str(relative_path),
+            "filename": filename,
+            "count": count,
+            "message": f"已导出 {count} 条筛选结果到 {filename}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出CSV失败: {str(e)}")
+

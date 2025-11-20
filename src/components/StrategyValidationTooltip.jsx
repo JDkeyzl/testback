@@ -351,20 +351,7 @@ export function StrategyValidationTooltip({ strategy, onAutoFix }) {
                 </div>
               )}
 
-              {/* 自动修复按钮 */}
-              {issues.length > 0 && onAutoFix && (
-                <div className="pt-2 border-t border-border/50">
-                  <button
-                    onClick={() => {
-                      const fixedStrategy = generateFixedStrategy(strategy)
-                      onAutoFix(fixedStrategy)
-                    }}
-                    className="w-full px-4 py-2 text-xs bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-sm font-medium"
-                  >
-                    自动修复策略
-                  </button>
-                </div>
-              )}
+              {/* 自动修复按钮已移除 */}
             </CardContent>
           </Card>
         </div>

@@ -1,11 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { BarChart3, Settings, Play, TrendingUp, Target, Zap } from 'lucide-react'
+import { BarChart3, Settings, Play, TrendingUp, Target, Zap, Rocket } from 'lucide-react'
 
 export function WelcomePage() {
   const navigate = useNavigate()
+  const [isFetching, setIsFetching] = useState(false)
+  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentStock: '' })
+  const [shouldStop, setShouldStop] = useState(false)
 
   const features = [
     {
@@ -49,6 +52,57 @@ export function WelcomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
+              onClick={async () => {
+                if (isFetching) {
+                  alert('数据获取正在进行中，暂不支持中断（后端脚本执行中）')
+                  return
+                }
+                
+                if (!window.confirm('将批量获取全部A股日K数据（最近一年），数据将保存至 data/stocks/。\n\n使用后端批量脚本，预计10-20分钟。确认开始？')) return
+                
+                // 立即设置状态，确保UI响应
+                setIsFetching(true)
+                setFetchProgress({ current: 0, total: 100, currentStock: '正在启动批量获取脚本...' })
+                
+                try {
+                  // 直接调用后端批量脚本（一次登录，批量下载，更快）
+                  console.log('[点火] 调用后端批量脚本...')
+                  
+                  const resp = await fetch('/api/v1/data/batch-daily', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: 365 })
+                  })
+                  
+                  if (!resp.ok) {
+                    const raw = await resp.text()
+                    let data = null; try { data = raw ? JSON.parse(raw) : null } catch {}
+                    throw new Error((data && data.detail) || `${resp.status} ${resp.statusText}`)
+                  }
+                  
+                  const data = await resp.json()
+                  const summary = data.summary || {}
+                  
+                  console.log('[点火] 批量脚本执行完成:', summary)
+                  alert(`🎉 点火完成！\n成功: ${summary.ok || 0}\n失败: ${summary.fail || 0}\n总计: ${summary.total || 0}`)
+                  
+                  // 注意：后端脚本执行中无法获取实时进度，进度条仅显示"执行中"
+                } catch (e) {
+                  alert('❌ 点火失败：' + (e?.message || e))
+                } finally {
+                  setIsFetching(false)
+                  setShouldStop(false)
+                  setFetchProgress({ current: 0, total: 0, currentStock: '' })
+                }
+              }}
+              disabled={false}
+              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-8 py-3 text-lg font-bold shadow-lg"
+            >
+              <Rocket className="h-5 w-5 mr-2" />
+              {isFetching ? (shouldStop ? '⏸ 正在中断...' : '🔥 燃烧中...') : '🚀 点火 启动!'}
+            </Button>
+            <Button
+              size="lg"
               onClick={() => navigate('/strategies')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
             >
@@ -63,15 +117,27 @@ export function WelcomePage() {
             >
               查看策略
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/test-autofix')}
-              className="px-8 py-3 text-lg border-orange-200 text-orange-600 hover:bg-orange-50"
-            >
-              测试自动修复
-            </Button>
           </div>
+          
+          {/* 进度显示 */}
+          {isFetching && (
+            <div className="mt-8 max-w-2xl mx-auto">
+              <div className="border rounded-lg p-4 bg-white/80 backdrop-blur">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">🔥 批量获取执行中</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 mb-2 overflow-hidden">
+                  <div className="bg-gradient-to-r from-orange-500 to-red-600 h-3 rounded-full animate-pulse" style={{ width: '100%' }} />
+                </div>
+                <div className="text-xs text-muted-foreground text-center">
+                  {fetchProgress.currentStock || '后端脚本正在批量下载，预计10-20分钟...'}
+                </div>
+                <div className="text-xs text-muted-foreground text-center mt-2">
+                  提示：脚本使用baostock批量获取，只需登录一次，比逐个调用快得多
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 功能特性 */}

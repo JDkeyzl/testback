@@ -64,13 +64,19 @@ class StockDataLoader:
             logger.info(f"从缓存加载数据: {symbol}")
             return self.cache[cache_key]
         
-        # 扫描候选路径（支持期货 data/features）
+        # 扫描候选路径（支持期货 data/features 与批量日K data/stocks）
         candidates = []
         # 股票目录
         if os.path.isdir(self.data_dir):
             for f in os.listdir(self.data_dir):
                 if f.lower().endswith('.csv') and symbol in f:
                     candidates.append(os.path.join(self.data_dir, f))
+        # 批量日K目录
+        stocks_dir = os.path.join(self.data_dir, 'stocks')
+        if os.path.isdir(stocks_dir):
+            for f in os.listdir(stocks_dir):
+                if f.lower().endswith('.csv') and symbol in f:
+                    candidates.append(os.path.join(stocks_dir, f))
         # 期货目录
         futures_dir = os.path.join(self.data_dir, 'features')
         if os.path.isdir(futures_dir):
@@ -335,17 +341,20 @@ class StockDataLoader:
 
     def list_symbols(self) -> List[Dict[str, Any]]:
         """
-        列出 data 目录及 data/features 下的可用CSV数据源
+        列出 data 目录、data/stocks 及 data/features 下的可用CSV数据源
         Returns: [{ symbol, filename, name, kind, path }]
         """
         entries: List[Dict[str, Any]] = []
         try:
             stock_dir = self.data_dir
+            stocks_subdir = os.path.join(self.data_dir, 'stocks')
             futures_dir = os.path.join(self.data_dir, 'features')
 
             all_files: List[str] = []
             if os.path.isdir(stock_dir):
                 all_files.extend([os.path.join(stock_dir, f) for f in os.listdir(stock_dir) if f.lower().endswith('.csv')])
+            if os.path.isdir(stocks_subdir):
+                all_files.extend([os.path.join(stocks_subdir, f) for f in os.listdir(stocks_subdir) if f.lower().endswith('.csv')])
             if os.path.isdir(futures_dir):
                 all_files.extend([os.path.join(futures_dir, f) for f in os.listdir(futures_dir) if f.lower().endswith('.csv')])
 
@@ -355,7 +364,8 @@ class StockDataLoader:
                     continue
                 symbol = None
                 name = os.path.splitext(f)[0]
-                kind = 'futures' if os.path.dirname(fullpath).endswith('features') else 'stock'
+                dir_name = os.path.basename(os.path.dirname(fullpath))
+                kind = 'futures' if dir_name == 'features' else 'stock'
                 base = os.path.splitext(f)[0]
 
                 if '-' in base:
