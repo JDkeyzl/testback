@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 import uuid
 import threading
+import shutil
 
 from ..models.simple import SimpleBacktestRequest, SimpleBacktestResult
 from ..services.backtest_engine import BacktestEngine
@@ -24,6 +25,28 @@ router = APIRouter()
 # 全局任务存储（内存版，适合单机）
 screening_tasks: Dict[str, Dict[str, Any]] = {}
 tasks_lock = threading.Lock()
+
+def get_python_executable() -> str:
+    """
+    获取 Python 可执行文件路径（跨平台兼容）
+    优先级: 环境变量 PYTHON > sys.executable > 查找 python/python3/py
+    """
+    # 优先使用环境变量
+    if 'PYTHON' in os.environ:
+        return os.environ['PYTHON']
+    
+    # 使用当前解释器（最可靠）
+    if sys.executable:
+        return sys.executable
+    
+    # 尝试查找常见的 Python 命令
+    for cmd in ['python', 'python3', 'py']:
+        found = shutil.which(cmd)
+        if found:
+            return found
+    
+    # 最后 fallback（Windows 上通常是 python）
+    return 'python' if sys.platform.startswith('win') else 'python3'
 @router.get("/futures/contracts")
 async def list_futures_contracts() -> Dict[str, Any]:
     """
@@ -329,7 +352,7 @@ async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
             )
         
         # 执行脚本
-        py_exec = os.environ.get('PYTHON') or sys.executable or 'python3'
+        py_exec = get_python_executable()
         cmd = [py_exec, str(script_path), '--days', str(days)]
         if limit:
             cmd.extend(['--limit', str(limit)])
@@ -463,7 +486,7 @@ async def fetch_stock_data(body: Dict[str, Any]) -> Dict[str, Any]:
         env['TB_FREQUENCY'] = freq
 
         # 以python启动脚本
-        py_exec = env.get('PYTHON') or sys.executable or 'python3'
+        py_exec = get_python_executable()
         proc = subprocess.run([py_exec, str(script_path)], cwd=str(project_root), env=env, capture_output=True, text=True, timeout=180)
 
         if proc.returncode != 0:
@@ -1005,22 +1028,22 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                         "name": name_map.get(sym) or sym,
                         "directions": tf_results,
                         "volumeInfo": {
-                            "last": float(last_volume) if pd.notna(last_volume) else None,
-                            "avg": float(avg_volume) if pd.notna(avg_volume) else None,
-                            "ratio": float(last_volume / avg_volume) if (pd.notna(last_volume) and pd.notna(avg_volume) and avg_volume > 0) else None
+                            "last": round(float(last_volume), 2) if pd.notna(last_volume) else None,
+                            "avg": round(float(avg_volume), 2) if pd.notna(avg_volume) else None,
+                            "ratio": round(float(last_volume / avg_volume), 2) if (pd.notna(last_volume) and pd.notna(avg_volume) and avg_volume > 0) else None
                         } if enable_volume else None,
                         "maInfo": {
                             "short": ma_short,
                             "long": ma_long,
-                            "maShort": float(ma_short_value) if pd.notna(ma_short_value) else None,
-                            "maLong": float(ma_long_value) if pd.notna(ma_long_value) else None,
+                            "maShort": round(float(ma_short_value), 2) if pd.notna(ma_short_value) else None,
+                            "maLong": round(float(ma_long_value), 2) if pd.notna(ma_long_value) else None,
                             "relation": ma_relation
                         } if enable_ma else None,
                         "positionInfo": {
-                            "percentile": float(price_percentile) if pd.notna(price_percentile) else None,
-                            "currentPrice": float(current_price) if pd.notna(current_price) else None,
-                            "minPrice": float(min_price) if pd.notna(min_price) else None,
-                            "maxPrice": float(max_price) if pd.notna(max_price) else None,
+                            "percentile": round(float(price_percentile), 2) if pd.notna(price_percentile) else None,
+                            "currentPrice": round(float(current_price), 2) if pd.notna(current_price) else None,
+                            "minPrice": round(float(min_price), 2) if pd.notna(min_price) else None,
+                            "maxPrice": round(float(max_price), 2) if pd.notna(max_price) else None,
                             "type": position_type
                         } if enable_position else None
                     }
@@ -1089,8 +1112,12 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
         # 准备CSV数据
         csv_rows = []
         for r in results:
+            # 股票代码使用等号格式，确保Excel将其识别为文本格式（保留前导0）
+            code = str(r.get('code', ''))
+            code_formatted = f'="{code}"' if code else ''
+            
             row = {
-                '股票代码': r.get('code', ''),
+                '股票代码': code_formatted,
                 '股票名称': r.get('name', ''),
                 '日线MACD方向': r.get('directions', {}).get('1d', 'neutral'),
                 '周线MACD方向': r.get('directions', {}).get('1w', 'neutral'),
@@ -1099,9 +1126,12 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
             # 添加放量信息
             if r.get('volumeInfo'):
                 vol_info = r['volumeInfo']
-                row['放量倍数'] = vol_info.get('ratio', '')
-                row['最后一天成交量'] = vol_info.get('last', '')
-                row['均量'] = vol_info.get('avg', '')
+                ratio = vol_info.get('ratio')
+                row['放量倍数'] = f"{ratio:.2f}" if ratio is not None else ''
+                last = vol_info.get('last')
+                row['最后一天成交量'] = f"{last:.2f}" if last is not None else ''
+                avg = vol_info.get('avg')
+                row['均量'] = f"{avg:.2f}" if avg is not None else ''
             else:
                 row['放量倍数'] = ''
                 row['最后一天成交量'] = ''
@@ -1112,8 +1142,10 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
                 ma_info = r['maInfo']
                 row['短期均线周期'] = ma_info.get('short', '')
                 row['长期均线周期'] = ma_info.get('long', '')
-                row['短期均线值'] = ma_info.get('maShort', '')
-                row['长期均线值'] = ma_info.get('maLong', '')
+                ma_short_val = ma_info.get('maShort')
+                row['短期均线值'] = f"{ma_short_val:.2f}" if ma_short_val is not None else ''
+                ma_long_val = ma_info.get('maLong')
+                row['长期均线值'] = f"{ma_long_val:.2f}" if ma_long_val is not None else ''
                 row['均线关系'] = '上方' if ma_info.get('relation') == 'above' else '下方'
             else:
                 row['短期均线周期'] = ''
@@ -1125,10 +1157,14 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
             # 添加位置信息
             if r.get('positionInfo'):
                 pos_info = r['positionInfo']
-                row['价格位置百分位'] = pos_info.get('percentile', '')
-                row['当前价格'] = pos_info.get('currentPrice', '')
-                row['最低价'] = pos_info.get('minPrice', '')
-                row['最高价'] = pos_info.get('maxPrice', '')
+                percentile = pos_info.get('percentile')
+                row['价格位置百分位'] = f"{percentile:.2f}" if percentile is not None else ''
+                current_price = pos_info.get('currentPrice')
+                row['当前价格'] = f"{current_price:.2f}" if current_price is not None else ''
+                min_price = pos_info.get('minPrice')
+                row['最低价'] = f"{min_price:.2f}" if min_price is not None else ''
+                max_price = pos_info.get('maxPrice')
+                row['最高价'] = f"{max_price:.2f}" if max_price is not None else ''
             else:
                 row['价格位置百分位'] = ''
                 row['当前价格'] = ''
@@ -1159,4 +1195,194 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导出CSV失败: {str(e)}")
+
+@router.post("/price-trend/analyze")
+async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    分析股票价格走势（最近5天）
+    body: { 
+        symbols: string[]  # 股票代码列表，如 ["000560", "300896"]
+        csvFile?: string   # 可选：CSV文件路径（相对于项目根）
+    }
+    返回: {
+        ok: true,
+        results: [
+            {
+                symbol: "000560",
+                name: "股票名称",
+                days: [
+                    { day: 1, date: "2024-11-20", close: 3.07, change: 0.05, changePercent: 1.66 },
+                    { day: 2, date: "2024-11-21", close: 3.10, change: 0.08, changePercent: 2.65 },
+                    ...
+                ],
+                basePrice: 3.02  # 5天前的价格
+            }
+        ]
+    }
+    """
+    try:
+        symbols = body.get('symbols', [])
+        csv_file = body.get('csvFile')
+        
+        # 如果提供了CSV文件，从中读取股票代码
+        if csv_file:
+            try:
+                project_root = Path(__file__).resolve().parents[3]
+                csv_path = project_root / csv_file
+                
+                if not csv_path.exists():
+                    raise HTTPException(status_code=404, detail=f"CSV文件不存在: {csv_file}")
+                
+                # 读取CSV文件，提取股票代码
+                with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    csv_symbols = []
+                    for row in reader:
+                        # 尝试从不同字段名获取代码
+                        code = row.get('股票代码') or row.get('code') or row.get('Code') or ''
+                        # 移除可能的等号格式
+                        code = code.strip().lstrip('="').rstrip('"')
+                        if code and code not in csv_symbols:
+                            csv_symbols.append(code)
+                    symbols.extend(csv_symbols)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"读取CSV文件失败: {str(e)}")
+        
+        if not symbols or len(symbols) == 0:
+            raise HTTPException(status_code=400, detail="未提供股票代码")
+        
+        # 去重
+        symbols = list(set(symbols))
+        
+        results = []
+        errors = []
+        
+        for symbol in symbols:
+            try:
+                # 加载股票数据（日线）
+                df = load_stock_data(symbol, '1d')
+                
+                if df is None or df.empty:
+                    errors.append({"symbol": symbol, "error": "数据为空"})
+                    continue
+                
+                # 确保数据按时间排序（最新的在前）
+                time_col = 'timestamp' if 'timestamp' in df.columns else ('datetime' if 'datetime' in df.columns else None)
+                if time_col:
+                    df = df.sort_values(time_col, ascending=False).reset_index(drop=True)
+                else:
+                    # 如果没有时间列，假设数据已经是倒序的
+                    df = df.reset_index(drop=True)
+                
+                # 需要至少6天数据（5天 + 1天基准）
+                if len(df) < 6:
+                    errors.append({"symbol": symbol, "error": f"数据不足6天，只有{len(df)}天（需要至少6天：5天走势 + 1天基准）"})
+                    continue
+                
+                # 获取最近5天的数据（第0-4行，最新的5天）
+                recent_5_days = df.head(5).copy()
+                
+                # 获取5天前的价格（第5行的收盘价，即第6天的数据）
+                base_price = float(df.iloc[5]['close']) if pd.notna(df.iloc[5]['close']) else None
+                
+                if base_price is None:
+                    errors.append({"symbol": symbol, "error": "无法获取基准价格"})
+                    continue
+                
+                # 构建每日数据（从旧到新：第1天是最旧的，第5天是最新的）
+                # recent_5_days是按时间倒序的：iloc[0]是最新，iloc[4]是最旧
+                days_data = []
+                for idx in range(len(recent_5_days)):
+                    # idx=0是最新的，idx=4是最旧的
+                    row = recent_5_days.iloc[idx]
+                    # day_num：idx=4对应第1天（最旧），idx=0对应第5天（最新）
+                    day_num = len(recent_5_days) - idx  # 第1天到第5天（第1天最旧，第5天最新）
+                    close_price = float(row['close']) if pd.notna(row['close']) else None
+                    
+                    if close_price is None:
+                        continue
+                    
+                    # 计算与基准价格的差值（总体涨跌）
+                    change = round(close_price - base_price, 2)
+                    change_percent = round((change / base_price * 100), 2) if base_price > 0 else 0
+                    
+                    # 计算当天涨跌（相对于前一天）
+                    # 前一天是idx+1（更早的日期）
+                    daily_change = None
+                    daily_change_percent = None
+                    if idx < len(recent_5_days) - 1:
+                        # 有前一天数据（idx+1对应更早的日期，即前一天）
+                        prev_close = float(recent_5_days.iloc[idx + 1]['close']) if pd.notna(recent_5_days.iloc[idx + 1]['close']) else None
+                        if prev_close is not None:
+                            daily_change = round(close_price - prev_close, 2)
+                            daily_change_percent = round((daily_change / prev_close * 100), 2) if prev_close > 0 else 0
+                    else:
+                        # 第5天（最旧，idx=4），与基准价格（第6天）对比
+                        daily_change = round(close_price - base_price, 2)
+                        daily_change_percent = round((daily_change / base_price * 100), 2) if base_price > 0 else 0
+                    
+                    # 获取日期
+                    date_str = ''
+                    if 'timestamp' in row:
+                        ts = row['timestamp']
+                        if isinstance(ts, pd.Timestamp):
+                            date_str = ts.strftime('%Y-%m-%d')
+                        else:
+                            date_str = str(ts).split()[0] if ' ' in str(ts) else str(ts)
+                    elif 'datetime' in row:
+                        dt = row['datetime']
+                        if isinstance(dt, pd.Timestamp):
+                            date_str = dt.strftime('%Y-%m-%d')
+                        else:
+                            date_str = str(dt).split()[0] if ' ' in str(dt) else str(dt)
+                    
+                    days_data.append({
+                        "day": day_num,
+                        "date": date_str,
+                        "close": round(close_price, 2),
+                        "change": change,
+                        "changePercent": change_percent,
+                        "dailyChange": daily_change,
+                        "dailyChangePercent": daily_change_percent
+                    })
+                
+                # 反转数组，使第1天（最旧）在前，第5天（最新）在后
+                days_data.reverse()
+                
+                # 获取股票名称
+                stock_name = symbol
+                try:
+                    entries = data_loader.list_symbols()
+                    for e in entries:
+                        if isinstance(e, dict) and e.get('symbol') == symbol:
+                            stock_name = e.get('name', symbol)
+                            break
+                except Exception:
+                    pass
+                
+                results.append({
+                    "symbol": symbol,
+                    "name": stock_name,
+                    "days": days_data,
+                    "basePrice": round(base_price, 2)
+                })
+                
+            except FileNotFoundError:
+                errors.append({"symbol": symbol, "error": "数据文件不存在"})
+            except Exception as e:
+                errors.append({"symbol": symbol, "error": str(e)})
+        
+        return {
+            "ok": True,
+            "results": results,
+            "errors": errors,
+            "total": len(symbols),
+            "success": len(results),
+            "failed": len(errors)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"分析价格走势失败: {str(e)}")
 

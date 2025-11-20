@@ -1,11 +1,34 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Settings, Download, Upload, ArrowLeft, Home, BarChart3, History, List, Filter } from 'lucide-react'
+import { Settings, Download, Upload, ArrowLeft, Home, BarChart3, History, List, Filter, TrendingUp } from 'lucide-react'
+import { getNavigationSettings } from '../pages/SettingsPage'
 
 export function TopNavigation() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [menuSettings, setMenuSettings] = useState(getNavigationSettings())
+
+  // 监听设置变化（通过storage事件）
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setMenuSettings(getNavigationSettings())
+    }
+    
+    // 监听localStorage变化
+    window.addEventListener('storage', handleStorageChange)
+    
+    // 监听自定义事件（同页面内设置变化）
+    const handleSettingsChange = () => {
+      setMenuSettings(getNavigationSettings())
+    }
+    window.addEventListener('settingsChanged', handleSettingsChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('settingsChanged', handleSettingsChange)
+    }
+  }, [])
   
   // 判断是否显示导航按钮
   const showNavigation = location.pathname !== '/welcome'
@@ -81,31 +104,46 @@ export function TopNavigation() {
             </>
           )}
           
-          {/* 功能按钮（简化：保留设置与股票回测，移除 导入策略 / 导出结果 / 期货回测） */}
-          <Button variant="outline" size="sm">
+          {/* 功能按钮 */}
+          <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>
             <Settings className="h-4 w-4 mr-2" />
             设置
           </Button>
-          {/* 网格交易入口：位于 设置 与 股票回测 之间 */}
-          <Button variant="outline" size="sm" onClick={() => navigate('/grid-lab')}>
-            网格交易
-          </Button>
+          {/* 网格交易入口：根据设置显示/隐藏 */}
+          {menuSettings.showGridLab && (
+            <Button variant="outline" size="sm" onClick={() => navigate('/grid-lab')}>
+              网格交易
+            </Button>
+          )}
           <div className="flex items-center gap-2">
-            <Button variant="default" size="sm" onClick={() => navigate('/symbol-backtest')}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              股票回测
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/stock-selection')}>
-              <List className="h-4 w-4 mr-2" />
-              选股
-            </Button>
+            {/* 股票回测：根据设置显示/隐藏 */}
+            {menuSettings.showSymbolBacktest && (
+              <Button variant="default" size="sm" onClick={() => navigate('/symbol-backtest')}>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                股票回测
+              </Button>
+            )}
+            {/* 选股：根据设置显示/隐藏 */}
+            {menuSettings.showStockSelection && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/stock-selection')}>
+                <List className="h-4 w-4 mr-2" />
+                选股
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => navigate('/conditional-screener')}>
               <Filter className="h-4 w-4 mr-2" />
               条件选股
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/history')}>
-              <History className="h-4 w-4 mr-2" />
-              回测记录
+            {/* 回测记录：根据设置显示/隐藏 */}
+            {menuSettings.showHistory && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/history')}>
+                <History className="h-4 w-4 mr-2" />
+                回测记录
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => navigate('/price-trend')}>
+              <TrendingUp className="h-4 w-4 mr-2" />
+              价格走势
             </Button>
           </div>
           {/* 顶部全局“开始回测”按钮已移除，保留页内的回测入口 */}

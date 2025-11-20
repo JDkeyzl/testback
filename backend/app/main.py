@@ -7,10 +7,10 @@ from .api.backtest import router as backtest_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时执行
-    print("🚀 TestBack API 启动中...")
+    print("TestBack API 启动中...")
     yield
     # 关闭时执行
-    print("🛑 TestBack API 关闭中...")
+    print("TestBack API 关闭中...")
 
 app = FastAPI(
     title="TestBack API",

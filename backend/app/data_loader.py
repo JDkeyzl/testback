@@ -26,18 +26,28 @@ class StockDataLoader:
             data_dir: 数据文件目录
         """
         if data_dir is None:
-            # 根据操作系统选择默认数据目录
-            if sys.platform.startswith("win"):
-                preferred_dir = r"F:\apps\testback\data"
-            elif sys.platform == "darwin":
-                preferred_dir = "/Users/ranka/projects/testback/data"
-            else:
-                preferred_dir = None
-
-            # 项目根目录下的 data 作为兜底
-            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            # 优先使用项目根目录下的 data 目录（跨平台兼容）
+            # 计算项目根目录：从 backend/app/data_loader.py 向上两级到项目根
+            current_file = os.path.abspath(__file__)
+            # backend/app/data_loader.py -> backend/app -> backend -> 项目根
+            backend_dir = os.path.dirname(os.path.dirname(current_file))
+            project_root = os.path.dirname(backend_dir) if os.path.basename(backend_dir) == 'backend' else os.path.dirname(current_file)
             fallback_dir = os.path.join(project_root, "data")
+            
+            # 可选：根据操作系统使用特定路径（如果存在）
+            preferred_dir = None
+            if sys.platform.startswith("win"):
+                # Windows: 尝试使用环境变量或默认路径
+                win_path = os.environ.get('TESTBACK_DATA_DIR') or r"F:\apps\testback\data"
+                if os.path.isdir(win_path):
+                    preferred_dir = win_path
+            elif sys.platform == "darwin":
+                # macOS: 尝试使用环境变量或默认路径
+                mac_path = os.environ.get('TESTBACK_DATA_DIR') or "/Users/ranka/projects/testback/data"
+                if os.path.isdir(mac_path):
+                    preferred_dir = mac_path
 
+            # 优先使用 preferred_dir（如果存在且有效），否则使用项目根目录下的 data
             self.data_dir = preferred_dir if preferred_dir and os.path.isdir(preferred_dir) else fallback_dir
         else:
             self.data_dir = data_dir

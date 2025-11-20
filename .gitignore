@@ -1,7 +1,7 @@
 # Ignore generated data files and runtime artifacts
 
 # Data CSVs (keep stockList dictionary tracked)
-data/**
+# data/**
 !data/stockList/**
 !data/holidays_cn.json
 

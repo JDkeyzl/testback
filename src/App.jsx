@@ -11,6 +11,8 @@ import { GridStrategyPage } from './pages/GridStrategyPage'
 import { StockSelectionPage } from './pages/StockSelectionPage'
 import { ConditionalScannerPage } from './pages/ConditionalScannerPage'
 import { ScreenerDetailPage } from './pages/ScreenerDetailPage'
+import { PriceTrendPage } from './pages/PriceTrendPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
           <Route path="/stock-selection" element={<StockSelectionPage />} />
           <Route path="/conditional-screener" element={<ConditionalScannerPage />} />
           <Route path="/screener-detail/:code" element={<ScreenerDetailPage />} />
+          <Route path="/price-trend" element={<PriceTrendPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           {/** 自动修复测试路由已移除 */}
           <Route path="*" element={<Navigate to="/welcome" replace />} />
         </Routes>

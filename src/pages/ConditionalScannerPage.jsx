@@ -96,9 +96,13 @@ export function ConditionalScannerPage() {
     
     try {
       // 1. 启动异步任务
+      const controller = new AbortController()
+      const fetchTimeoutId = setTimeout(() => controller.abort(), 10000) // 10秒超时
+      
       const startResp = await fetch('/api/v1/screener/multi-macd-async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           timeframes: ['1d', '1w'],
           direction,
@@ -119,6 +123,7 @@ export function ConditionalScannerPage() {
           maRelation
         })
       })
+      clearTimeout(fetchTimeoutId)
       const startData = await startResp.json().catch(() => ({}))
       if (!startResp.ok || !startData?.ok || !startData.taskId) {
         throw new Error((startData && startData.detail) || '启动任务失败')
@@ -703,7 +708,7 @@ export function ConditionalScannerPage() {
                                 r.positionInfo.percentile <= 60 ? 'text-blue-600' : 
                                 'text-orange-600'
                               }>
-                                {r.positionInfo.percentile.toFixed(1)}%
+                                {r.positionInfo.percentile.toFixed(2)}%
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-xs">-</span>
