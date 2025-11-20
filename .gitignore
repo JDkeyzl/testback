@@ -1,7 +1,12 @@
 # Ignore generated data files and runtime artifacts
 
 # Data CSVs (keep stockList dictionary tracked)
-# data/**
+# Ignore all CSV files in data directory
+data/**/*.csv
+data/stocks
+data/screening_results
+
+# Keep stockList dictionary tracked
 !data/stockList/**
 !data/holidays_cn.json
 
