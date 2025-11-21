@@ -23,8 +23,9 @@ if __name__ == "__main__":
     print("ReDoc 文档: http://localhost:8000/redoc")
     print("健康检查: http://localhost:8000/api/v1/health")
     
+    # 使用应用字符串以支持 reload 模式
     uvicorn.run(
-        app,
+        "backend.app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,

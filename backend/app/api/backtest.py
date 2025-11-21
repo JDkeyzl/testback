@@ -665,6 +665,7 @@ async def screener_multi_macd(body: Dict[str, Any]) -> Dict[str, Any]:
         fast = int(body.get('fast') or 12)
         slow = int(body.get('slow') or 26)
         signal = int(body.get('signal') or 9)
+        end_date = body.get('endDate')  # 数据截止日期（YYYY-MM-DD），None表示使用全部数据
 
         # 候选标的
         if isinstance(body.get('symbols'), list) and body.get('symbols'):
@@ -761,7 +762,7 @@ async def screener_multi_macd(body: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 for tf in timeframes:
                     try:
-                        df = load_stock_data(sym, tf)
+                        df = load_stock_data(sym, tf, end_date=end_date)
                     except Exception as ee:
                         tf_results[tf] = 'error'
                         continue
@@ -809,22 +810,30 @@ async def start_screening_task_async(body: Dict[str, Any], background_tasks: Bac
     body: { timeframes, direction, fast, slow, signal, symbols? }
     返回: { ok: true, taskId: string }
     """
-    task_id = str(uuid.uuid4())
-    
-    with tasks_lock:
-        screening_tasks[task_id] = {
-            "status": "running",  # running | completed | error
-            "progress": {"processed": 0, "total": 0, "matched": 0, "current": ""},
-            "results": [],
-            "errors": [],
-            "params": body,
-            "created_at": datetime.now().isoformat()
-        }
-    
-    # 后台执行筛选任务
-    background_tasks.add_task(_run_screening_task, task_id, body)
-    
-    return {"ok": True, "taskId": task_id}
+    try:
+        task_id = str(uuid.uuid4())
+        
+        with tasks_lock:
+            screening_tasks[task_id] = {
+                "status": "running",  # running | completed | error
+                "progress": {"processed": 0, "total": 0, "matched": 0, "current": ""},
+                "results": [],
+                "errors": [],
+                "params": body,
+                "created_at": datetime.now().isoformat()
+            }
+        
+        # 后台执行筛选任务
+        background_tasks.add_task(_run_screening_task, task_id, body)
+        
+        return {"ok": True, "taskId": task_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[multi-macd-async] 异常: {error_trace}")
+        raise HTTPException(status_code=500, detail=f"启动筛选任务失败: {str(e)}")
 
 @router.get("/screener/status/{task_id}")
 async def get_screening_task_status(task_id: str) -> Dict[str, Any]:
@@ -862,6 +871,12 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
         ma_short = int(params.get('maShort') or 20)
         ma_long = int(params.get('maLong') or 30)
         ma_relation = str(params.get('maRelation') or 'above')  # above | below
+        enable_daily_macd_positive = bool(params.get('enableDailyMacdPositive', False))  # 日线MACD>0
+        enable_weekly_macd_positive = bool(params.get('enableWeeklyMacdPositive', False))  # 周线MACD>0
+        enable_price_above_ma = bool(params.get('enablePriceAboveMA', False))  # 价格大于MA
+        price_above_ma_period = int(params.get('priceAboveMAPeriod') or 60)  # 价格大于MA的周期
+        enable_first_rise_phase = bool(params.get('enableFirstRisePhase', False))  # 第一次主升段筛选
+        end_date = params.get('endDate')  # 数据截止日期（YYYY-MM-DD），None表示使用全部数据
         
         # 候选标的
         if isinstance(params.get('symbols'), list) and params.get('symbols'):
@@ -961,6 +976,107 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
             else:
                 return 'neutral'
         
+        def get_macd_dif(df: pd.DataFrame) -> float:
+            """获取MACD的DIF值（快线-慢线），用于判断MACD>0"""
+            if df is None or df.empty or 'close' not in df.columns:
+                return None
+            closes = pd.to_numeric(df['close'], errors='coerce').dropna()
+            if len(closes) < max(slow, signal_period):
+                return None
+            
+            # 只取最后 slow*3 根K线计算，减少计算量
+            tail_len = min(len(closes), max(slow * 3, 100))
+            closes_tail = closes.iloc[-tail_len:]
+            
+            ema_fast = closes_tail.ewm(span=fast, adjust=False).mean()
+            ema_slow = closes_tail.ewm(span=slow, adjust=False).mean()
+            dif = ema_fast - ema_slow
+            
+            if len(dif) == 0:
+                return None
+            
+            last_dif = dif.iloc[-1]
+            return float(last_dif) if pd.notna(last_dif) else None
+        
+        def get_macd_hist(df: pd.DataFrame) -> float:
+            """获取MACD柱状图值（hist = DIF - DEA），用于判断MACD柱状图是否为红色（>0）"""
+            if df is None or df.empty or 'close' not in df.columns:
+                return None
+            closes = pd.to_numeric(df['close'], errors='coerce').dropna()
+            if len(closes) < max(slow, signal_period) + 1:
+                return None
+            
+            # 只取最后 slow*3 根K线计算，减少计算量
+            tail_len = min(len(closes), max(slow * 3, 100))
+            closes_tail = closes.iloc[-tail_len:]
+            
+            ema_fast = closes_tail.ewm(span=fast, adjust=False).mean()
+            ema_slow = closes_tail.ewm(span=slow, adjust=False).mean()
+            dif = ema_fast - ema_slow
+            dea = dif.ewm(span=signal_period, adjust=False).mean()
+            hist = dif - dea  # MACD柱状图
+            
+            if len(hist) == 0:
+                return None
+            
+            last_hist = hist.iloc[-1]
+            return float(last_hist) if pd.notna(last_hist) else None
+        
+        def check_first_rise_phase(df: pd.DataFrame) -> bool:
+            """
+            检查是否满足第一次主升段条件（严格模式）：
+            红色柱子向上突破零轴后，每个柱子都是变高的，没有任何回撤
+            """
+            if df is None or df.empty or 'close' not in df.columns:
+                return False
+            
+            closes = pd.to_numeric(df['close'], errors='coerce').dropna()
+            if len(closes) < max(slow, signal_period) + 5:  # 至少需要足够的数据
+                return False
+            
+            # 计算MACD柱状图
+            ema_fast = closes.ewm(span=fast, adjust=False).mean()
+            ema_slow = closes.ewm(span=slow, adjust=False).mean()
+            dif = ema_fast - ema_slow
+            dea = dif.ewm(span=signal_period, adjust=False).mean()
+            hist = dif - dea  # MACD柱状图
+            
+            # 清理NaN值
+            hist = hist.dropna()
+            if len(hist) < 3:
+                return False
+            
+            # 从后往前找，找到最近一次从负转正的位置（绿转红，突破零轴）
+            # 需要找到：hist[i] <= 0 且 hist[i+1] > 0 的位置
+            turn_red_idx = None
+            for i in range(len(hist) - 2, -1, -1):
+                if hist.iloc[i] <= 0 and hist.iloc[i + 1] > 0:
+                    turn_red_idx = i + 1
+                    break
+            
+            # 如果没有找到绿转红的位置，不符合条件
+            if turn_red_idx is None:
+                return False
+            
+            # 检查转红后是否每个柱子都是变高的（严格：不允许任何回撤）
+            # 从转红位置到最新，每个柱子的值都必须 >= 前一个柱子
+            red_phase_hist = hist.iloc[turn_red_idx:]
+            
+            if len(red_phase_hist) < 2:
+                return False
+            
+            # 严格检查：每个柱子都必须 >= 前一个柱子（不允许任何减小）
+            for i in range(1, len(red_phase_hist)):
+                current_hist = red_phase_hist.iloc[i]
+                prev_hist = red_phase_hist.iloc[i - 1]
+                
+                # 如果当前柱子比前一个柱子小（有任何回撤），不符合条件
+                if current_hist < prev_hist:
+                    return False
+            
+            # 所有检查通过：转红后每个柱子都是变高的，没有任何回撤
+            return True
+        
         # 逐只筛选
         selected: List[Dict[str, Any]] = []
         errors: List[Dict[str, Any]] = []
@@ -973,12 +1089,15 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
             
             tf_results: Dict[str, str] = {}
             daily_df = None  # 保存日线数据用于放量判断
+            weekly_df = None  # 保存周线数据用于MACD值判断
             try:
                 for tf in timeframes:
                     try:
-                        df = load_stock_data(sym, tf)
+                        df = load_stock_data(sym, tf, end_date=end_date)
                         if tf == '1d':
                             daily_df = df  # 保存日线数据
+                        elif tf == '1w':
+                            weekly_df = df  # 保存周线数据
                     except Exception:
                         tf_results[tf] = 'error'
                         continue
@@ -997,8 +1116,42 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     keep = all_bull
                 elif direction == 'bear':
                     keep = all_bear
-                else:
-                    keep = (all_bull or all_bear)
+                # 不再支持 'both' 方向
+                
+                # MACD值筛选（日线和周线MACD>0）
+                if keep:
+                    # 检查日线MACD>0（柱状图为红色，即hist>0）
+                    if enable_daily_macd_positive:
+                        if daily_df is None or daily_df.empty:
+                            keep = False
+                        else:
+                            daily_hist = get_macd_hist(daily_df)
+                            if daily_hist is None or daily_hist <= 0:
+                                keep = False
+                    
+                    # 检查周线MACD>0（柱状图为红色，即hist>0）
+                    if keep and enable_weekly_macd_positive:
+                        if weekly_df is None or weekly_df.empty:
+                            keep = False
+                            print(f"[周线MACD>0] {sym}: 周线数据为空或加载失败")
+                        else:
+                            weekly_hist = get_macd_hist(weekly_df)
+                            if weekly_hist is None:
+                                keep = False
+                                print(f"[周线MACD>0] {sym}: 周线MACD柱状图计算失败（数据不足）")
+                            elif weekly_hist <= 0:
+                                keep = False
+                                print(f"[周线MACD>0] {sym}: 周线MACD柱状图={weekly_hist:.4f} <= 0（绿柱），不符合条件")
+                            else:
+                                print(f"[周线MACD>0] {sym}: 周线MACD柱状图={weekly_hist:.4f} > 0（红柱），符合条件")
+                    
+                    # 检查第一次主升段
+                    if keep and enable_first_rise_phase:
+                        if daily_df is None or daily_df.empty:
+                            keep = False
+                        else:
+                            if not check_first_rise_phase(daily_df):
+                                keep = False
                 
                 # 放量筛选（仅在日线数据上判断）
                 volume_ok = True
@@ -1049,24 +1202,73 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     except Exception:
                         ma_ok = False
                 
+                # 价格大于MA筛选（仅在日线数据上判断）
+                price_above_ma_ok = True
+                if keep and volume_ok and ma_ok and enable_price_above_ma and daily_df is not None and not daily_df.empty:
+                    try:
+                        closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                        if len(closes) >= price_above_ma_period:
+                            # 找到截止日期对应的数据
+                            if end_date:
+                                try:
+                                    end_dt = pd.to_datetime(end_date)
+                                    daily_df['date'] = pd.to_datetime(daily_df['timestamp']).dt.date
+                                    end_date_only = end_dt.date()
+                                    # 找到截止日期及之前的最后一条记录
+                                    filtered_df = daily_df[daily_df['date'] <= end_date_only]
+                                    if not filtered_df.empty:
+                                        # 使用截止日期及之前的数据计算MA
+                                        closes_for_ma = pd.to_numeric(filtered_df['close'], errors='coerce').dropna()
+                                        if len(closes_for_ma) >= price_above_ma_period:
+                                            ma_value = closes_for_ma.iloc[-price_above_ma_period:].mean()
+                                            current_price = closes_for_ma.iloc[-1]
+                                            if pd.notna(ma_value) and pd.notna(current_price):
+                                                price_above_ma_ok = (current_price > ma_value)
+                                            else:
+                                                price_above_ma_ok = False
+                                        else:
+                                            price_above_ma_ok = False  # 数据不足
+                                    else:
+                                        price_above_ma_ok = False  # 找不到截止日期的数据
+                                except Exception:
+                                    # 如果日期解析失败，使用最后一条数据
+                                    ma_value = closes.iloc[-price_above_ma_period:].mean()
+                                    current_price = closes.iloc[-1]
+                                    if pd.notna(ma_value) and pd.notna(current_price):
+                                        price_above_ma_ok = (current_price > ma_value)
+                                    else:
+                                        price_above_ma_ok = False
+                            else:
+                                # 没有截止日期，使用最后一条数据
+                                ma_value = closes.iloc[-price_above_ma_period:].mean()
+                                current_price = closes.iloc[-1]
+                                if pd.notna(ma_value) and pd.notna(current_price):
+                                    price_above_ma_ok = (current_price > ma_value)
+                                else:
+                                    price_above_ma_ok = False
+                        else:
+                            price_above_ma_ok = False  # 数据不足
+                    except Exception:
+                        price_above_ma_ok = False
+                
                 # 位置筛选（仅在日线数据上判断）
                 position_ok = True
                 price_percentile = None
-                current_price = None
+                position_current_price = None
                 min_price = None
                 max_price = None
-                if keep and volume_ok and ma_ok and enable_position and daily_df is not None and not daily_df.empty:
+                if keep and volume_ok and ma_ok and price_above_ma_ok and enable_position and daily_df is not None and not daily_df.empty:
                     try:
                         closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
                         if len(closes) >= lookback_days + 1:
                             recent_closes = closes.iloc[-lookback_days:]
-                            current_price = closes.iloc[-1]
+                            position_current_price = closes.iloc[-1]
                             min_price = recent_closes.min()
                             max_price = recent_closes.max()
                             
-                            if pd.notna(current_price) and pd.notna(min_price) and pd.notna(max_price) and max_price > min_price:
+                            if pd.notna(position_current_price) and pd.notna(min_price) and pd.notna(max_price) and max_price > min_price:
                                 # 计算当前价格在区间中的位置（0-100%）
-                                price_percentile = ((current_price - min_price) / (max_price - min_price)) * 100
+                                price_percentile = ((position_current_price - min_price) / (max_price - min_price)) * 100
                                 
                                 if position_type == 'bottom':
                                     # 底部启动：价格在前30%区间（刚脱离底部）
@@ -1083,11 +1285,51 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     except Exception:
                         position_ok = False
                 
-                if keep and volume_ok and ma_ok and position_ok:
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok:
+                    # 计算最新价格、日MACD、周MACD
+                    latest_price = None
+                    daily_macd_value = None
+                    weekly_macd_value = None
+                    
+                    # 获取最新价格（截止日期当天的收盘价，如果没有截止日期则用最后一条）
+                    if daily_df is not None and not daily_df.empty:
+                        try:
+                            closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                            if len(closes) > 0:
+                                if end_date:
+                                    try:
+                                        end_dt = pd.to_datetime(end_date)
+                                        daily_df['date'] = pd.to_datetime(daily_df['timestamp']).dt.date
+                                        end_date_only = end_dt.date()
+                                        filtered_df = daily_df[daily_df['date'] <= end_date_only]
+                                        if not filtered_df.empty:
+                                            latest_price = float(pd.to_numeric(filtered_df.iloc[-1]['close'], errors='coerce'))
+                                    except Exception:
+                                        latest_price = float(closes.iloc[-1])
+                                else:
+                                    latest_price = float(closes.iloc[-1])
+                        except Exception:
+                            pass
+                    
+                    # 计算日MACD值
+                    if daily_df is not None and not daily_df.empty:
+                        daily_macd_value = get_macd_dif(daily_df)
+                        if daily_macd_value is not None:
+                            daily_macd_value = round(daily_macd_value, 4)
+                    
+                    # 计算周MACD值
+                    if weekly_df is not None and not weekly_df.empty:
+                        weekly_macd_value = get_macd_dif(weekly_df)
+                        if weekly_macd_value is not None:
+                            weekly_macd_value = round(weekly_macd_value, 4)
+                    
                     result_item = {
                         "code": sym,
                         "name": name_map.get(sym) or sym,
                         "directions": tf_results,
+                        "latestPrice": latest_price,
+                        "dailyMacd": daily_macd_value,
+                        "weeklyMacd": weekly_macd_value,
                         "volumeInfo": {
                             "last": round(float(last_volume), 2) if pd.notna(last_volume) else None,
                             "avg": round(float(avg_volume), 2) if pd.notna(avg_volume) else None,
@@ -1102,7 +1344,7 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                         } if enable_ma else None,
                         "positionInfo": {
                             "percentile": round(float(price_percentile), 2) if pd.notna(price_percentile) else None,
-                            "currentPrice": round(float(current_price), 2) if pd.notna(current_price) else None,
+                            "currentPrice": round(float(position_current_price), 2) if pd.notna(position_current_price) else None,
                             "minPrice": round(float(min_price), 2) if pd.notna(min_price) else None,
                             "maxPrice": round(float(max_price), 2) if pd.notna(max_price) else None,
                             "type": position_type
@@ -1122,10 +1364,108 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
             with tasks_lock:
                 screening_tasks[task_id]["progress"]["processed"] = processed
         
+        # 计算每只股票第一到第五天的涨跌幅，并计算平均值
+        summary_stats = None
+        if selected and end_date:
+            try:
+                end_dt = pd.to_datetime(end_date).normalize()
+                day_returns = {1: [], 2: [], 3: [], 4: [], 5: []}  # 存储每只股票各天的涨跌幅
+                day1_rise_count = 0  # 第一天涨的股票数量
+                day2_rise_count = 0  # 前两天都涨的股票数量
+                
+                for item in selected:
+                    sym = item.get('code')
+                    if not sym:
+                        continue
+                    
+                    try:
+                        # 加载日线数据（不限制截止日期，需要获取截止日期之后的数据）
+                        df_full = load_stock_data(sym, '1d', end_date=None)
+                        if df_full is None or df_full.empty:
+                            continue
+                        
+                        # 找到截止日期对应的K线位置
+                        df_full['date'] = pd.to_datetime(df_full['timestamp']).dt.date
+                        end_date_only = end_dt.date()
+                        
+                        # 找到截止日期及之前的最后一条记录作为基准
+                        base_df = df_full[df_full['date'] <= end_date_only]
+                        if base_df.empty:
+                            continue
+                        
+                        base_idx = base_df.index[-1]
+                        base_price = pd.to_numeric(base_df.iloc[-1]['close'], errors='coerce')
+                        if pd.isna(base_price) or base_price <= 0:
+                            continue
+                        
+                        # 计算第一到第五天的涨跌幅（截止日期的下一日当做第一天）
+                        # 统计第一天涨的股票数量、前两天涨的股票数量
+                        day1_rise = False
+                        day1_price = None
+                        day2_rise = False
+                        
+                        for day in range(1, 6):
+                            target_idx = base_idx + day
+                            if target_idx < len(df_full):
+                                target_row = df_full.iloc[target_idx]
+                                target_date = pd.to_datetime(target_row['timestamp']).date()
+                                # 确保目标日期在截止日期之后（下一日）
+                                if target_date > end_date_only:
+                                    target_price = pd.to_numeric(target_row['close'], errors='coerce')
+                                    if pd.notna(target_price) and target_price > 0:
+                                        pct_change = ((target_price - base_price) / base_price) * 100
+                                        day_returns[day].append(pct_change)
+                                        
+                                        # 统计第一天涨的股票
+                                        if day == 1:
+                                            day1_price = target_price
+                                            if pct_change > 0:
+                                                day1_rise = True
+                                        # 统计前两天涨的股票（第一天和第二天都涨）
+                                        elif day == 2 and day1_price is not None:
+                                            if pct_change > 0 and day1_rise:
+                                                day2_rise = True
+                        
+                        # 更新统计计数
+                        if day1_rise:
+                            day1_rise_count += 1
+                        if day2_rise:
+                            day2_rise_count += 1
+                    
+                    except Exception as e:
+                        # 单只股票计算失败，跳过
+                        continue
+                
+                # 计算平均值
+                avg_returns = {}
+                for day in range(1, 6):
+                    if day_returns[day]:
+                        avg_returns[f'day{day}'] = round(float(np.mean(day_returns[day])), 2)
+                    else:
+                        avg_returns[f'day{day}'] = None
+                
+                summary_stats = {
+                    "avgReturns": avg_returns,
+                    "sampleCount": len(day_returns[1]) if day_returns[1] else 0,  # 有数据的股票数量
+                    "day1RiseCount": day1_rise_count,  # 第一天涨的股票数量
+                    "day2RiseCount": day2_rise_count   # 前两天都涨的股票数量
+                }
+                
+            except Exception as e:
+                # 计算失败，不影响主流程
+                import traceback
+                print(f"[筛选统计] 计算涨跌幅失败: {e}")
+                print(traceback.format_exc())
+        
         # 任务完成
         with tasks_lock:
             screening_tasks[task_id]["status"] = "completed"
             screening_tasks[task_id]["errors"] = errors[:100]
+            if summary_stats:
+                screening_tasks[task_id]["summary"] = summary_stats
+                print(f"[筛选统计] 已设置summary: {summary_stats}")
+            else:
+                print(f"[筛选统计] 未生成summary，selected数量: {len(selected)}, end_date: {end_date}")
     
     except Exception as e:
         with tasks_lock:
@@ -1136,7 +1476,18 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
 async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any]:
     """
     导出筛选结果为CSV文件
-    body: { results: [...], direction?: string, fast?: int, slow?: int, signal?: int }
+    body: { 
+        results: [...], 
+        direction?: string, 
+        fast?: int, 
+        slow?: int, 
+        signal?: int,
+        endDate?: string,  # 截止日期（用于文件名）
+        volumeRatio?: float,  # 放量倍数（用于文件名）
+        maShort?: int,  # 短期均线周期（用于文件名）
+        maLong?: int,  # 长期均线周期（用于文件名）
+        priceThreshold?: float  # 位置百分比阈值（用于文件名）
+    }
     返回: { ok: bool, filepath: str, filename: str }
     """
     try:
@@ -1149,6 +1500,11 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
         fast = body.get('fast', 12)
         slow = body.get('slow', 26)
         signal = body.get('signal', 9)
+        end_date = body.get('endDate')  # 截止日期
+        volume_ratio = body.get('volumeRatio')  # 放量倍数（可能为None）
+        ma_short = body.get('maShort')  # 短期均线周期（可能为None）
+        ma_long = body.get('maLong')  # 长期均线周期（可能为None）
+        price_threshold = body.get('priceThreshold')  # 位置百分比阈值（可能为None）
         
         # 定位项目根目录
         here = Path(__file__).resolve()
@@ -1158,16 +1514,51 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
         output_dir = project_root / 'data' / 'screening_results'
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # 生成文件名：screening_日期_数量只.csv
-        date_str = datetime.now().strftime('%Y%m%d')
+        # 生成文件名：日期_放量倍数_短均线_长均线_位置百分比_数量只.csv
+        # 使用截止日期，如果没有则使用当前日期
+        if end_date:
+            try:
+                # 将日期格式从 YYYY-MM-DD 转换为 YYYYMMDD
+                date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+                date_str = date_obj.strftime('%Y%m%d')
+            except:
+                date_str = datetime.now().strftime('%Y%m%d')
+        else:
+            date_str = datetime.now().strftime('%Y%m%d')
+        
         count = len(results)
-        filename = f"screening_{date_str}_{count}只.csv"
+        # 格式化参数：如果参数为None，使用默认值或占位符
+        # 放量倍数：保留1位小数，去掉小数点（1.5 -> 15）
+        if volume_ratio is not None:
+            volume_str = f"{float(volume_ratio):.1f}".replace('.', '')
+        else:
+            volume_str = '0'  # 未启用放量筛选
+        
+        # 短期均线周期
+        if ma_short is not None:
+            ma_short_str = str(int(ma_short))
+        else:
+            ma_short_str = '0'  # 未启用均线筛选
+        
+        # 长期均线周期
+        if ma_long is not None:
+            ma_long_str = str(int(ma_long))
+        else:
+            ma_long_str = '0'  # 未启用均线筛选
+        
+        # 位置百分比阈值
+        if price_threshold is not None:
+            price_str = str(int(price_threshold))
+        else:
+            price_str = '0'  # 未启用位置筛选
+        
+        filename = f"{date_str}_{volume_str}_{ma_short_str}_{ma_long_str}_{price_str}_{count}只.csv"
         filepath = output_dir / filename
         
         # 如果文件已存在，添加时间戳
         if filepath.exists():
             time_str = datetime.now().strftime('%H%M%S')
-            filename = f"screening_{date_str}_{time_str}_{count}只.csv"
+            filename = f"{date_str}_{volume_str}_{ma_short_str}_{ma_long_str}_{price_str}_{count}只_{time_str}.csv"
             filepath = output_dir / filename
         
         # 准备CSV数据
@@ -1343,7 +1734,7 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                 # 获取最近5天的数据（第0-4行，最新的5天）
                 recent_5_days = df.head(5).copy()
                 
-                # 获取5天前的价格（第5行的收盘价，即第6天的数据）
+                # 获取第0天的价格（第5行的收盘价，即第6天的数据，作为基准）
                 base_price = float(df.iloc[5]['close']) if pd.notna(df.iloc[5]['close']) else None
                 
                 if base_price is None:
@@ -1351,10 +1742,10 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                     continue
                 
                 # 构建每日数据（从旧到新：第1天是最旧的，第5天是最新的）
-                # recent_5_days是按时间倒序的：iloc[0]是最新，iloc[4]是最旧
+                # recent_5_days是按时间倒序的：iloc[0]是最新（第5天），iloc[4]是最旧（第1天）
                 days_data = []
                 for idx in range(len(recent_5_days)):
-                    # idx=0是最新的，idx=4是最旧的
+                    # idx=0是最新的（第5天），idx=4是最旧的（第1天）
                     row = recent_5_days.iloc[idx]
                     # day_num：idx=4对应第1天（最旧），idx=0对应第5天（最新）
                     day_num = len(recent_5_days) - idx  # 第1天到第5天（第1天最旧，第5天最新）
@@ -1378,7 +1769,7 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                             daily_change = round(close_price - prev_close, 2)
                             daily_change_percent = round((daily_change / prev_close * 100), 2) if prev_close > 0 else 0
                     else:
-                        # 第5天（最旧，idx=4），与基准价格（第6天）对比
+                        # 第1天（最旧，idx=4），与基准价格（第0天）对比
                         daily_change = round(close_price - base_price, 2)
                         daily_change_percent = round((daily_change / base_price * 100), 2) if base_price > 0 else 0
                     
@@ -1433,13 +1824,113 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
             except Exception as e:
                 errors.append({"symbol": symbol, "error": str(e)})
         
+        # 计算汇总统计：平均涨跌幅、第一天涨的股票数量、前两天涨的股票数量
+        summary = None
+        if len(results) > 0:
+            # 收集所有股票每天的涨跌幅
+            day_returns = {1: [], 2: [], 3: [], 4: [], 5: []}  # 第1-5天的涨跌幅列表
+            day1_rise_count = 0  # 第一天涨的股票数量
+            day2_rise_count = 0  # 前两天都涨的股票数量
+            
+            for result in results:
+                days = result.get('days', [])
+                if len(days) == 0:
+                    continue
+                
+                day1_rise = False
+                day2_rise = False
+                
+                for day_data in days:
+                    day_num = day_data.get('day')
+                    change_percent = day_data.get('changePercent', 0)
+                    
+                    if day_num in day_returns:
+                        day_returns[day_num].append(change_percent)
+                    
+                    # 统计第一天涨的股票
+                    if day_num == 1:
+                        if change_percent > 0:
+                            day1_rise = True
+                    
+                    # 统计前两天都涨的股票（第1天和第2天都涨）
+                    if day_num == 2:
+                        if change_percent > 0 and day1_rise:
+                            day2_rise = True
+                
+                if day1_rise:
+                    day1_rise_count += 1
+                if day2_rise:
+                    day2_rise_count += 1
+            
+            # 计算各种统计指标
+            day_stats = {}
+            for day_num in [1, 2, 3, 4, 5]:
+                returns = day_returns[day_num]
+                if len(returns) > 0:
+                    # 平均值
+                    avg_return = sum(returns) / len(returns)
+                    
+                    # 上涨和下跌数量
+                    rise_count = sum(1 for r in returns if r > 0)
+                    fall_count = sum(1 for r in returns if r < 0)
+                    flat_count = len(returns) - rise_count - fall_count
+                    
+                    # 上涨比例
+                    rise_ratio = (rise_count / len(returns) * 100) if len(returns) > 0 else 0
+                    
+                    # 最大涨幅和最大跌幅
+                    max_return = max(returns) if returns else 0
+                    min_return = min(returns) if returns else 0
+                    
+                    # 中位数
+                    sorted_returns = sorted(returns)
+                    median_return = sorted_returns[len(sorted_returns) // 2] if sorted_returns else 0
+                    if len(sorted_returns) % 2 == 0 and len(sorted_returns) > 0:
+                        median_return = (sorted_returns[len(sorted_returns) // 2 - 1] + sorted_returns[len(sorted_returns) // 2]) / 2
+                    
+                    # 标准差（波动性）
+                    variance = sum((r - avg_return) ** 2 for r in returns) / len(returns) if len(returns) > 0 else 0
+                    std_dev = variance ** 0.5
+                    
+                    day_stats[f"day{day_num}"] = {
+                        "avg": round(avg_return, 2),
+                        "riseCount": rise_count,
+                        "fallCount": fall_count,
+                        "flatCount": flat_count,
+                        "riseRatio": round(rise_ratio, 1),
+                        "max": round(max_return, 2),
+                        "min": round(min_return, 2),
+                        "median": round(median_return, 2),
+                        "stdDev": round(std_dev, 2)
+                    }
+                else:
+                    day_stats[f"day{day_num}"] = {
+                        "avg": 0.0,
+                        "riseCount": 0,
+                        "fallCount": 0,
+                        "flatCount": 0,
+                        "riseRatio": 0.0,
+                        "max": 0.0,
+                        "min": 0.0,
+                        "median": 0.0,
+                        "stdDev": 0.0
+                    }
+            
+            summary = {
+                "dayStats": day_stats,
+                "day1RiseCount": day1_rise_count,
+                "day2RiseCount": day2_rise_count,
+                "totalStocks": len(results)
+            }
+        
         return {
             "ok": True,
             "results": results,
             "errors": errors,
             "total": len(symbols),
             "success": len(results),
-            "failed": len(errors)
+            "failed": len(errors),
+            "summary": summary
         }
         
     except HTTPException:

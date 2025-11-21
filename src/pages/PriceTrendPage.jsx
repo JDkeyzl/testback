@@ -1,19 +1,34 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Upload, FileText, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
+import { Upload, FileText, TrendingUp, TrendingDown, Loader2, Eye } from 'lucide-react'
 
 const STORAGE_KEY = 'price-trend-state'
 
 export function PriceTrendPage() {
+  const navigate = useNavigate()
+  
+  // 获取今天的日期（YYYY-MM-DD格式）
+  const getToday = () => {
+    const d = new Date()
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
   const [symbols, setSymbols] = useState([])
   const [manualInput, setManualInput] = useState('')
   const [csvFile, setCsvFile] = useState(null)
   const [results, setResults] = useState([])
   const [errors, setErrors] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [summary, setSummary] = useState(null)
+  const scrollContainerRef = useRef(null)
+  const scrollRestoredRef = useRef(false)
 
   // 从 localStorage 恢复状态
   useEffect(() => {
@@ -30,26 +45,89 @@ export function PriceTrendPage() {
         if (parsed.errors) {
           setErrors(parsed.errors)
         }
+        if (parsed.summary) {
+          setSummary(parsed.summary)
+        }
       }
     } catch (e) {
       console.error('Failed to load saved state:', e)
     }
   }, [])
 
-  // 保存状态到 localStorage
+  // 恢复滚动位置
   useEffect(() => {
-    const stateToSave = {
-      symbols,
-      results,
-      errors,
-      timestamp: Date.now()
-    }
+    if (scrollRestoredRef.current) return
+    
     try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.scrollPosition && typeof parsed.scrollPosition === 'number') {
+          // 延迟恢复滚动位置，确保页面内容已渲染
+          setTimeout(() => {
+            window.scrollTo(0, parsed.scrollPosition)
+            scrollRestoredRef.current = true
+          }, 100)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore scroll position:', e)
+    }
+  }, [results]) // 当结果加载后恢复滚动位置
+
+  // 保存滚动位置
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY || window.pageYOffset || document.documentElement.scrollTop
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        const state = saved ? JSON.parse(saved) : {}
+        state.scrollPosition = scrollPosition
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      } catch (e) {
+        console.error('Failed to save scroll position:', e)
+      }
+    }
+
+    // 使用节流来减少保存频率
+    let scrollTimeout = null
+    const throttledScroll = () => {
+      if (scrollTimeout) return
+      scrollTimeout = setTimeout(() => {
+        handleScroll()
+        scrollTimeout = null
+      }, 200) // 每200ms保存一次
+    }
+
+    window.addEventListener('scroll', throttledScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', throttledScroll)
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout)
+      }
+    }
+  }, [])
+
+  // 保存状态到 localStorage（不包含滚动位置，滚动位置由滚动事件单独保存）
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      const existingState = saved ? JSON.parse(saved) : {}
+      const stateToSave = {
+        ...existingState,
+        symbols,
+        results,
+        errors,
+        summary,
+        timestamp: Date.now()
+        // scrollPosition 由滚动事件单独保存，不在这里覆盖
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave))
     } catch (e) {
       console.error('Failed to save state:', e)
     }
-  }, [symbols, results, errors])
+  }, [symbols, results, errors, summary])
 
   // 处理CSV文件上传
   const handleCsvUpload = (event) => {
@@ -57,7 +135,6 @@ export function PriceTrendPage() {
     if (!file) return
 
     if (!file.name.endsWith('.csv')) {
-      alert('请上传CSV文件')
       return
     }
 
@@ -68,55 +145,123 @@ export function PriceTrendPage() {
     reader.onload = (e) => {
       try {
         const text = e.target.result
-        const lines = text.split('\n')
+        const lines = text.split(/\r?\n/).filter(line => line.trim()) // 处理不同换行符
         if (lines.length < 2) {
-          alert('CSV文件格式错误')
           return
         }
 
-        // 解析CSV（简单处理，假设第一行是表头）
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
-        const codeIndex = headers.findIndex(h => 
-          h === '股票代码' || h === 'code' || h === 'Code' || h.toLowerCase().includes('code')
-        )
+        // 更健壮的CSV解析函数
+        const parseCSVLine = (line) => {
+          const result = []
+          let current = ''
+          let inQuotes = false
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i]
+            
+            if (char === '"') {
+              inQuotes = !inQuotes
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim())
+              current = ''
+            } else {
+              current += char
+            }
+          }
+          result.push(current.trim()) // 最后一个字段
+          return result
+        }
+
+        // 解析表头
+        const headers = parseCSVLine(lines[0]).map(h => {
+          // 移除引号和等号
+          h = h.replace(/^="?|"?$/g, '')
+          h = h.replace(/^"|"$/g, '')
+          return h.trim()
+        })
+        
+        // 查找股票代码列（支持更多变体）
+        const codeIndex = headers.findIndex(h => {
+          const lower = h.toLowerCase()
+          return h === '股票代码' || 
+                 h === 'code' || 
+                 h === 'Code' || 
+                 h === 'CODE' ||
+                 lower === '股票代码' ||
+                 lower.includes('code') ||
+                 lower.includes('代码') ||
+                 h === 'symbol' ||
+                 lower === 'symbol'
+        })
 
         if (codeIndex === -1) {
-          alert('CSV文件中未找到股票代码列')
+          const headerList = headers.join(', ')
+          console.log(`CSV文件中未找到股票代码列。找到的列名：${headerList}`)
           return
         }
 
         const codes = []
+        const invalidCodes = []
+        
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim()
           if (!line) continue
           
-          // 更健壮的CSV解析：处理带引号和等号的格式
-          const values = line.split(',').map(v => {
-            let val = v.trim()
+          // 使用改进的CSV解析
+          const values = parseCSVLine(line).map(v => {
             // 移除等号格式：="000560" -> 000560
-            val = val.replace(/^="?|"?$/g, '')
+            v = v.replace(/^="?|"?$/g, '')
             // 移除引号
-            val = val.replace(/^"|"$/g, '')
-            return val
+            v = v.replace(/^"|"$/g, '')
+            return v.trim()
           })
           
-          if (values[codeIndex]) {
-            const code = values[codeIndex].trim()
+          if (values[codeIndex] !== undefined) {
+            let code = values[codeIndex]
+            
+            // 处理各种格式的股票代码
+            // 移除等号和引号
+            code = code.replace(/^="?|"?$/g, '')
+            code = code.replace(/^"|"$/g, '')
+            code = code.trim()
+            
+            // 如果包含点号，取最后部分（如 sh.600000 -> 600000）
+            if (code.includes('.')) {
+              code = code.split('.').pop()
+            }
+            
+            // 提取纯数字部分（如果包含其他字符）
+            const digits = code.match(/\d{6}/)
+            if (digits) {
+              code = digits[0]
+            }
+            
             // 验证是6位数字
-            if (code && /^\d{6}$/.test(code) && !codes.includes(code)) {
-              codes.push(code)
+            if (code && /^\d{6}$/.test(code)) {
+              if (!codes.includes(code)) {
+                codes.push(code)
+              }
+            } else if (code) {
+              invalidCodes.push(code)
             }
           }
         }
 
         if (codes.length > 0) {
           setSymbols(codes)
-          alert(`已从CSV文件中读取 ${codes.length} 个股票代码`)
+          if (invalidCodes.length > 0) {
+            console.log(`已从CSV文件中读取 ${codes.length} 个股票代码，跳过了 ${invalidCodes.length} 个无效代码：${invalidCodes.slice(0, 5).join(', ')}${invalidCodes.length > 5 ? '...' : ''}`)
+          }
         } else {
-          alert('未能从CSV文件中提取股票代码')
+          if (invalidCodes.length > 0) {
+            console.log(`未能从CSV文件中提取股票代码。找到的代码（格式不正确）：${invalidCodes.slice(0, 10).join(', ')}${invalidCodes.length > 10 ? '...' : ''}`)
+            console.log('提示：股票代码应为6位数字（如：000560）')
+          }
+          console.log('无效代码示例:', invalidCodes.slice(0, 10))
+          console.log('CSV第一行数据:', lines[1])
         }
       } catch (err) {
-        alert('读取CSV文件失败: ' + err.message)
+        console.error('读取CSV文件失败:', err.message)
       }
     }
     reader.readAsText(file, 'UTF-8')
@@ -186,11 +331,10 @@ export function PriceTrendPage() {
     if (symbols.length === 0) {
       return
     }
-    if (confirm(`确定要清空所有 ${symbols.length} 个股票代码吗？`)) {
-      setSymbols([])
-      setResults([])
-      setErrors([])
-    }
+    setSymbols([])
+    setResults([])
+    setErrors([])
+    setSummary(null)
   }
 
   // 清空分析结果（保留股票代码）
@@ -201,6 +345,7 @@ export function PriceTrendPage() {
     if (confirm('确定要清空分析结果吗？股票代码将保留。')) {
       setResults([])
       setErrors([])
+      setSummary(null)
     }
   }
 
@@ -217,7 +362,9 @@ export function PriceTrendPage() {
 
     try {
       // 如果有CSV文件，尝试使用文件路径
-      let body = { symbols }
+      let body = { 
+        symbols
+      }
       
       // 如果上传了CSV文件，可以尝试使用文件路径（需要先上传到服务器）
       // 这里简化处理，直接使用symbols列表
@@ -236,6 +383,7 @@ export function PriceTrendPage() {
 
       setResults(data.results || [])
       setErrors(data.errors || [])
+      setSummary(data.summary || null)
     } catch (err) {
       alert('分析失败: ' + err.message)
     } finally {
@@ -249,7 +397,7 @@ export function PriceTrendPage() {
         <CardHeader>
           <CardTitle>股票价格走势分析</CardTitle>
           <CardDescription>
-            分析最近5天的价格走势，显示每日收盘价及与5天前的价格差
+            分析最近5天的价格走势，显示每日收盘价及与第0天（基准日）的价格差。第一天到第五天是最近5天的数据，最新的数据是第五天
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -382,6 +530,85 @@ export function PriceTrendPage() {
         </CardContent>
       </Card>
 
+      {/* 汇总分析 */}
+      {summary && results.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>汇总分析</CardTitle>
+            <CardDescription>
+              所有股票的平均涨跌幅统计
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-4">天数</th>
+                    <th className="text-right py-2 px-4">上涨比例</th>
+                    <th className="text-right py-2 px-4">最大涨幅</th>
+                    <th className="text-right py-2 px-4">最大跌幅</th>
+                    <th className="text-right py-2 px-4">中位数</th>
+                    <th className="text-right py-2 px-4">下跌数量</th>
+                    <th className="text-right py-2 px-4">上涨数量</th>
+                    <th className="text-right py-2 px-4">平均涨跌幅</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5].map(day => {
+                    const stats = summary.dayStats?.[`day${day}`] || {}
+                    const avgReturn = stats.avg || 0
+                    const isRise = avgReturn > 0
+                    const riseCount = stats.riseCount || 0
+                    const fallCount = stats.fallCount || 0
+                    const riseRatio = stats.riseRatio || 0
+                    const maxReturn = stats.max || 0
+                    const minReturn = stats.min || 0
+                    const medianReturn = stats.median || 0
+                    
+                    return (
+                      <tr key={day} className="border-b">
+                        <td className="py-2 px-4 font-medium">第{day}天</td>
+                        <td className="py-2 px-4 text-right">{riseRatio.toFixed(1)}%</td>
+                        <td className={`py-2 px-4 text-right ${maxReturn > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {maxReturn > 0 ? '+' : ''}{maxReturn.toFixed(2)}%
+                        </td>
+                        <td className={`py-2 px-4 text-right ${minReturn > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {minReturn < 0 ? '' : ''}{minReturn.toFixed(2)}%
+                        </td>
+                        <td className={`py-2 px-4 text-right ${medianReturn > 0 ? 'text-red-600' : medianReturn < 0 ? 'text-green-600' : ''}`}>
+                          {medianReturn > 0 ? '+' : ''}{medianReturn.toFixed(2)}%
+                        </td>
+                        <td className="py-2 px-4 text-right text-green-600">{fallCount}</td>
+                        <td className="py-2 px-4 text-right text-red-600">{riseCount}</td>
+                        <td className={`py-2 px-4 text-right font-medium ${isRise ? 'text-red-600' : 'text-green-600'}`}>
+                          {isRise ? (
+                            <TrendingUp className="inline h-4 w-4 mr-1" />
+                          ) : (
+                            <TrendingDown className="inline h-4 w-4 mr-1" />
+                          )}
+                          {isRise ? '+' : ''}{avgReturn.toFixed(2)}%
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 pt-4 border-t space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">第一天涨的股票数量：</span>
+                <span className="font-medium">{summary.day1RiseCount} / {summary.totalStocks}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">前两天都涨的股票数量：</span>
+                <span className="font-medium">{summary.day2RiseCount} / {summary.totalStocks}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 结果展示 */}
       {results.length > 0 && (
         <div className="space-y-4">
@@ -399,9 +626,29 @@ export function PriceTrendPage() {
             <Card key={result.symbol}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>
-                    {result.name} ({result.symbol})
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span>
+                      {result.name} ({result.symbol})
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // 跳转到K线详情页，展示日线+周线MACD
+                        navigate(`/screener-detail/${result.symbol}`, {
+                          state: {
+                            code: result.symbol,
+                            name: result.name,
+                            macdParams: { fast: 12, slow: 26, signal: 9 },
+                            directions: {}
+                          }
+                        })
+                      }}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      查看详情
+                    </Button>
+                  </div>
                   <span className="text-sm font-normal text-muted-foreground">
                     基准价格: ¥{result.basePrice}
                   </span>

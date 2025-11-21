@@ -11,11 +11,23 @@ const PERSIST_KEY = 'conditional-screener-state'
 export function ConditionalScannerPage() {
   const navigate = useNavigate()
   
+  // 获取今天的日期（YYYY-MM-DD格式）
+  const getToday = () => {
+    const d = new Date()
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
   // 日线+周线MACD共振筛选
-  const [direction, setDirection] = useState('bull') // bull | bear | both
+  const [direction, setDirection] = useState('bull') // bull | bear
   const [fast, setFast] = useState(12)
   const [slow, setSlow] = useState(26)
   const [signal, setSignal] = useState(9)
+  const [enableDailyMacdPositive, setEnableDailyMacdPositive] = useState(false) // 日线MACD>0
+  const [enableWeeklyMacdPositive, setEnableWeeklyMacdPositive] = useState(false) // 周线MACD>0
+  const [endDate, setEndDate] = useState(getToday()) // 数据截止日期，默认今天
   const [enableVolume, setEnableVolume] = useState(true) // 是否启用放量筛选
   const [volumePeriod, setVolumePeriod] = useState(20) // 均量周期
   const [volumeRatio, setVolumeRatio] = useState(1.5) // 放量倍数
@@ -27,6 +39,9 @@ export function ConditionalScannerPage() {
   const [maShort, setMaShort] = useState(20) // 短期均线周期
   const [maLong, setMaLong] = useState(30) // 长期均线周期
   const [maRelation, setMaRelation] = useState('above') // above=短期在长期上方 | below=短期在长期下方
+  const [enablePriceAboveMA, setEnablePriceAboveMA] = useState(false) // 是否启用价格大于MA筛选
+  const [priceAboveMAPeriod, setPriceAboveMAPeriod] = useState(60) // 价格大于MA的周期
+  const [enableFirstRisePhase, setEnableFirstRisePhase] = useState(false) // 是否启用第一次主升段筛选
   const [limit, setLimit] = useState(50) // 限制筛选数量，用于测试
   const [isRunning, setIsRunning] = useState(false)
   const [results, setResults] = useState([])
@@ -36,6 +51,7 @@ export function ConditionalScannerPage() {
   const [pollIntervalId, setPollIntervalId] = useState(null)
   const [sortBy, setSortBy] = useState('volume') // 排序字段：volume | name | code
   const [sortOrder, setSortOrder] = useState('desc') // 排序方向：asc | desc
+  const [summary, setSummary] = useState(null) // 概括统计信息
 
   // 组件卸载时清理轮询
   useEffect(() => {
@@ -45,6 +61,80 @@ export function ConditionalScannerPage() {
       }
     }
   }, [pollIntervalId])
+
+  // 恢复筛选任务轮询（如果页面刷新时任务还在运行）
+  useEffect(() => {
+    // 如果taskId存在且isRunning为true，重新启动轮询
+    if (taskId && isRunning && !pollIntervalId) {
+      console.log(`恢复筛选任务轮询: taskId=${taskId}`)
+      setStatus('正在恢复筛选任务...')
+      
+      const intervalId = setInterval(async () => {
+        try {
+          const statusResp = await fetch(`/api/v1/screener/status/${taskId}`)
+          const statusData = await statusResp.json().catch(() => ({}))
+          
+          if (!statusResp.ok || !statusData?.ok || !statusData.task) {
+            clearInterval(intervalId)
+            setPollIntervalId(null)
+            setStatus('获取进度失败，任务可能已结束')
+            setIsRunning(false)
+            setTaskId(null)
+            return
+          }
+          
+          const task = statusData.task
+          const prog = task.progress || {}
+          setProgress(prog)
+          setResults(Array.isArray(task.results) ? task.results : [])
+          // 更新概括统计
+          if (task.summary) {
+            setSummary(task.summary)
+          } else {
+            setSummary(null)
+          }
+          
+          // 更新状态文本
+          if (task.status === 'running') {
+            const percent = prog.total > 0 ? Math.round((prog.processed / prog.total) * 100) : 0
+            setStatus(`正在筛选 ${prog.processed}/${prog.total} (${percent}%)，已找到 ${prog.matched} 只`)
+          } else if (task.status === 'completed') {
+            clearInterval(intervalId)
+            setPollIntervalId(null)
+            setStatus(`✅ 筛选完成：共筛选 ${prog.total} 只，找到 ${prog.matched} 只符合条件的股票`)
+            setIsRunning(false)
+            setTaskId(null)
+          } else if (task.status === 'error') {
+            clearInterval(intervalId)
+            setPollIntervalId(null)
+            const errMsg = (Array.isArray(task.errors) && task.errors[0]?.error) || '未知错误'
+            setStatus(`❌ 筛选失败：${errMsg}`)
+            setIsRunning(false)
+            setTaskId(null)
+          }
+        } catch (e) {
+          console.error('轮询进度失败', e)
+        }
+      }, 500) // 每500ms轮询一次
+      
+      setPollIntervalId(intervalId)
+      
+      // 设置超时保护（1小时）
+      const timeoutId = setTimeout(() => {
+        clearInterval(intervalId)
+        setPollIntervalId(null)
+        if (isRunning) {
+          setStatus('任务超时')
+          setIsRunning(false)
+          setTaskId(null)
+        }
+      }, 3600000)
+      
+      return () => {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [taskId, isRunning, pollIntervalId])
 
   // 加载持久化状态
   useEffect(() => {
@@ -67,8 +157,20 @@ export function ConditionalScannerPage() {
         if (state.maShort) setMaShort(state.maShort)
         if (state.maLong) setMaLong(state.maLong)
         if (state.maRelation) setMaRelation(state.maRelation)
+        if (state.enablePriceAboveMA !== undefined) setEnablePriceAboveMA(state.enablePriceAboveMA)
+        if (state.priceAboveMAPeriod) setPriceAboveMAPeriod(state.priceAboveMAPeriod)
+        if (state.enableFirstRisePhase !== undefined) setEnableFirstRisePhase(state.enableFirstRisePhase)
         if (state.limit) setLimit(state.limit)
+        if (state.endDate) setEndDate(state.endDate)
+        if (state.enableDailyMacdPositive !== undefined) setEnableDailyMacdPositive(state.enableDailyMacdPositive)
+        if (state.enableWeeklyMacdPositive !== undefined) setEnableWeeklyMacdPositive(state.enableWeeklyMacdPositive)
         if (Array.isArray(state.results)) setResults(state.results)
+        // 恢复筛选进度状态
+        if (state.taskId) setTaskId(state.taskId)
+        if (state.isRunning !== undefined) setIsRunning(state.isRunning)
+        if (state.status) setStatus(state.status)
+        if (state.progress) setProgress(state.progress)
+        if (state.summary) setSummary(state.summary)
       }
     } catch {}
   }, [])
@@ -77,22 +179,29 @@ export function ConditionalScannerPage() {
   useEffect(() => {
     try {
       localStorage.setItem(PERSIST_KEY, JSON.stringify({
-        direction, fast, slow, signal, enableVolume, volumePeriod, volumeRatio,
+        direction, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio,
         enablePosition, positionType, lookbackDays, priceThreshold,
-        enableMA, maShort, maLong, maRelation, limit, results
+        enableMA, maShort, maLong, maRelation, limit, results,
+        enableDailyMacdPositive, enableWeeklyMacdPositive,
+        enablePriceAboveMA, priceAboveMAPeriod, enableFirstRisePhase,
+        taskId, isRunning, status, progress, summary
       }))
     } catch {}
-  }, [direction, fast, slow, signal, enableVolume, volumePeriod, volumeRatio, enablePosition, positionType, lookbackDays, priceThreshold, enableMA, maShort, maLong, maRelation, limit, results])
+  }, [direction, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio, enablePosition, positionType, lookbackDays, priceThreshold, enableMA, maShort, maLong, maRelation, limit, results, enableDailyMacdPositive, enableWeeklyMacdPositive, enablePriceAboveMA, priceAboveMAPeriod, enableFirstRisePhase, taskId, isRunning, status, progress, summary])
 
   const runScreen = async () => {
-    if (!direction) {
-      alert('请选择MACD方向')
-      return
+    // 不再强制要求选择方向
+    // 清除旧的轮询
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId)
+      setPollIntervalId(null)
     }
     setIsRunning(true)
     setStatus('正在启动筛选任务...')
     setResults([])
     setProgress({ processed: 0, total: 0, matched: 0, current: '' })
+    setSummary(null)  // 重置概括统计
+    setTaskId(null)  // 清除旧的taskId
     
     try {
       // 1. 启动异步任务
@@ -109,6 +218,7 @@ export function ConditionalScannerPage() {
           fast,
           slow,
           signal,
+          endDate: endDate || undefined,  // 数据截止日期
           limit: limit || undefined,  // 传递limit参数
           enableVolume,
           volumePeriod,
@@ -120,7 +230,12 @@ export function ConditionalScannerPage() {
           enableMA,
           maShort,
           maLong,
-          maRelation
+          maRelation,
+          enableDailyMacdPositive,
+          enableWeeklyMacdPositive,
+          enablePriceAboveMA,
+          priceAboveMAPeriod,
+          enableFirstRisePhase
         })
       })
       clearTimeout(fetchTimeoutId)
@@ -144,6 +259,7 @@ export function ConditionalScannerPage() {
             setPollIntervalId(null)
             setStatus('获取进度失败')
             setIsRunning(false)
+            setTaskId(null)
             return
           }
           
@@ -151,6 +267,13 @@ export function ConditionalScannerPage() {
           const prog = task.progress || {}
           setProgress(prog)
           setResults(Array.isArray(task.results) ? task.results : [])
+          // 更新概括统计
+          if (task.summary) {
+            console.log('收到summary数据:', task.summary)
+            setSummary(task.summary)
+          } else {
+            setSummary(null)
+          }
           
           // 更新状态文本
           if (task.status === 'running') {
@@ -161,12 +284,14 @@ export function ConditionalScannerPage() {
             setPollIntervalId(null)
             setStatus(`✅ 筛选完成：共筛选 ${prog.total} 只，找到 ${prog.matched} 只符合条件的股票`)
             setIsRunning(false)
+            setTaskId(null)
           } else if (task.status === 'error') {
             clearInterval(intervalId)
             setPollIntervalId(null)
             const errMsg = (Array.isArray(task.errors) && task.errors[0]?.error) || '未知错误'
             setStatus(`❌ 筛选失败：${errMsg}`)
             setIsRunning(false)
+            setTaskId(null)
           }
         } catch (e) {
           console.error('轮询进度失败', e)
@@ -192,6 +317,7 @@ export function ConditionalScannerPage() {
       alert('启动筛选失败：' + (e?.message || e))
       setStatus('')
       setIsRunning(false)
+      setTaskId(null)
       if (pollIntervalId) {
         clearInterval(pollIntervalId)
         setPollIntervalId(null)
@@ -294,6 +420,23 @@ export function ConditionalScannerPage() {
                 placeholder="留空=全部"
                 className="text-xs"
               />
+            </div>
+          </div>
+
+          {/* 数据截止日期 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <Label className="text-sm font-medium mb-2 block">数据截止日期</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                disabled={isRunning}
+                className="text-xs max-w-[200px]"
+              />
+              <span className="text-xs text-muted-foreground">
+                只使用该日期及之前的数据进行筛选
+              </span>
             </div>
           </div>
 
@@ -485,6 +628,61 @@ export function ConditionalScannerPage() {
             )}
           </div>
 
+          {/* 价格大于MA筛选 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enablePriceAboveMA"
+                checked={enablePriceAboveMA}
+                onChange={e => setEnablePriceAboveMA(e.target.checked)}
+                disabled={isRunning}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="enablePriceAboveMA" className="text-sm font-medium cursor-pointer">
+                价格大于MA
+              </Label>
+            </div>
+            {enablePriceAboveMA && (
+              <div className="mb-2">
+                <Label className="text-xs">MA周期</Label>
+                <Input
+                  type="number"
+                  value={priceAboveMAPeriod}
+                  onChange={e => setPriceAboveMAPeriod(Number(e.target.value))}
+                  disabled={isRunning}
+                  className="text-xs"
+                  min="1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  截止日期当天的收盘价大于MA{priceAboveMAPeriod}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 第一次主升段筛选 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableFirstRisePhase"
+                checked={enableFirstRisePhase}
+                onChange={e => setEnableFirstRisePhase(e.target.checked)}
+                disabled={isRunning}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="enableFirstRisePhase" className="text-sm font-medium cursor-pointer">
+                第一次主升段
+              </Label>
+            </div>
+            {enableFirstRisePhase && (
+              <p className="text-xs text-muted-foreground">
+                只选日线MACD柱状图由绿转红后第一次红柱持续放大形成的主升段，不包含回落后再度放大的再次上涨
+              </p>
+            )}
+          </div>
+
           {/* 方向选择 */}
           <div>
             <Label className="text-sm mb-2 block">MACD方向</Label>
@@ -509,14 +707,39 @@ export function ConditionalScannerPage() {
                 <TrendingDown className="h-4 w-4" />
                 柱子下降（动能减弱）
               </Button>
-              <Button
-                size="sm"
-                variant={direction === 'both' ? 'default' : 'outline'}
-                onClick={() => setDirection('both')}
-                disabled={isRunning}
-              >
-                同向即可
-              </Button>
+            </div>
+          </div>
+
+          {/* MACD值筛选 */}
+          <div>
+            <Label className="text-sm mb-2 block">MACD值筛选（非必选）</Label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="enableDailyMacdPositive"
+                  checked={enableDailyMacdPositive}
+                  onChange={(e) => setEnableDailyMacdPositive(e.target.checked)}
+                  disabled={isRunning}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="enableDailyMacdPositive" className="text-sm cursor-pointer">
+                  日线MACD &gt; 0
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="enableWeeklyMacdPositive"
+                  checked={enableWeeklyMacdPositive}
+                  onChange={(e) => setEnableWeeklyMacdPositive(e.target.checked)}
+                  disabled={isRunning}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="enableWeeklyMacdPositive" className="text-sm cursor-pointer">
+                  周线MACD &gt; 0
+                </Label>
+              </div>
             </div>
           </div>
 
@@ -604,7 +827,12 @@ export function ConditionalScannerPage() {
                         direction,
                         fast,
                         slow,
-                        signal
+                        signal,
+                        endDate: endDate || undefined,  // 截止日期
+                        volumeRatio: enableVolume ? volumeRatio : undefined,  // 放量倍数
+                        maShort: enableMA ? maShort : undefined,  // 短期均线周期
+                        maLong: enableMA ? maLong : undefined,  // 长期均线周期
+                        priceThreshold: enablePosition ? priceThreshold : undefined  // 位置百分比阈值
                       })
                     })
                     
@@ -644,8 +872,11 @@ export function ConditionalScannerPage() {
                     >
                       股票 {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                     </th>
+                    <th className="py-2 pr-4">最新价格</th>
                     <th className="py-2 pr-4">日线MACD</th>
+                    <th className="py-2 pr-4">日MACD值</th>
                     <th className="py-2 pr-4">周线MACD</th>
+                    <th className="py-2 pr-4">周MACD值</th>
                     {enableVolume && (
                       <th 
                         className="py-2 pr-4 cursor-pointer hover:text-foreground"
@@ -682,12 +913,37 @@ export function ConditionalScannerPage() {
                           <div className="text-xs text-muted-foreground">{r.code}</div>
                         </td>
                         <td className="py-2 pr-4">
+                          {r.latestPrice !== null && r.latestPrice !== undefined ? (
+                            <span className="font-medium">¥{r.latestPrice.toFixed(2)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-4">
                           <span className="text-lg">{dailyIcon}</span>
                           <span className="text-xs ml-1">{dailyDir}</span>
                         </td>
                         <td className="py-2 pr-4">
+                          {r.dailyMacd !== null && r.dailyMacd !== undefined ? (
+                            <span className={r.dailyMacd > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {r.dailyMacd > 0 ? '+' : ''}{r.dailyMacd.toFixed(4)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-4">
                           <span className="text-lg">{weeklyIcon}</span>
                           <span className="text-xs ml-1">{weeklyDir}</span>
+                        </td>
+                        <td className="py-2 pr-4">
+                          {r.weeklyMacd !== null && r.weeklyMacd !== undefined ? (
+                            <span className={r.weeklyMacd > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {r.weeklyMacd > 0 ? '+' : ''}{r.weeklyMacd.toFixed(4)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         {enableVolume && (
                           <td className="py-2 pr-4">

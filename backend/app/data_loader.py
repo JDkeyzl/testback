@@ -53,13 +53,14 @@ class StockDataLoader:
             self.data_dir = data_dir
         self.cache = {}  # 数据缓存
         
-    def load_stock_data(self, symbol: str, timeframe: str = "5m") -> pd.DataFrame:
+    def load_stock_data(self, symbol: str, timeframe: str = "5m", end_date: Optional[str] = None) -> pd.DataFrame:
         """
         加载股票数据
         
         Args:
             symbol: 股票代码，如 "002130"
             timeframe: 时间周期，如 "5m", "1d" 等
+            end_date: 截止日期（格式：YYYY-MM-DD），只使用该日期及之前的数据，None表示不过滤
             
         Returns:
             DataFrame: 包含OHLCV数据的DataFrame
@@ -68,8 +69,8 @@ class StockDataLoader:
         filename = f"{symbol}.csv"
         filepath = os.path.join(self.data_dir, filename)
         
-        # 检查缓存
-        cache_key = f"{symbol}_{timeframe}"
+        # 检查缓存（包含end_date的缓存键）
+        cache_key = f"{symbol}_{timeframe}_{end_date or 'all'}"
         if cache_key in self.cache:
             logger.info(f"从缓存加载数据: {symbol}")
             return self.cache[cache_key]
@@ -126,6 +127,16 @@ class StockDataLoader:
             
             # 数据预处理
             df = self._preprocess_data(df)
+            
+            # 在聚合前过滤截止日期（重要：必须在聚合前过滤，避免使用未来数据）
+            if end_date:
+                try:
+                    end_dt = pd.to_datetime(end_date).normalize()  # 转换为日期，时间设为00:00:00
+                    # 只保留截止日期及之前的数据（timestamp的日期部分 <= end_date）
+                    df = df[df['timestamp'].dt.date <= end_dt.date()].copy()
+                    logger.info(f"已过滤截止日期 {end_date}，剩余 {len(df)} 条数据")
+                except Exception as e:
+                    logger.warning(f"截止日期过滤失败: {e}，使用全部数据")
             
             # 根据时间周期过滤数据（若基础为分钟线，可聚合为更大周期）
             df = self._filter_by_timeframe(df, timeframe)
@@ -422,18 +433,19 @@ class StockDataLoader:
 # 全局数据加载器实例
 data_loader = StockDataLoader()
 
-def load_stock_data(symbol: str, timeframe: str = "5m") -> pd.DataFrame:
+def load_stock_data(symbol: str, timeframe: str = "5m", end_date: Optional[str] = None) -> pd.DataFrame:
     """
     便捷函数：加载股票数据
     
     Args:
         symbol: 股票代码
         timeframe: 时间周期
+        end_date: 截止日期（格式：YYYY-MM-DD），只使用该日期及之前的数据，None表示不过滤
         
     Returns:
         DataFrame: 股票数据
     """
-    return data_loader.load_stock_data(symbol, timeframe)
+    return data_loader.load_stock_data(symbol, timeframe, end_date)
 
 def get_data_info(symbol: str) -> Dict[str, Any]:
     """
