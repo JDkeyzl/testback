@@ -391,20 +391,20 @@ async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
         
         # 定位脚本路径
         here = Path(__file__).resolve()
-        candidate_roots = [
-            here.parents[3] if len(here.parents) >= 4 else here.parent,
-            here.parents[2] if len(here.parents) >= 3 else here.parent,
-        ]
+        # 从当前文件向上查找项目根目录（包含 scripts 目录的目录）
+        # backtest.py 在 backend/app/api/ 下，项目根目录应该是 here.parents[3]
         script_path = None
         project_root = None
-        for root in candidate_roots:
+        for i in range(min(5, len(here.parents))):
+            root = here.parents[i]
             cand = root / 'scripts' / 'batchFetchDailyData.py'
             if cand.exists():
                 script_path = cand
                 project_root = root
                 break
+        
         if script_path is None:
-            # 尝试更多路径
+            # 如果没找到，尝试所有可能的路径
             all_roots = [here.parents[i] for i in range(min(5, len(here.parents)))]
             checked_paths = [str(root / 'scripts' / 'batchFetchDailyData.py') for root in all_roots]
             raise HTTPException(
@@ -420,16 +420,63 @@ async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
         
         print(f"[批量获取] 执行命令: {' '.join(cmd)}")
         print(f"[批量获取] 工作目录: {project_root}")
+        print(f"[批量获取] Python可执行文件: {py_exec}")
+        print(f"[批量获取] 脚本路径: {script_path}")
+        print(f"[批量获取] 脚本是否存在: {script_path.exists()}")
         
-        proc = subprocess.run(
-            cmd, 
-            cwd=str(project_root), 
-            capture_output=True, 
-            text=True, 
-            timeout=3600,
-            encoding='utf-8',
-            errors='replace'
-        )
+        try:
+            # 设置环境变量，强制使用UTF-8编码
+            import os
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+            env['PYTHONUTF8'] = '1'
+            
+            # 先使用 bytes 模式捕获输出，然后尝试多种编码解码
+            proc = subprocess.run(
+                cmd, 
+                cwd=str(project_root), 
+                capture_output=True, 
+                timeout=3600,
+                env=env  # 传递环境变量，强制使用UTF-8
+            )
+            
+            # 尝试多种编码解码输出
+            def decode_output(data: bytes) -> str:
+                if not data:
+                    return ''
+                # 尝试的编码顺序：UTF-8, GBK, GB2312, latin1
+                encodings = ['utf-8', 'gbk', 'gb2312', 'latin1']
+                for enc in encodings:
+                    try:
+                        return data.decode(enc, errors='replace')
+                    except:
+                        continue
+                # 如果都失败，使用 errors='replace' 强制解码
+                return data.decode('utf-8', errors='replace')
+            
+            # 解码 stdout 和 stderr
+            proc.stdout_decoded = decode_output(proc.stdout)
+            proc.stderr_decoded = decode_output(proc.stderr)
+            # 为了兼容后续代码，设置 stdout 和 stderr 属性
+            proc.stdout = proc.stdout_decoded
+            proc.stderr = proc.stderr_decoded
+        except subprocess.TimeoutExpired:
+            print(f"[批量获取] 脚本执行超时（>1小时）")
+            raise HTTPException(status_code=500, detail="脚本执行超时（>1小时）")
+        except Exception as e:
+            import traceback
+            import re
+            error_trace = traceback.format_exc()
+            print(f"[批量获取] 执行脚本时发生异常: {error_trace}")
+            error_msg = str(e)
+            # 清理错误信息，确保UTF-8编码
+            try:
+                cleaned_msg = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]', '', error_msg)
+                cleaned_msg = cleaned_msg.encode('utf-8', errors='replace').decode('utf-8')
+                error_msg = cleaned_msg
+            except:
+                pass
+            raise HTTPException(status_code=500, detail=f"执行脚本时发生异常: {error_msg}")
         
         print(f"[批量获取] 返回码: {proc.returncode}")
         print(f"[批量获取] stdout长度: {len(proc.stdout)}")
@@ -437,10 +484,23 @@ async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
         
         if proc.returncode != 0:
             error_msg = proc.stderr or proc.stdout or "未知错误"
-            print(f"[批量获取] 错误输出: {error_msg[:500]}")
+            print(f"[批量获取] 错误输出 (stderr): {proc.stderr[:1000] if proc.stderr else 'N/A'}")
+            print(f"[批量获取] 错误输出 (stdout): {proc.stdout[:1000] if proc.stdout else 'N/A'}")
+            # 尝试提取更详细的错误信息
+            full_error = (proc.stderr or '') + '\n' + (proc.stdout or '')
+            # 清理错误信息：移除控制字符，确保UTF-8编码
+            import re
+            # 移除控制字符（除了换行符和制表符）
+            cleaned_error = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]', '', full_error)
+            # 确保是有效的UTF-8字符串
+            try:
+                cleaned_error = cleaned_error.encode('utf-8', errors='replace').decode('utf-8')
+            except:
+                cleaned_error = full_error.encode('utf-8', errors='replace').decode('utf-8')
+            error_preview = cleaned_error[:2000] if len(cleaned_error) > 2000 else cleaned_error
             raise HTTPException(
                 status_code=500, 
-                detail=f"脚本执行失败 (返回码: {proc.returncode}): {error_msg[:1000]}"
+                detail=f"脚本执行失败 (返回码: {proc.returncode}): {error_preview}"
             )
         
         # 解析 JSON 结果
@@ -486,14 +546,24 @@ async def batch_fetch_daily_data(body: Dict[str, Any]) -> Dict[str, Any]:
         }
     except HTTPException:
         raise
-    except subprocess.TimeoutExpired as e:
-        print(f"[批量获取] 超时: {e}")
-        raise HTTPException(status_code=500, detail="脚本执行超时（>1小时）")
     except Exception as e:
         import traceback
+        import re
         error_trace = traceback.format_exc()
         print(f"[批量获取] 异常: {error_trace}")
-        raise HTTPException(status_code=500, detail=f"批量获取失败: {str(e)}")
+        error_msg = str(e)
+        # 如果是超时异常，提供更友好的错误信息
+        if isinstance(e, subprocess.TimeoutExpired):
+            error_msg = "脚本执行超时（>1小时）"
+        # 清理错误信息，确保UTF-8编码
+        try:
+            # 移除控制字符（除了换行符和制表符）
+            cleaned_msg = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]', '', error_msg)
+            cleaned_msg = cleaned_msg.encode('utf-8', errors='replace').decode('utf-8')
+            error_msg = cleaned_msg
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"批量获取失败: {error_msg}")
 
 @router.post("/data/fetch")
 async def fetch_stock_data(body: Dict[str, Any]) -> Dict[str, Any]:
@@ -1648,12 +1718,111 @@ async def export_screening_results_to_csv(body: Dict[str, Any]) -> Dict[str, Any
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导出CSV失败: {str(e)}")
 
+@router.post("/best-stocks/export-csv")
+async def export_best_stocks_to_csv(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    导出最佳股票排名结果为CSV文件
+    body: { 
+        results: [...], 
+        startDate: string,  # 基准日期（开始日期）
+        topN: int,  # 数量
+        sortMethod: string  # 排名方式：'score' | 'return'
+    }
+    返回: { ok: bool, filepath: str, filename: str }
+    """
+    try:
+        import csv
+        from pathlib import Path
+        
+        results = body.get('results', [])
+        if not isinstance(results, list) or len(results) == 0:
+            raise HTTPException(status_code=400, detail="排名结果为空")
+        
+        # 获取参数（用于文件名）
+        start_date = body.get('startDate', '')
+        top_n = body.get('topN', 0)
+        sort_method = body.get('sortMethod', 'return')
+        
+        # 定位项目根目录
+        here = Path(__file__).resolve()
+        project_root = here.parents[3] if len(here.parents) >= 4 else here.parent
+        
+        # 创建最佳股票排名导出目录
+        output_dir = project_root / 'data' / 'best_stocks_results'
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 生成文件名：基准日期-数量-排名方式.csv
+        # 例如：2024-01-01-20-return.csv 或 2024-01-01-20-score.csv
+        date_str = start_date if start_date else 'unknown'
+        sort_str = 'return' if sort_method == 'return' else 'score'
+        filename = f"{date_str}-{top_n}-{sort_str}.csv"
+        filepath = output_dir / filename
+        
+        # 如果文件已存在，添加时间戳
+        if filepath.exists():
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%H%M%S')
+            filename = f"{date_str}-{top_n}-{sort_str}-{timestamp}.csv"
+            filepath = output_dir / filename
+        
+        count = len(results)
+        
+        # 准备CSV数据
+        csv_rows = []
+        for idx, r in enumerate(results, 1):
+            # 股票代码使用等号格式，确保Excel将其识别为文本格式（保留前导0）
+            code = str(r.get('symbol', ''))
+            code_formatted = f'="{code}"' if code else ''
+            
+            row = {
+                '排名': idx,
+                '股票代码': code_formatted,
+                '股票名称': r.get('name', ''),
+                '综合评分': f"{r.get('score', 0):.4f}" if r.get('score') is not None else '',
+                '区间收益(%)': f"{r.get('return', 0):.2f}" if r.get('return') is not None else '',
+                '最大回撤(%)': f"{r.get('maxDrawdown', 0):.2f}" if r.get('maxDrawdown') is not None else '',
+                '波动率(%)': f"{r.get('volatility', 0):.2f}" if r.get('volatility') is not None else '',
+                'Sharpe比率': f"{r.get('sharpeRatio', 0):.4f}" if r.get('sharpeRatio') is not None else '',
+                '趋势斜率': f"{r.get('trendSlope', 0):.6f}" if r.get('trendSlope') is not None else '',
+                '成交量健康度': f"{r.get('volumeScore', 0):.4f}" if r.get('volumeScore') is not None else '',
+                '起始价格': f"{r.get('startPrice', 0):.2f}" if r.get('startPrice') is not None else '',
+                '结束价格': f"{r.get('endPrice', 0):.2f}" if r.get('endPrice') is not None else '',
+                '交易日数': r.get('days', 0)
+            }
+            
+            csv_rows.append(row)
+        
+        # 写入CSV
+        if csv_rows:
+            fieldnames = list(csv_rows[0].keys())
+            with open(filepath, 'w', newline='', encoding='utf-8-sig') as f:  # utf-8-sig 支持Excel打开
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(csv_rows)
+        
+        # 返回相对路径（相对于项目根）
+        relative_path = filepath.relative_to(project_root)
+        
+        return {
+            "ok": True,
+            "filepath": str(relative_path),
+            "filename": filename,
+            "count": count,
+            "message": f"已导出 {count} 条排名结果到 {filename}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出CSV失败: {str(e)}")
+
 @router.post("/price-trend/analyze")
 async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
     """
-    分析股票价格走势（最近5天）
+    分析股票价格走势（指定日期范围）
     body: { 
         symbols: string[]  # 股票代码列表，如 ["000560", "300896"]
+        startDate?: string  # 可选：开始日期（YYYY-MM-DD），默认使用最近5天
+        endDate?: string    # 可选：结束日期（YYYY-MM-DD），默认使用今天
         csvFile?: string   # 可选：CSV文件路径（相对于项目根）
     }
     返回: {
@@ -1675,6 +1844,31 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
     try:
         symbols = body.get('symbols', [])
         csv_file = body.get('csvFile')
+        start_date_str = body.get('startDate')
+        end_date_str = body.get('endDate')
+        
+        # 解析日期范围
+        from datetime import datetime as dt
+        if end_date_str:
+            try:
+                end_date = dt.strptime(end_date_str, '%Y-%m-%d')
+            except:
+                raise HTTPException(status_code=400, detail=f"无效的结束日期格式: {end_date_str}，应为 YYYY-MM-DD")
+        else:
+            end_date = dt.now()
+        
+        if start_date_str:
+            try:
+                start_date = dt.strptime(start_date_str, '%Y-%m-%d')
+            except:
+                raise HTTPException(status_code=400, detail=f"无效的开始日期格式: {start_date_str}，应为 YYYY-MM-DD")
+        else:
+            # 如果没有指定开始日期，默认使用结束日期前5天
+            from datetime import timedelta
+            start_date = end_date - timedelta(days=5)
+        
+        if start_date > end_date:
+            raise HTTPException(status_code=400, detail="开始日期不能晚于结束日期")
         
         # 如果提供了CSV文件，从中读取股票代码
         if csv_file:
@@ -1721,34 +1915,67 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                 # 确保数据按时间排序（最新的在前）
                 time_col = 'timestamp' if 'timestamp' in df.columns else ('datetime' if 'datetime' in df.columns else None)
                 if time_col:
+                    # 转换时间列为datetime类型
+                    df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
                     df = df.sort_values(time_col, ascending=False).reset_index(drop=True)
+                    
+                    # 根据日期范围筛选数据
+                    # 筛选结束日期及之前的数据
+                    df_filtered = df[df[time_col] <= pd.Timestamp(end_date)].copy()
+                    # 筛选开始日期及之后的数据
+                    df_filtered = df_filtered[df_filtered[time_col] >= pd.Timestamp(start_date)].copy()
+                    
+                    if df_filtered.empty:
+                        errors.append({"symbol": symbol, "error": f"在日期范围 {start_date_str} 至 {end_date_str} 内没有数据"})
+                        continue
+                    
+                    # 获取基准价格（开始日期前一天的价格）
+                    from datetime import timedelta
+                    base_date = start_date - timedelta(days=1)
+                    base_df = df[df[time_col] <= pd.Timestamp(base_date)].copy()
+                    
+                    if base_df.empty:
+                        errors.append({"symbol": symbol, "error": f"无法获取基准价格（{base_date.strftime('%Y-%m-%d')}及之前的数据）"})
+                        continue
+                    
+                    # 获取基准价格（最接近基准日期的数据）
+                    base_price = float(base_df.iloc[0]['close']) if pd.notna(base_df.iloc[0]['close']) else None
+                    
+                    if base_price is None:
+                        errors.append({"symbol": symbol, "error": "无法获取基准价格"})
+                        continue
+                    
+                    # 使用筛选后的数据，按时间正序排列（从旧到新）
+                    range_days = df_filtered.sort_values(time_col, ascending=True).reset_index(drop=True)
                 else:
-                    # 如果没有时间列，假设数据已经是倒序的
-                    df = df.reset_index(drop=True)
+                    # 如果没有时间列，假设数据已经是倒序的，使用前N天数据
+                    # 计算需要的天数
+                    days_diff = (end_date - start_date).days + 1
+                    if len(df) < days_diff + 1:
+                        errors.append({"symbol": symbol, "error": f"数据不足，需要至少 {days_diff + 1} 天数据（{days_diff} 天走势 + 1 天基准），只有 {len(df)} 天"})
+                        continue
+                    
+                    # 获取指定天数的数据
+                    range_days = df.head(days_diff).copy()
+                    
+                    # 获取基准价格（第days_diff行的收盘价，作为基准）
+                    base_price = float(df.iloc[days_diff]['close']) if pd.notna(df.iloc[days_diff]['close']) else None
+                    
+                    if base_price is None:
+                        errors.append({"symbol": symbol, "error": "无法获取基准价格"})
+                        continue
+                    
+                    # 反转顺序（从旧到新）
+                    range_days = range_days.iloc[::-1].reset_index(drop=True)
                 
-                # 需要至少6天数据（5天 + 1天基准）
-                if len(df) < 6:
-                    errors.append({"symbol": symbol, "error": f"数据不足6天，只有{len(df)}天（需要至少6天：5天走势 + 1天基准）"})
-                    continue
-                
-                # 获取最近5天的数据（第0-4行，最新的5天）
-                recent_5_days = df.head(5).copy()
-                
-                # 获取第0天的价格（第5行的收盘价，即第6天的数据，作为基准）
-                base_price = float(df.iloc[5]['close']) if pd.notna(df.iloc[5]['close']) else None
-                
-                if base_price is None:
-                    errors.append({"symbol": symbol, "error": "无法获取基准价格"})
-                    continue
-                
-                # 构建每日数据（从旧到新：第1天是最旧的，第5天是最新的）
-                # recent_5_days是按时间倒序的：iloc[0]是最新（第5天），iloc[4]是最旧（第1天）
+                # 构建每日数据（从旧到新：第1天是最旧的，第N天是最新的）
+                # range_days是按时间正序的：iloc[0]是最旧（第1天），iloc[-1]是最新（第N天）
                 days_data = []
-                for idx in range(len(recent_5_days)):
-                    # idx=0是最新的（第5天），idx=4是最旧的（第1天）
-                    row = recent_5_days.iloc[idx]
-                    # day_num：idx=4对应第1天（最旧），idx=0对应第5天（最新）
-                    day_num = len(recent_5_days) - idx  # 第1天到第5天（第1天最旧，第5天最新）
+                for idx in range(len(range_days)):
+                    # idx=0是最旧的（第1天），idx=-1是最新的（第N天）
+                    row = range_days.iloc[idx]
+                    # day_num：idx=0对应第1天（最旧），idx=-1对应第N天（最新）
+                    day_num = idx + 1  # 第1天到第N天（第1天最旧，第N天最新）
                     close_price = float(row['close']) if pd.notna(row['close']) else None
                     
                     if close_price is None:
@@ -1759,34 +1986,39 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                     change_percent = round((change / base_price * 100), 2) if base_price > 0 else 0
                     
                     # 计算当天涨跌（相对于前一天）
-                    # 前一天是idx+1（更早的日期）
                     daily_change = None
                     daily_change_percent = None
-                    if idx < len(recent_5_days) - 1:
-                        # 有前一天数据（idx+1对应更早的日期，即前一天）
-                        prev_close = float(recent_5_days.iloc[idx + 1]['close']) if pd.notna(recent_5_days.iloc[idx + 1]['close']) else None
+                    if idx > 0:
+                        # 有前一天数据（idx-1对应更早的日期，即前一天）
+                        prev_close = float(range_days.iloc[idx - 1]['close']) if pd.notna(range_days.iloc[idx - 1]['close']) else None
                         if prev_close is not None:
                             daily_change = round(close_price - prev_close, 2)
                             daily_change_percent = round((daily_change / prev_close * 100), 2) if prev_close > 0 else 0
                     else:
-                        # 第1天（最旧，idx=4），与基准价格（第0天）对比
+                        # 第1天（最旧，idx=0），与基准价格（第0天）对比
                         daily_change = round(close_price - base_price, 2)
                         daily_change_percent = round((daily_change / base_price * 100), 2) if base_price > 0 else 0
                     
                     # 获取日期
                     date_str = ''
-                    if 'timestamp' in row:
+                    if time_col and time_col in row:
+                        ts = row[time_col]
+                        if isinstance(ts, pd.Timestamp):
+                            date_str = ts.strftime('%Y-%m-%d')
+                        else:
+                            date_str = str(ts).split()[0] if ' ' in str(ts) else str(ts)
+                    elif 'timestamp' in row:
                         ts = row['timestamp']
                         if isinstance(ts, pd.Timestamp):
                             date_str = ts.strftime('%Y-%m-%d')
                         else:
                             date_str = str(ts).split()[0] if ' ' in str(ts) else str(ts)
                     elif 'datetime' in row:
-                        dt = row['datetime']
-                        if isinstance(dt, pd.Timestamp):
-                            date_str = dt.strftime('%Y-%m-%d')
+                        dt_val = row['datetime']
+                        if isinstance(dt_val, pd.Timestamp):
+                            date_str = dt_val.strftime('%Y-%m-%d')
                         else:
-                            date_str = str(dt).split()[0] if ' ' in str(dt) else str(dt)
+                            date_str = str(dt_val).split()[0] if ' ' in str(dt_val) else str(dt_val)
                     
                     days_data.append({
                         "day": day_num,
@@ -1798,8 +2030,7 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                         "dailyChangePercent": daily_change_percent
                     })
                 
-                # 反转数组，使第1天（最旧）在前，第5天（最新）在后
-                days_data.reverse()
+                # days_data已经是按时间正序的（第1天最旧，第N天最新），不需要反转
                 
                 # 获取股票名称
                 stock_name = symbol
@@ -1827,10 +2058,20 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
         # 计算汇总统计：平均涨跌幅、第一天涨的股票数量、前两天涨的股票数量
         summary = None
         if len(results) > 0:
-            # 收集所有股票每天的涨跌幅
-            day_returns = {1: [], 2: [], 3: [], 4: [], 5: []}  # 第1-5天的涨跌幅列表
-            day1_rise_count = 0  # 第一天涨的股票数量
-            day2_rise_count = 0  # 前两天都涨的股票数量
+            # 动态收集所有股票每天的涨跌幅（根据实际天数）
+            max_days = 0
+            for result in results:
+                days = result.get('days', [])
+                if len(days) > max_days:
+                    max_days = len(days)
+            
+            # 初始化天数字典
+            day_returns = {i: [] for i in range(1, max_days + 1)}
+            day_rise_counts = {i: 0 for i in range(1, max_days + 1)}  # 每天上涨的股票数量
+            day_fall_counts = {i: 0 for i in range(1, max_days + 1)}  # 每天下跌的股票数量
+            consecutive_rise_counts = {i: 0 for i in range(1, max_days + 1)}  # 连续上涨N天的股票数量
+            best_hold_days = []  # 每只股票的最佳持仓天数（收益最高的天数）
+            hold_day_returns = {i: [] for i in range(1, max_days + 1)}  # 持仓N天的收益列表
             
             for result in results:
                 days = result.get('days', [])
@@ -1839,13 +2080,42 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                 
                 day1_rise = False
                 day2_rise = False
+                max_return_day = 1  # 收益最高的天数
+                max_return = days[0].get('changePercent', 0) if days else 0
+                max_consecutive_rise = 0  # 最大连续上涨天数（基于当天涨跌）
+                current_consecutive_rise = 0  # 当前连续上涨天数（基于当天涨跌）
                 
                 for day_data in days:
                     day_num = day_data.get('day')
-                    change_percent = day_data.get('changePercent', 0)
+                    change_percent = day_data.get('changePercent', 0)  # 总体涨跌（相对于基准）
+                    daily_change_percent = day_data.get('dailyChangePercent', 0)  # 当天涨跌（相对于前一天）
                     
                     if day_num in day_returns:
                         day_returns[day_num].append(change_percent)
+                    
+                    # 统计每天上涨/下跌的股票数量（基于总体涨跌）
+                    if change_percent > 0:
+                        if day_num in day_rise_counts:
+                            day_rise_counts[day_num] += 1
+                    elif change_percent < 0:
+                        if day_num in day_fall_counts:
+                            day_fall_counts[day_num] += 1
+                    
+                    # 统计连续上涨（基于当天涨跌，相对于前一天）
+                    if daily_change_percent is not None:
+                        if daily_change_percent > 0:
+                            current_consecutive_rise += 1
+                            if current_consecutive_rise > max_consecutive_rise:
+                                max_consecutive_rise = current_consecutive_rise
+                        elif daily_change_percent < 0:
+                            current_consecutive_rise = 0
+                        else:
+                            current_consecutive_rise = 0
+                    
+                    # 记录最佳持仓天数（收益最高的天数）
+                    if change_percent > max_return:
+                        max_return = change_percent
+                        max_return_day = day_num
                     
                     # 统计第一天涨的股票
                     if day_num == 1:
@@ -1856,15 +2126,26 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                     if day_num == 2:
                         if change_percent > 0 and day1_rise:
                             day2_rise = True
+                    
+                    # 记录持仓不同天数的收益
+                    if day_num in hold_day_returns:
+                        hold_day_returns[day_num].append(change_percent)
                 
-                if day1_rise:
-                    day1_rise_count += 1
-                if day2_rise:
-                    day2_rise_count += 1
+                # 记录最佳持仓天数
+                best_hold_days.append(max_return_day)
+                
+                # 统计连续上涨N天的股票（只记录最大连续上涨天数）
+                if max_consecutive_rise > 0 and max_consecutive_rise <= max_days:
+                    if max_consecutive_rise in consecutive_rise_counts:
+                        consecutive_rise_counts[max_consecutive_rise] += 1
             
-            # 计算各种统计指标
+            # 计算每天上涨的股票数量（使用day_rise_counts）
+            day1_rise_count = day_rise_counts.get(1, 0)
+            day2_rise_count = consecutive_rise_counts.get(2, 0)  # 连续2天上涨的数量
+            
+            # 计算各种统计指标（动态天数）
             day_stats = {}
-            for day_num in [1, 2, 3, 4, 5]:
+            for day_num in sorted(day_returns.keys()):
                 returns = day_returns[day_num]
                 if len(returns) > 0:
                     # 平均值
@@ -1916,11 +2197,32 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
                         "stdDev": 0.0
                     }
             
+            # 计算最佳持仓天数统计
+            best_hold_day_stats = {}
+            if best_hold_days:
+                for day in range(1, max_days + 1):
+                    count = best_hold_days.count(day)
+                    if count > 0:
+                        best_hold_day_stats[day] = count
+            
+            # 计算持仓不同天数的平均收益
+            hold_day_avg_returns = {}
+            for day_num in range(1, max_days + 1):
+                returns = hold_day_returns.get(day_num, [])
+                if returns:
+                    avg_return = sum(returns) / len(returns)
+                    hold_day_avg_returns[day_num] = round(avg_return, 2)
+            
             summary = {
                 "dayStats": day_stats,
                 "day1RiseCount": day1_rise_count,
                 "day2RiseCount": day2_rise_count,
-                "totalStocks": len(results)
+                "totalStocks": len(results),
+                "dayRiseCounts": day_rise_counts,  # 每天上涨的股票数量
+                "dayFallCounts": day_fall_counts,  # 每天下跌的股票数量
+                "consecutiveRiseCounts": consecutive_rise_counts,  # 连续上涨N天的股票数量
+                "bestHoldDayStats": best_hold_day_stats,  # 最佳持仓天数统计
+                "holdDayAvgReturns": hold_day_avg_returns  # 持仓不同天数的平均收益
             }
         
         return {
@@ -1937,4 +2239,676 @@ async def analyze_price_trend(body: Dict[str, Any]) -> Dict[str, Any]:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"分析价格走势失败: {str(e)}")
+
+@router.post("/best-stocks/score-async")
+async def calculate_best_stocks_async(body: Dict[str, Any], background_tasks: BackgroundTasks) -> Dict[str, Any]:
+    """
+    异步计算一段时间内表现最好的N只股票（带进度）
+    
+    Args:
+        body: {
+            startDate: 开始日期 (YYYY-MM-DD)
+            endDate: 结束日期 (YYYY-MM-DD)
+            sampleSize: 选股数量，从所有股票中随机选择，0表示全部计算，默认500
+            topN: 返回前N只股票，默认20
+        }
+        
+    Returns:
+        { ok: true, taskId: "xxx" }
+    """
+    try:
+        startDate = body.get('startDate')
+        endDate = body.get('endDate')
+        sample_size = int(body.get('sampleSize', 500))
+        topN = int(body.get('topN', 20))
+        sort_method = body.get('sortMethod', 'return')  # 排序方式：'score' | 'return'，默认按收益排序
+        
+        if not startDate or not endDate:
+            raise HTTPException(status_code=400, detail="必须提供startDate和endDate")
+        
+        if sample_size < 0:
+            raise HTTPException(status_code=400, detail="选股数量不能为负数")
+        
+        if topN < 1:
+            raise HTTPException(status_code=400, detail="返回前N只必须大于0")
+        
+        if sort_method not in ['score', 'return']:
+            raise HTTPException(status_code=400, detail="排序方式必须是'score'或'return'")
+        
+        # 生成任务ID
+        task_id = str(uuid.uuid4())
+        
+        # 初始化任务状态
+        with tasks_lock:
+            screening_tasks[task_id] = {
+                "status": "running",
+                "progress": {
+                    "processed": 0,
+                    "total": 0,
+                    "current": ""
+                },
+                "results": [],
+                "errors": []
+            }
+        
+        # 启动后台任务
+        background_tasks.add_task(
+            _run_best_stocks_task,
+            task_id,
+            startDate,
+            endDate,
+            sample_size,
+            topN,
+            sort_method
+        )
+        
+        return {"ok": True, "taskId": task_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"启动任务失败: {str(e)}")
+
+@router.get("/best-stocks/status/{task_id}")
+async def get_best_stocks_status(task_id: str) -> Dict[str, Any]:
+    """
+    获取最佳股票计算任务状态与进度
+    返回: { ok: true, task: {status, progress, results, errors} }
+    """
+    with tasks_lock:
+        task = screening_tasks.get(task_id)
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+    
+    return {"ok": True, "task": task}
+
+@router.post("/best-stocks/score")
+async def calculate_best_stocks(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    计算一段时间内表现最好的N只股票
+    
+    Args:
+        body: {
+            startDate: 开始日期 (YYYY-MM-DD)
+            endDate: 结束日期 (YYYY-MM-DD)
+            sampleSize: 选股数量，从所有股票中随机选择，0表示全部计算，默认500
+            topN: 返回前N只股票，默认20
+        }
+        
+    Returns:
+        包含评分最高的N只股票及其详细指标
+    """
+    try:
+        startDate = body.get('startDate')
+        endDate = body.get('endDate')
+        sample_size = int(body.get('sampleSize', 500))  # 选股数量
+        topN = int(body.get('topN', 20))  # 返回前N只
+        
+        if not startDate or not endDate:
+            raise HTTPException(status_code=400, detail="必须提供startDate和endDate")
+        
+        if sample_size < 0:
+            raise HTTPException(status_code=400, detail="选股数量不能为负数")
+        
+        if topN < 1:
+            raise HTTPException(status_code=400, detail="返回前N只必须大于0")
+        # 尝试导入scipy，如果没有则使用numpy实现线性回归
+        try:
+            from scipy import stats
+            has_scipy = True
+        except ImportError:
+            has_scipy = False
+        
+        # 获取股票列表
+        project_root = Path(__file__).resolve().parents[3]
+        with_industry = project_root / 'data' / 'stockList' / 'all_stock_with_industry.json'
+        pure = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
+        
+        stock_list: list = []
+        if with_industry.exists():
+            with open(with_industry, 'r', encoding='utf-8') as f:
+                stock_list = json.load(f)
+        elif pure.exists():
+            with open(pure, 'r', encoding='utf-8') as f:
+                stock_list = json.load(f)
+        else:
+            raise HTTPException(status_code=404, detail="股票列表文件不存在")
+        
+        # 构建名称映射
+        name_map: Dict[str, str] = {}
+        for it in (stock_list or []):
+            try:
+                code_raw = str(it.get('code') or '')
+                code = code_raw.split('.')[-1] if '.' in code_raw else code_raw
+                nm = str(it.get('code_name') or it.get('name') or '')
+                if code and nm:
+                    name_map[code] = nm
+            except Exception:
+                continue
+        
+        # 获取所有可用的股票代码（从CSV文件）
+        entries = data_loader.list_symbols()
+        available_symbols = []
+        for e in (entries or []):
+            try:
+                if not isinstance(e, dict) or e.get('kind') != 'stock':
+                    continue
+                code = str(e.get('symbol') or '')
+                if code:
+                    available_symbols.append(code)
+            except Exception:
+                continue
+        
+        if not available_symbols:
+            raise HTTPException(status_code=404, detail="未找到可用的股票数据")
+        
+        # 如果指定了选股数量，从所有股票中随机选择
+        if sample_size > 0 and sample_size < len(available_symbols):
+            import random
+            available_symbols = random.sample(available_symbols, sample_size)
+        
+        # 解析日期
+        start_dt = pd.to_datetime(startDate)
+        end_dt = pd.to_datetime(endDate)
+        
+        if start_dt >= end_dt:
+            raise HTTPException(status_code=400, detail="开始日期必须早于结束日期")
+        
+        results = []
+        errors = []
+        
+        # 计算所有股票的评分
+        for symbol in available_symbols:
+            try:
+                # 加载股票数据
+                df = load_stock_data(symbol, timeframe='1d')
+                if df is None or df.empty:
+                    continue
+                
+                # 过滤日期范围
+                df = df[(df['timestamp'] >= start_dt) & (df['timestamp'] <= end_dt)]
+                if df.empty or len(df) < 2:
+                    continue
+                
+                df = df.sort_values('timestamp').reset_index(drop=True)
+                
+                # 获取价格和成交量数据
+                closes = df['close'].values
+                volumes = df['volume'].values
+                
+                if len(closes) < 2:
+                    continue
+                
+                # 1. 计算区间收益 Return（权重 0.30）
+                start_price = closes[0]
+                end_price = closes[-1]
+                return_pct = (end_price - start_price) / start_price if start_price > 0 else 0
+                
+                # 2. 计算最大回撤 MaxDrawdown（权重 0.20，回撤越小越好）
+                peak = start_price
+                max_drawdown = 0
+                for price in closes:
+                    if price > peak:
+                        peak = price
+                    drawdown = (peak - price) / peak if peak > 0 else 0
+                    max_drawdown = max(max_drawdown, drawdown)
+                
+                # 3. 计算波动率 Volatility（权重 0.15，越小越好）
+                daily_returns = np.diff(closes) / closes[:-1]
+                volatility = np.std(daily_returns) * np.sqrt(252) if len(daily_returns) > 0 else 0
+                
+                # 4. 计算Sharpe比率（权重 0.20）
+                if len(daily_returns) > 0 and np.std(daily_returns) > 0:
+                    mean_return = np.mean(daily_returns)
+                    sharpe_ratio = (mean_return / np.std(daily_returns)) * np.sqrt(252) if np.std(daily_returns) > 0 else 0
+                else:
+                    sharpe_ratio = 0
+                
+                # 5. 计算趋势斜率 TrendSlope，使用线性回归（权重 0.10）
+                x = np.arange(len(closes))
+                if len(closes) > 1:
+                    # 使用scipy的linregress或numpy实现
+                    if has_scipy:
+                        slope, intercept, r_value, p_value, std_err = stats.linregress(x, closes)
+                    else:
+                        # 使用numpy实现最小二乘法线性回归
+                        A = np.vstack([x, np.ones(len(x))]).T
+                        slope, intercept = np.linalg.lstsq(A, closes, rcond=None)[0]
+                    trend_slope = slope / start_price if start_price > 0 else 0  # 归一化斜率
+                else:
+                    trend_slope = 0
+                
+                # 6. 计算成交量健康度 VolumeScore（权重 0.05）
+                # 成交量健康度：上涨时放量，下跌时缩量
+                volume_score = 0
+                if len(volumes) > 1 and len(daily_returns) > 0:
+                    volume_changes = np.diff(volumes) / volumes[:-1]
+                    # 计算价格变化与成交量变化的相关性
+                    # 正相关（上涨放量、下跌缩量）得分高
+                    if len(volume_changes) > 0:
+                        # 简化计算：上涨日平均成交量 / 下跌日平均成交量
+                        up_days = daily_returns > 0
+                        down_days = daily_returns < 0
+                        if np.sum(up_days) > 0 and np.sum(down_days) > 0:
+                            avg_vol_up = np.mean(volumes[1:][up_days])
+                            avg_vol_down = np.mean(volumes[1:][down_days])
+                            if avg_vol_down > 0:
+                                volume_ratio = avg_vol_up / avg_vol_down
+                                # 归一化到0-1范围（假设合理范围是0.5-2.0）
+                                volume_score = min(max((volume_ratio - 0.5) / 1.5, 0), 1)
+                        elif np.sum(up_days) > 0:
+                            volume_score = 0.5  # 只有上涨日，给中等分数
+                        else:
+                            volume_score = 0.2  # 只有下跌日，给低分
+                
+                # 归一化各项指标到0-1范围（用于评分）
+                # 收益：直接使用（已经是百分比）
+                normalized_return = min(max(return_pct, -1), 1)  # 限制在-100%到100%
+                normalized_return = (normalized_return + 1) / 2  # 转换到0-1范围
+                
+                # 最大回撤：越小越好，所以用1减去
+                normalized_drawdown = 1 - min(max_drawdown, 1)
+                
+                # 波动率：越小越好，需要反向归一化
+                # 假设波动率范围是0-1（年化），超过1的视为1
+                normalized_volatility = 1 - min(volatility, 1)
+                
+                # Sharpe比率：越大越好，需要归一化
+                # 假设Sharpe比率范围是-2到2，超过的视为边界值
+                normalized_sharpe = (min(max(sharpe_ratio, -2), 2) + 2) / 4
+                
+                # 趋势斜率：越大越好，需要归一化
+                # 假设斜率范围是-0.1到0.1（归一化后）
+                normalized_trend = (min(max(trend_slope, -0.1), 0.1) + 0.1) / 0.2
+                
+                # 成交量健康度：已经在0-1范围
+                normalized_volume = volume_score
+                
+                # 计算综合评分
+                score = (
+                    0.30 * normalized_return +
+                    0.20 * normalized_drawdown +
+                    0.15 * normalized_volatility +
+                    0.20 * normalized_sharpe +
+                    0.10 * normalized_trend +
+                    0.05 * normalized_volume
+                )
+                
+                # 获取股票名称
+                stock_name = name_map.get(symbol, symbol)
+                
+                results.append({
+                    "symbol": symbol,
+                    "name": stock_name,
+                    "score": round(score, 4),
+                    "return": round(return_pct * 100, 2),  # 转换为百分比
+                    "maxDrawdown": round(max_drawdown * 100, 2),  # 转换为百分比
+                    "volatility": round(volatility * 100, 2),  # 转换为百分比
+                    "sharpeRatio": round(sharpe_ratio, 4),
+                    "trendSlope": round(trend_slope, 6),
+                    "volumeScore": round(volume_score, 4),
+                    "startPrice": round(start_price, 2),
+                    "endPrice": round(end_price, 2),
+                    "days": len(df)
+                })
+                
+            except Exception as e:
+                errors.append({
+                    "symbol": symbol,
+                    "error": str(e)
+                })
+                continue
+        
+        # 按评分排序，取前N只
+        # 优先按收益率排序，如果收益率相同再按综合评分排序
+        results.sort(key=lambda x: (x['return'], x['score']), reverse=True)
+        # 确保返回至少topN个结果，如果结果不足则返回全部
+        top_results = results[:topN] if len(results) >= topN else results
+        
+        return {
+            "ok": True,
+            "results": top_results,
+            "total": len(results),
+            "sampleSize": sample_size if sample_size > 0 else len(available_symbols),
+            "errors": errors[:10] if errors else [],  # 只返回前10个错误
+            "params": {
+                "startDate": startDate,
+                "endDate": endDate,
+                "sampleSize": sample_size,
+                "topN": topN
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"计算最佳股票失败: {str(e)}")
+
+def _run_best_stocks_task(task_id: str, startDate: str, endDate: str, sample_size: int, topN: int, sort_method: str = 'return'):
+    """
+    后台任务：计算最佳股票评分
+    
+    Args:
+        sort_method: 排序方式，'score' 按综合评分，'return' 按区间收益，默认'return'
+    """
+    try:
+        # 尝试导入scipy，如果没有则使用numpy实现线性回归
+        try:
+            from scipy import stats
+            has_scipy = True
+        except ImportError:
+            has_scipy = False
+        
+        # 获取股票列表
+        project_root = Path(__file__).resolve().parents[3]
+        with_industry = project_root / 'data' / 'stockList' / 'all_stock_with_industry.json'
+        pure = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
+        
+        stock_list: list = []
+        if with_industry.exists():
+            with open(with_industry, 'r', encoding='utf-8') as f:
+                stock_list = json.load(f)
+        elif pure.exists():
+            with open(pure, 'r', encoding='utf-8') as f:
+                stock_list = json.load(f)
+        else:
+            with tasks_lock:
+                screening_tasks[task_id]["status"] = "error"
+                screening_tasks[task_id]["errors"] = [{"error": "股票列表文件不存在"}]
+            return
+        
+        # 构建名称映射
+        name_map: Dict[str, str] = {}
+        for it in (stock_list or []):
+            try:
+                code_raw = str(it.get('code') or '')
+                code = code_raw.split('.')[-1] if '.' in code_raw else code_raw
+                nm = str(it.get('code_name') or it.get('name') or '')
+                if code and nm:
+                    name_map[code] = nm
+            except Exception:
+                continue
+        
+        # 获取所有可用的股票代码（从CSV文件）
+        entries = data_loader.list_symbols()
+        available_symbols = []
+        for e in (entries or []):
+            try:
+                if not isinstance(e, dict) or e.get('kind') != 'stock':
+                    continue
+                code = str(e.get('symbol') or '')
+                if code:
+                    available_symbols.append(code)
+            except Exception:
+                continue
+        
+        if not available_symbols:
+            with tasks_lock:
+                screening_tasks[task_id]["status"] = "error"
+                screening_tasks[task_id]["errors"] = [{"error": "未找到可用的股票数据"}]
+            return
+        
+        # 如果指定了选股数量，从所有股票中随机选择
+        if sample_size > 0 and sample_size < len(available_symbols):
+            import random
+            available_symbols = random.sample(available_symbols, sample_size)
+        
+        # 更新总数量
+        with tasks_lock:
+            screening_tasks[task_id]["progress"]["total"] = len(available_symbols)
+        
+        # 解析日期
+        start_dt = pd.to_datetime(startDate)
+        end_dt = pd.to_datetime(endDate)
+        
+        if start_dt >= end_dt:
+            with tasks_lock:
+                screening_tasks[task_id]["status"] = "error"
+                screening_tasks[task_id]["errors"] = [{"error": "开始日期必须早于结束日期"}]
+            return
+        
+        results = []
+        errors = []
+        processed = 0
+        
+        # 计算所有股票的评分
+        for symbol in available_symbols:
+            try:
+                # 更新当前处理的股票（包含名称和代码）
+                stock_name = name_map.get(symbol, symbol)
+                current_info = f"{stock_name}--{symbol}"
+                with tasks_lock:
+                    screening_tasks[task_id]["progress"]["current"] = current_info
+                
+                # 加载股票数据
+                df = load_stock_data(symbol, timeframe='1d')
+                if df is None or df.empty:
+                    processed += 1
+                    with tasks_lock:
+                        screening_tasks[task_id]["progress"]["processed"] = processed
+                    continue
+                
+                # 过滤日期范围
+                df = df[(df['timestamp'] >= start_dt) & (df['timestamp'] <= end_dt)]
+                # 至少需要1天数据（开始和结束价格）
+                if df.empty or len(df) < 1:
+                    processed += 1
+                    with tasks_lock:
+                        screening_tasks[task_id]["progress"]["processed"] = processed
+                    continue
+                
+                df = df.sort_values('timestamp').reset_index(drop=True)
+                
+                # 获取价格和成交量数据
+                closes = df['close'].values
+                volumes = df['volume'].values
+                
+                # 1. 计算区间收益 Return（权重 0.30）
+                start_price = closes[0]
+                end_price = closes[-1]
+                return_pct = (end_price - start_price) / start_price if start_price > 0 else 0
+                
+                # 如果只有1天数据，使用默认值
+                if len(closes) < 2:
+                    # 单日数据，无法计算其他指标，使用默认值
+                    max_drawdown = 0
+                    volatility = 0
+                    sharpe_ratio = 0
+                    trend_slope = 0
+                    volume_score = 0.5
+                else:
+                    # 2. 计算最大回撤 MaxDrawdown（权重 0.20，回撤越小越好）
+                    peak = start_price
+                    max_drawdown = 0
+                    for price in closes:
+                        if price > peak:
+                            peak = price
+                        drawdown = (peak - price) / peak if peak > 0 else 0
+                        max_drawdown = max(max_drawdown, drawdown)
+                    
+                    # 3. 计算波动率 Volatility（权重 0.15，越小越好）
+                    daily_returns = np.diff(closes) / closes[:-1]
+                    volatility = np.std(daily_returns) * np.sqrt(252) if len(daily_returns) > 0 else 0
+                    
+                    # 4. 计算Sharpe比率（权重 0.20）
+                    if len(daily_returns) > 0 and np.std(daily_returns) > 0:
+                        mean_return = np.mean(daily_returns)
+                        sharpe_ratio = (mean_return / np.std(daily_returns)) * np.sqrt(252) if np.std(daily_returns) > 0 else 0
+                    else:
+                        sharpe_ratio = 0
+                    
+                    # 5. 计算趋势斜率 TrendSlope，使用线性回归（权重 0.10）
+                    x = np.arange(len(closes))
+                    if len(closes) > 1:
+                        # 使用scipy的linregress或numpy实现
+                        if has_scipy:
+                            slope, intercept, r_value, p_value, std_err = stats.linregress(x, closes)
+                        else:
+                            # 使用numpy实现最小二乘法线性回归
+                            A = np.vstack([x, np.ones(len(x))]).T
+                            slope, intercept = np.linalg.lstsq(A, closes, rcond=None)[0]
+                        trend_slope = slope / start_price if start_price > 0 else 0  # 归一化斜率
+                    else:
+                        trend_slope = 0
+                    
+                    # 6. 计算成交量健康度 VolumeScore（权重 0.05）
+                    # 成交量健康度：上涨时放量，下跌时缩量
+                    volume_score = 0
+                    if len(volumes) > 1 and len(daily_returns) > 0:
+                        volume_changes = np.diff(volumes) / volumes[:-1]
+                        # 计算价格变化与成交量变化的相关性
+                        # 正相关（上涨放量、下跌缩量）得分高
+                        if len(volume_changes) > 0:
+                            # 简化计算：上涨日平均成交量 / 下跌日平均成交量
+                            up_days = daily_returns > 0
+                            down_days = daily_returns < 0
+                            if np.sum(up_days) > 0 and np.sum(down_days) > 0:
+                                avg_vol_up = np.mean(volumes[1:][up_days])
+                                avg_vol_down = np.mean(volumes[1:][down_days])
+                                if avg_vol_down > 0:
+                                    volume_ratio = avg_vol_up / avg_vol_down
+                                    # 归一化到0-1范围（假设合理范围是0.5-2.0）
+                                    volume_score = min(max((volume_ratio - 0.5) / 1.5, 0), 1)
+                            elif np.sum(up_days) > 0:
+                                volume_score = 0.5  # 只有上涨日，给中等分数
+                            else:
+                                volume_score = 0.2  # 只有下跌日，给低分
+                
+                # 归一化各项指标到0-1范围（用于评分）
+                # 收益：直接使用（已经是百分比）
+                normalized_return = min(max(return_pct, -1), 1)  # 限制在-100%到100%
+                normalized_return = (normalized_return + 1) / 2  # 转换到0-1范围
+                
+                # 最大回撤：越小越好，所以用1减去
+                normalized_drawdown = 1 - min(max_drawdown, 1)
+                
+                # 波动率：越小越好，需要反向归一化
+                # 假设波动率范围是0-1（年化），超过1的视为1
+                normalized_volatility = 1 - min(volatility, 1)
+                
+                # Sharpe比率：越大越好，需要归一化
+                # 假设Sharpe比率范围是-2到2，超过的视为边界值
+                normalized_sharpe = (min(max(sharpe_ratio, -2), 2) + 2) / 4
+                
+                # 趋势斜率：越大越好，需要归一化
+                # 假设斜率范围是-0.1到0.1（归一化后）
+                normalized_trend = (min(max(trend_slope, -0.1), 0.1) + 0.1) / 0.2
+                
+                # 成交量健康度：已经在0-1范围
+                normalized_volume = volume_score
+                
+                # 计算综合评分
+                score = (
+                    0.30 * normalized_return +
+                    0.20 * normalized_drawdown +
+                    0.15 * normalized_volatility +
+                    0.20 * normalized_sharpe +
+                    0.10 * normalized_trend +
+                    0.05 * normalized_volume
+                )
+                
+                # 获取股票名称
+                stock_name_result = name_map.get(symbol, symbol)
+                
+                stock_result = {
+                    "symbol": symbol,
+                    "name": stock_name_result,
+                    "score": round(score, 4),
+                    "return": round(return_pct * 100, 2),  # 转换为百分比
+                    "maxDrawdown": round(max_drawdown * 100, 2),  # 转换为百分比
+                    "volatility": round(volatility * 100, 2),  # 转换为百分比
+                    "sharpeRatio": round(sharpe_ratio, 4),
+                    "trendSlope": round(trend_slope, 6),
+                    "volumeScore": round(volume_score, 4),
+                    "startPrice": round(start_price, 2),
+                    "endPrice": round(end_price, 2),
+                    "days": len(df)
+                }
+                
+                results.append(stock_result)
+                
+                # 实时更新结果：每次计算完一只股票后，立即排序并更新前N只
+                # 先去重（基于symbol），保留最新的结果（使用字典更高效）
+                seen_symbols = {}
+                deduplicated_results = []
+                for r in reversed(results):  # 从后往前遍历，保留最新的
+                    sym = r.get('symbol')
+                    if sym and sym not in seen_symbols:
+                        seen_symbols[sym] = True
+                        deduplicated_results.insert(0, r)  # 插入到开头，保持顺序
+                
+                results = deduplicated_results
+                
+                # 按指定方式排序
+                if sort_method == 'return':
+                    results.sort(key=lambda x: (x['return'], x['score']), reverse=True)
+                else:
+                    results.sort(key=lambda x: (x['score'], x['return']), reverse=True)
+                
+                # 只保留前topN只
+                current_top_results = results[:topN] if len(results) >= topN else results
+                
+                # 实时更新任务状态中的结果
+                with tasks_lock:
+                    screening_tasks[task_id]["results"] = current_top_results.copy()
+                
+            except Exception as e:
+                errors.append({
+                    "symbol": symbol,
+                    "error": str(e)
+                })
+            
+            processed += 1
+            # 更新进度
+            with tasks_lock:
+                screening_tasks[task_id]["progress"]["processed"] = processed
+        
+        # 最终去重（确保没有重复的股票）
+        seen_symbols = {}
+        deduplicated_results = []
+        for r in results:
+            sym = r.get('symbol')
+            if sym and sym not in seen_symbols:
+                seen_symbols[sym] = True
+                deduplicated_results.append(r)
+        
+        results = deduplicated_results
+        
+        # 最终排序（确保结果正确）
+        # 注意：在循环中已经实时排序和更新了，这里再做一次最终确认
+        if sort_method == 'return':
+            # 按收益率排序，如果收益率相同再按综合评分排序
+            results.sort(key=lambda x: (x['return'], x['score']), reverse=True)
+        else:
+            # 按综合评分排序，如果评分相同再按收益率排序
+            results.sort(key=lambda x: (x['score'], x['return']), reverse=True)
+        
+        # 确保返回至少topN个结果，如果结果不足则返回全部
+        top_results = results[:topN] if len(results) >= topN else results
+        
+        # 如果结果数量不足topN，记录警告信息
+        if len(top_results) < topN:
+            import logging
+            logging.warning(f"最佳股票计算结果不足：请求{topN}只，实际只有{len(top_results)}只有效结果")
+        
+        # 更新任务状态为完成
+        with tasks_lock:
+            screening_tasks[task_id]["status"] = "completed"
+            screening_tasks[task_id]["results"] = top_results
+            screening_tasks[task_id]["errors"] = errors[:10] if errors else []
+            screening_tasks[task_id]["progress"]["current"] = ""
+            # 记录最终统计信息
+            screening_tasks[task_id]["progress"]["totalProcessed"] = processed
+            screening_tasks[task_id]["progress"]["totalResults"] = len(results)
+            screening_tasks[task_id]["progress"]["finalTopN"] = len(top_results)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        with tasks_lock:
+            screening_tasks[task_id]["status"] = "error"
+            screening_tasks[task_id]["errors"] = [{"error": str(e)}]
 

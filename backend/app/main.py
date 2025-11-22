@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .api.backtest import router as backtest_router
+from .api.common_features import router as common_features_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,6 +38,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(backtest_router, prefix="/api/v1", tags=["backtest"])
+app.include_router(common_features_router, prefix="/api/v1", tags=["common-features"])
 
 @app.get("/")
 async def root():
