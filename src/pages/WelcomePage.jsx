@@ -76,8 +76,17 @@ export function WelcomePage() {
                   
                   if (!resp.ok) {
                     const raw = await resp.text()
-                    let data = null; try { data = raw ? JSON.parse(raw) : null } catch {}
-                    throw new Error((data && data.detail) || `${resp.status} ${resp.statusText}`)
+                    let data = null
+                    try {
+                      // 尝试解析JSON，确保使用UTF-8编码
+                      data = raw ? JSON.parse(raw) : null
+                    } catch (e) {
+                      console.error('[点火] JSON解析失败:', e)
+                    }
+                    const errorMsg = (data && data.detail) || `${resp.status} ${resp.statusText}`
+                    // 清理错误信息，移除可能导致乱码的字符
+                    const cleanedMsg = errorMsg.replace(/[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]/g, '')
+                    throw new Error(cleanedMsg)
                   }
                   
                   const data = await resp.json()
@@ -88,7 +97,10 @@ export function WelcomePage() {
                   
                   // 注意：后端脚本执行中无法获取实时进度，进度条仅显示"执行中"
                 } catch (e) {
-                  alert('❌ 点火失败：' + (e?.message || e))
+                  const errorMsg = e?.message || String(e) || '未知错误'
+                  // 确保错误信息是有效的字符串
+                  const cleanedMsg = errorMsg.replace(/[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]/g, '')
+                  alert('❌ 点火失败：' + cleanedMsg)
                 } finally {
                   setIsFetching(false)
                   setShouldStop(false)

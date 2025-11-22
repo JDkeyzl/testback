@@ -21,7 +21,8 @@ $pythonCmd = "python"
 if (Test-Path ".venv\Scripts\python.exe") {
     $pythonCmd = ".venv\Scripts\python.exe"
     Write-Host "[信息] 使用虚拟环境中的 Python" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "[警告] 虚拟环境不存在，将使用系统 Python" -ForegroundColor Yellow
 }
 
@@ -36,7 +37,8 @@ Start-Sleep -Seconds 5
 try {
     $response = Invoke-WebRequest -Uri "http://localhost:8000/api/v1/health" -TimeoutSec 3 -ErrorAction Stop
     Write-Host "[成功] 后端服务器启动成功 (http://localhost:8000)" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "[警告] 后端服务器可能未启动，请检查日志" -ForegroundColor Yellow
 }
 
@@ -58,4 +60,5 @@ Write-Host ""
 Write-Host "服务已在独立窗口中运行" -ForegroundColor Yellow
 Write-Host "关闭此窗口不会停止服务" -ForegroundColor Yellow
 Write-Host ""
+
 

@@ -27,8 +27,21 @@ export function PriceTrendPage() {
   const [errors, setErrors] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [summary, setSummary] = useState(null)
+  // 计算默认开始日期（今天前5天）
+  const getDefaultStartDate = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 5)
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  const [startDate, setStartDate] = useState(getDefaultStartDate())
+  const [endDate, setEndDate] = useState(getToday())
   const scrollContainerRef = useRef(null)
   const scrollRestoredRef = useRef(false)
+  const fileInputRef = useRef(null)
 
   // 从 localStorage 恢复状态
   useEffect(() => {
@@ -47,6 +60,12 @@ export function PriceTrendPage() {
         }
         if (parsed.summary) {
           setSummary(parsed.summary)
+        }
+        if (parsed.startDate) {
+          setStartDate(parsed.startDate)
+        }
+        if (parsed.endDate) {
+          setEndDate(parsed.endDate)
         }
       }
     } catch (e) {
@@ -114,15 +133,17 @@ export function PriceTrendPage() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       const existingState = saved ? JSON.parse(saved) : {}
-      const stateToSave = {
+    const stateToSave = {
         ...existingState,
-        symbols,
-        results,
-        errors,
+      symbols,
+      results,
+      errors,
+      startDate,
+      endDate,
         summary,
-        timestamp: Date.now()
+      timestamp: Date.now()
         // scrollPosition 由滚动事件单独保存，不在这里覆盖
-      }
+    }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave))
     } catch (e) {
       console.error('Failed to save state:', e)
@@ -239,7 +260,7 @@ export function PriceTrendPage() {
             // 验证是6位数字
             if (code && /^\d{6}$/.test(code)) {
               if (!codes.includes(code)) {
-                codes.push(code)
+              codes.push(code)
               }
             } else if (code) {
               invalidCodes.push(code)
@@ -335,6 +356,11 @@ export function PriceTrendPage() {
     setResults([])
     setErrors([])
     setSummary(null)
+    // 重置文件输入框，以便可以再次上传相同的文件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    setCsvFile(null)
   }
 
   // 清空分析结果（保留股票代码）
@@ -360,10 +386,27 @@ export function PriceTrendPage() {
     setResults([])
     setErrors([])
 
+    // 验证日期范围
+    if (!startDate || !endDate) {
+      alert('请选择日期范围')
+      return
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('开始日期不能晚于结束日期')
+      return
+    }
+
+    setIsLoading(true)
+    setResults([])
+    setErrors([])
+
     try {
       // 如果有CSV文件，尝试使用文件路径
       let body = { 
-        symbols
+        symbols,
+        startDate,
+        endDate
       }
       
       // 如果上传了CSV文件，可以尝试使用文件路径（需要先上传到服务器）
@@ -397,10 +440,35 @@ export function PriceTrendPage() {
         <CardHeader>
           <CardTitle>股票价格走势分析</CardTitle>
           <CardDescription>
-            分析最近5天的价格走势，显示每日收盘价及与第0天（基准日）的价格差。第一天到第五天是最近5天的数据，最新的数据是第五天
+            分析指定日期范围内的价格走势，显示每日收盘价及与基准日的价格差
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* 日期范围选择 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">开始日期</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate || getToday()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endDate">结束日期</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                max={getToday()}
+                min={startDate || ''}
+              />
+            </div>
+          </div>
+
           {/* CSV文件上传 */}
           <div className="space-y-2">
             <Label>上传筛选结果CSV文件</Label>
@@ -409,6 +477,7 @@ export function PriceTrendPage() {
                 <Upload className="h-4 w-4" />
                 <span>选择CSV文件</span>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".csv"
                   onChange={handleCsvUpload}
@@ -555,54 +624,173 @@ export function PriceTrendPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[1, 2, 3, 4, 5].map(day => {
-                    const stats = summary.dayStats?.[`day${day}`] || {}
-                    const avgReturn = stats.avg || 0
-                    const isRise = avgReturn > 0
-                    const riseCount = stats.riseCount || 0
-                    const fallCount = stats.fallCount || 0
-                    const riseRatio = stats.riseRatio || 0
-                    const maxReturn = stats.max || 0
-                    const minReturn = stats.min || 0
-                    const medianReturn = stats.median || 0
+                  {(() => {
+                    // 动态获取所有天数（从 summary.dayStats 中提取）
+                    const dayStats = summary.dayStats || {}
+                    const days = Object.keys(dayStats)
+                      .map(key => parseInt(key.replace('day', '')))
+                      .filter(day => !isNaN(day))
+                      .sort((a, b) => a - b)
                     
-                    return (
-                      <tr key={day} className="border-b">
-                        <td className="py-2 px-4 font-medium">第{day}天</td>
-                        <td className="py-2 px-4 text-right">{riseRatio.toFixed(1)}%</td>
-                        <td className={`py-2 px-4 text-right ${maxReturn > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {maxReturn > 0 ? '+' : ''}{maxReturn.toFixed(2)}%
-                        </td>
-                        <td className={`py-2 px-4 text-right ${minReturn > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {minReturn < 0 ? '' : ''}{minReturn.toFixed(2)}%
-                        </td>
-                        <td className={`py-2 px-4 text-right ${medianReturn > 0 ? 'text-red-600' : medianReturn < 0 ? 'text-green-600' : ''}`}>
-                          {medianReturn > 0 ? '+' : ''}{medianReturn.toFixed(2)}%
-                        </td>
-                        <td className="py-2 px-4 text-right text-green-600">{fallCount}</td>
-                        <td className="py-2 px-4 text-right text-red-600">{riseCount}</td>
-                        <td className={`py-2 px-4 text-right font-medium ${isRise ? 'text-red-600' : 'text-green-600'}`}>
-                          {isRise ? (
-                            <TrendingUp className="inline h-4 w-4 mr-1" />
-                          ) : (
-                            <TrendingDown className="inline h-4 w-4 mr-1" />
-                          )}
-                          {isRise ? '+' : ''}{avgReturn.toFixed(2)}%
-                        </td>
-                      </tr>
-                    )
-                  })}
+                    // 如果没有数据，返回空
+                    if (days.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="8" className="py-4 px-4 text-center text-muted-foreground">
+                            暂无数据
+                          </td>
+                        </tr>
+                      )
+                    }
+                    
+                    return days.map(day => {
+                      const stats = dayStats[`day${day}`] || {}
+                      const avgReturn = stats.avg || 0
+                      const isRise = avgReturn > 0
+                      const riseCount = stats.riseCount || 0
+                      const fallCount = stats.fallCount || 0
+                      const riseRatio = stats.riseRatio || 0
+                      const maxReturn = stats.max || 0
+                      const minReturn = stats.min || 0
+                      const medianReturn = stats.median || 0
+                      
+                      return (
+                        <tr key={day} className="border-b">
+                          <td className="py-2 px-4 font-medium">第{day}天</td>
+                          <td className="py-2 px-4 text-right">{riseRatio.toFixed(1)}%</td>
+                          <td className={`py-2 px-4 text-right ${maxReturn > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {maxReturn > 0 ? '+' : ''}{maxReturn.toFixed(2)}%
+                          </td>
+                          <td className={`py-2 px-4 text-right ${minReturn > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {minReturn < 0 ? '' : ''}{minReturn.toFixed(2)}%
+                          </td>
+                          <td className={`py-2 px-4 text-right ${medianReturn > 0 ? 'text-red-600' : medianReturn < 0 ? 'text-green-600' : ''}`}>
+                            {medianReturn > 0 ? '+' : ''}{medianReturn.toFixed(2)}%
+                          </td>
+                          <td className="py-2 px-4 text-right text-green-600">{fallCount}</td>
+                          <td className="py-2 px-4 text-right text-red-600">{riseCount}</td>
+                          <td className={`py-2 px-4 text-right font-medium ${isRise ? 'text-red-600' : 'text-green-600'}`}>
+                            {isRise ? (
+                              <TrendingUp className="inline h-4 w-4 mr-1" />
+                            ) : (
+                              <TrendingDown className="inline h-4 w-4 mr-1" />
+                            )}
+                            {isRise ? '+' : ''}{avgReturn.toFixed(2)}%
+                          </td>
+                        </tr>
+                      )
+                    })
+                  })()}
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 pt-4 border-t space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">第一天涨的股票数量：</span>
-                <span className="font-medium">{summary.day1RiseCount} / {summary.totalStocks}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">前两天都涨的股票数量：</span>
-                <span className="font-medium">{summary.day2RiseCount} / {summary.totalStocks}</span>
+            <div className="mt-4 pt-4 border-t space-y-4">
+              <div className="space-y-2 text-sm">
+                <h4 className="font-medium text-base mb-3">持仓天数分析</h4>
+                
+                {/* 每天上涨/下跌数量 */}
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">每天上涨/下跌数量：</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(() => {
+                      const dayStats = summary.dayStats || {}
+                      const days = Object.keys(dayStats)
+                        .map(key => parseInt(key.replace('day', '')))
+                        .filter(day => !isNaN(day))
+                        .sort((a, b) => a - b)
+                        .slice(0, 5) // 最多显示前5天
+                      
+                      return days.map(day => {
+                        const riseCount = summary.dayRiseCounts?.[day] || 0
+                        const fallCount = summary.dayFallCounts?.[day] || 0
+                        const total = summary.totalStocks || 0
+                        const riseRatio = total > 0 ? ((riseCount / total) * 100).toFixed(1) : 0
+                        
+                        return (
+                          <div key={day} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                            <span className="text-xs">第{day}天：</span>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-red-600">{riseCount}涨</span>
+                              <span className="text-muted-foreground">/</span>
+                              <span className="text-green-600">{fallCount}跌</span>
+                              <span className="text-muted-foreground">({riseRatio}%)</span>
+                            </div>
+                          </div>
+                        )
+                      })
+                    })()}
+                  </div>
+                </div>
+                
+                {/* 连续上涨统计 */}
+                {summary.consecutiveRiseCounts && Object.keys(summary.consecutiveRiseCounts).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">连续上涨统计：</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(summary.consecutiveRiseCounts)
+                        .filter(([day, count]) => count > 0)
+                        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                        .map(([day, count]) => (
+                          <div key={day} className="px-2 py-1 bg-red-50 border border-red-200 rounded text-xs">
+                            连续{day}天上涨：<span className="font-medium text-red-600">{count}</span> 只
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* 最佳持仓天数统计 */}
+                {summary.bestHoldDayStats && Object.keys(summary.bestHoldDayStats).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">最佳持仓天数分布（收益最高天数）：</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(summary.bestHoldDayStats)
+                        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                        .map(([day, count]) => {
+                          const ratio = summary.totalStocks > 0 ? ((count / summary.totalStocks) * 100).toFixed(1) : 0
+                          return (
+                            <div key={day} className="px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs">
+                              第{day}天：<span className="font-medium text-blue-600">{count}</span> 只 ({ratio}%)
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* 持仓不同天数的平均收益 */}
+                {summary.holdDayAvgReturns && Object.keys(summary.holdDayAvgReturns).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">持仓不同天数的平均收益：</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(summary.holdDayAvgReturns)
+                        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                        .map(([day, avgReturn]) => {
+                          const isPositive = avgReturn > 0
+                          return (
+                            <div key={day} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <span className="text-xs">持仓{day}天：</span>
+                              <span className={`text-xs font-medium ${isPositive ? 'text-red-600' : 'text-green-600'}`}>
+                                {isPositive ? '+' : ''}{avgReturn.toFixed(2)}%
+                              </span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* 原有统计 */}
+                <div className="pt-2 border-t space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">第一天涨的股票数量：</span>
+                    <span className="font-medium">{summary.day1RiseCount} / {summary.totalStocks}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">前两天都涨的股票数量：</span>
+                    <span className="font-medium">{summary.day2RiseCount} / {summary.totalStocks}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -627,9 +815,9 @@ export function PriceTrendPage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span>
-                      {result.name} ({result.symbol})
-                    </span>
+                  <span>
+                    {result.name} ({result.symbol})
+                  </span>
                     <Button
                       size="sm"
                       variant="outline"

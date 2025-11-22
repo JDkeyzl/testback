@@ -12,6 +12,7 @@ import { StockSelectionPage } from './pages/StockSelectionPage'
 import { ConditionalScannerPage } from './pages/ConditionalScannerPage'
 import { ScreenerDetailPage } from './pages/ScreenerDetailPage'
 import { PriceTrendPage } from './pages/PriceTrendPage'
+import { BestStocksPage } from './pages/BestStocksPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
           <Route path="/conditional-screener" element={<ConditionalScannerPage />} />
           <Route path="/screener-detail/:code" element={<ScreenerDetailPage />} />
           <Route path="/price-trend" element={<PriceTrendPage />} />
+          <Route path="/best-stocks" element={<BestStocksPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/** 自动修复测试路由已移除 */}
           <Route path="*" element={<Navigate to="/welcome" replace />} />

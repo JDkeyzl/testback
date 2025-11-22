@@ -13,6 +13,15 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 
+# 在 Windows 上强制使用 UTF-8 编码输出，避免特殊字符编码错误
+if sys.platform == 'win32':
+    import io
+    # 重新配置 stdout 和 stderr 使用 UTF-8 编码
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 
 def batch_fetch_daily_data(
     dict_path: str = None,
@@ -109,16 +118,23 @@ def batch_fetch_daily_data(
     end_str = end_date.strftime('%Y-%m-%d')
     
     # 登录 baostock（单次登录，循环使用）
+    def ensure_login():
+        """确保 baostock 已登录，如果未登录则重新登录"""
+        lg = bs.login()
+        if lg.error_code != '0':
+            raise RuntimeError(f"baostock 登录失败: {lg.error_msg}")
+        return lg
+    
     print("[baostock] 正在登录...")
-    lg = bs.login()
-    if lg.error_code != '0':
-        raise RuntimeError(f"baostock 登录失败: {lg.error_msg}")
+    ensure_login()
     print("[baostock] 登录成功")
     
     # 批量获取
     ok_count = 0
     fail_count = 0
     errors = []
+    last_login_time = datetime.now()
+    login_interval = timedelta(minutes=30)  # 每30分钟检查一次登录状态
     
     try:
         for idx, stock in enumerate(stocks, 1):
@@ -147,6 +163,36 @@ def batch_fetch_daily_data(
             try:
                 print(f"[{idx}/{len(stocks)}] 正在获取 {name}({code})...", end=' ', flush=True)
                 
+                # 定期检查登录状态（每30分钟或每100只股票）
+                current_time = datetime.now()
+                if (current_time - last_login_time) > login_interval or (idx % 100 == 0):
+                    try:
+                        # 尝试一个简单的查询来检查登录状态
+                        test_rs = bs.query_history_k_data_plus(
+                            "sh.600000",
+                            "date",
+                            start_date=start_str,
+                            end_date=start_str,
+                            frequency="d",
+                            adjustflag="3"
+                        )
+                        if test_rs.error_code != '0' and "未登录" in test_rs.error_msg:
+                            print(f"\n[baostock] 检测到登录过期，正在重新登录...", flush=True)
+                            bs.logout()  # 先登出
+                            ensure_login()
+                            last_login_time = datetime.now()
+                            print(f"[baostock] 重新登录成功", flush=True)
+                    except:
+                        # 如果检查失败，尝试重新登录
+                        try:
+                            bs.logout()
+                        except:
+                            pass
+                        print(f"\n[baostock] 检测到登录问题，正在重新登录...", flush=True)
+                        ensure_login()
+                        last_login_time = datetime.now()
+                        print(f"[baostock] 重新登录成功", flush=True)
+                
                 # 调用 baostock API
                 # 参考：http://baostock.com/mainContent?file=stockKData.md
                 rs = bs.query_history_k_data_plus(
@@ -159,7 +205,28 @@ def batch_fetch_daily_data(
                 )
                 
                 if rs.error_code != '0':
-                    raise RuntimeError(f"baostock API 错误: {rs.error_msg}")
+                    # 如果是登录错误，尝试重新登录并重试一次
+                    if "未登录" in rs.error_msg:
+                        print(f"\n[baostock] 检测到登录过期，正在重新登录并重试...", flush=True)
+                        try:
+                            bs.logout()
+                        except:
+                            pass
+                        ensure_login()
+                        last_login_time = datetime.now()
+                        # 重试一次
+                        rs = bs.query_history_k_data_plus(
+                            bs_code,
+                            "date,code,open,high,low,close,volume,amount,turn,pctChg",
+                            start_date=start_str,
+                            end_date=end_str,
+                            frequency="d",
+                            adjustflag="3"
+                        )
+                        if rs.error_code != '0':
+                            raise RuntimeError(f"baostock API 错误: {rs.error_msg}")
+                    else:
+                        raise RuntimeError(f"baostock API 错误: {rs.error_msg}")
                 
                 # 获取数据（按照baostock文档标准方式）
                 data_list = []

@@ -105,9 +105,15 @@ export function SettingsPage() {
         const raw = await resp.text()
         let data = null
         try {
+          // 尝试解析JSON，确保使用UTF-8编码
           data = raw ? JSON.parse(raw) : null
-        } catch {}
-        throw new Error((data && data.detail) || `${resp.status} ${resp.statusText}`)
+        } catch (e) {
+          console.error('[点火] JSON解析失败:', e)
+        }
+        const errorMsg = (data && data.detail) || `${resp.status} ${resp.statusText}`
+        // 清理错误信息，移除可能导致乱码的字符
+        const cleanedMsg = errorMsg.replace(/[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]/g, '')
+        throw new Error(cleanedMsg)
       }
       
       const data = await resp.json()
@@ -116,7 +122,10 @@ export function SettingsPage() {
       console.log('[点火] 批量脚本执行完成:', summary)
       alert(`🎉 点火完成！\n成功: ${summary.ok || 0}\n失败: ${summary.fail || 0}\n总计: ${summary.total || 0}`)
     } catch (e) {
-      alert('点火失败: ' + (e.message || '未知错误'))
+      const errorMsg = e?.message || String(e) || '未知错误'
+      // 确保错误信息是有效的字符串
+      const cleanedMsg = errorMsg.replace(/[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]/g, '')
+      alert('点火失败: ' + cleanedMsg)
       console.error('[点火] 错误:', e)
     } finally {
       setIsFetching(false)

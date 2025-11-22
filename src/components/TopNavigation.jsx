@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Settings, Download, Upload, ArrowLeft, Home, BarChart3, History, List, Filter, TrendingUp } from 'lucide-react'
+import { Settings, Download, Upload, ArrowLeft, Home, BarChart3, History, List, Filter, TrendingUp, Award } from 'lucide-react'
 import { getNavigationSettings } from '../pages/SettingsPage'
 
 export function TopNavigation() {
@@ -144,6 +144,10 @@ export function TopNavigation() {
             <Button variant="outline" size="sm" onClick={() => navigate('/price-trend')}>
               <TrendingUp className="h-4 w-4 mr-2" />
               价格走势
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/best-stocks')}>
+              <Award className="h-4 w-4 mr-2" />
+              大浪淘沙
             </Button>
           </div>
           {/* 顶部全局“开始回测”按钮已移除，保留页内的回测入口 */}
