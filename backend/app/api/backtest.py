@@ -911,13 +911,44 @@ async def get_screening_task_status(task_id: str) -> Dict[str, Any]:
     获取筛选任务状态与进度
     返回: { ok: true, task: {status, progress, results, errors} }
     """
-    with tasks_lock:
-        task = screening_tasks.get(task_id)
-    
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在或已过期")
-    
-    return {"ok": True, "task": task}
+    try:
+        with tasks_lock:
+            task = screening_tasks.get(task_id)
+        
+        if not task:
+            raise HTTPException(status_code=404, detail="任务不存在或已过期")
+        
+        # 清理可能无法序列化的数据
+        task_copy = {}
+        for key, value in task.items():
+            if key == "results" and isinstance(value, list):
+                # 清理results中的每个item，确保所有值都可以序列化
+                cleaned_results = []
+                for item in value:
+                    cleaned_item = {}
+                    for k, v in item.items():
+                        try:
+                            # 尝试序列化以检查是否可序列化
+                            import json
+                            json.dumps(v)
+                            cleaned_item[k] = v
+                        except (TypeError, ValueError):
+                            # 如果无法序列化，转换为字符串
+                            cleaned_item[k] = str(v) if v is not None else None
+                    cleaned_results.append(cleaned_item)
+                task_copy[key] = cleaned_results
+            else:
+                task_copy[key] = value
+        
+        return {"ok": True, "task": task_copy}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[状态查询错误] task_id={task_id}, error={e}")
+        print(error_trace)
+        raise HTTPException(status_code=500, detail=f"获取任务状态失败: {str(e)}")
 
 def _run_screening_task(task_id: str, params: Dict[str, Any]):
     """
@@ -944,8 +975,28 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
         enable_daily_macd_positive = bool(params.get('enableDailyMacdPositive', False))  # 日线MACD>0
         enable_weekly_macd_positive = bool(params.get('enableWeeklyMacdPositive', False))  # 周线MACD>0
         enable_price_above_ma = bool(params.get('enablePriceAboveMA', False))  # 价格大于MA
-        price_above_ma_period = int(params.get('priceAboveMAPeriod') or 60)  # 价格大于MA的周期
+        # 支持多个MA周期（新版本）或单个周期（兼容旧版本）
+        price_above_ma_periods = params.get('priceAboveMAPeriods')
+        if price_above_ma_periods is None:
+            # 兼容旧版本：单个周期
+            price_above_ma_period = params.get('priceAboveMAPeriod')
+            if price_above_ma_period:
+                price_above_ma_periods = [int(price_above_ma_period)]
+            else:
+                price_above_ma_periods = [60]  # 默认值
+        else:
+            # 新版本：多个周期列表
+            if isinstance(price_above_ma_periods, list):
+                price_above_ma_periods = [int(p) for p in price_above_ma_periods if p]
+            else:
+                price_above_ma_periods = [int(price_above_ma_periods)]
         enable_first_rise_phase = bool(params.get('enableFirstRisePhase', False))  # 第一次主升段筛选
+        enable_trend_strength = bool(params.get('enableTrendStrength', False))  # 趋势强度筛选
+        trend_strength = str(params.get('trendStrength') or 'up')  # up | down | neutral
+        enable_volatility = bool(params.get('enableVolatility', False))  # 波动性筛选
+        volatility = str(params.get('volatility') or 'medium')  # low | medium | high
+        enable_ma_alignment = bool(params.get('enableMAAlignment', False))  # 均线排列筛选
+        ma_alignment = str(params.get('maAlignment') or 'bullish')  # bullish | bearish | neutral | mixed
         end_date = params.get('endDate')  # 数据截止日期（YYYY-MM-DD），None表示使用全部数据
         
         # 候选标的
@@ -1013,38 +1064,51 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
             pass
         
         def macd_trend(df: pd.DataFrame) -> str:
-            """判断MACD柱状图是否上升/下降（优化版：只计算最后几根）"""
+            """
+            判断MACD柱状图是否上升/下降（动能方向）
+            - bull: 柱子上升（hist[-1] > hist[-2]），动能增强
+            - bear: 柱子下降（hist[-1] < hist[-2]），动能减弱
+            - neutral: 数据不足或持平
+            """
             if df is None or df.empty or 'close' not in df.columns:
                 return 'neutral'
             closes = pd.to_numeric(df['close'], errors='coerce').dropna()
             if len(closes) < max(slow, signal_period) + 2:
                 return 'neutral'
             
-            # 只取最后 slow*3 根K线计算，减少计算量
-            tail_len = min(len(closes), max(slow * 3, 100))
-            closes_tail = closes.iloc[-tail_len:]
+            # 为了确保EMA计算的准确性，使用全部数据而不是只取最后几根
+            # EMA需要足够的历史数据才能稳定，但为了性能，至少使用 slow*3 根
+            min_len = max(slow * 3, 100)
+            if len(closes) > min_len:
+                # 如果数据足够多，只取最后部分计算（提高性能）
+                closes_tail = closes.iloc[-min_len:]
+            else:
+                # 如果数据不多，使用全部数据
+                closes_tail = closes
             
             ema_fast = closes_tail.ewm(span=fast, adjust=False).mean()
             ema_slow = closes_tail.ewm(span=slow, adjust=False).mean()
             dif = ema_fast - ema_slow
             dea = dif.ewm(span=signal_period, adjust=False).mean()
-            hist = dif - dea
+            hist = dif - dea  # MACD柱状图 = DIF - DEA
             
             if len(hist) < 2:
                 return 'neutral'
             
+            # 取最后两根柱子进行比较
             last_hist = hist.iloc[-1]
             prev_hist = hist.iloc[-2]
             
             if pd.isna(last_hist) or pd.isna(prev_hist):
                 return 'neutral'
             
+            # 判断柱子变化方向
             if last_hist > prev_hist:
-                return 'bull'
+                return 'bull'  # 柱子上升，动能增强
             elif last_hist < prev_hist:
-                return 'bear'
+                return 'bear'  # 柱子下降，动能减弱
             else:
-                return 'neutral'
+                return 'neutral'  # 持平
         
         def get_macd_dif(df: pd.DataFrame) -> float:
             """获取MACD的DIF值（快线-慢线），用于判断MACD>0"""
@@ -1094,8 +1158,9 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
         
         def check_first_rise_phase(df: pd.DataFrame) -> bool:
             """
-            检查是否满足第一次主升段条件（严格模式）：
-            红色柱子向上突破零轴后，每个柱子都是变高的，没有任何回撤
+            检查是否满足第一次主升段条件（修改版）：
+            红色柱子向上突破零轴后，价格连续绝对值上涨（不看比率）
+            要求：转红后，每个交易日的收盘价都必须 > 前一个交易日的收盘价（绝对值上涨）
             """
             if df is None or df.empty or 'close' not in df.columns:
                 return False
@@ -1128,23 +1193,35 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
             if turn_red_idx is None:
                 return False
             
-            # 检查转红后是否每个柱子都是变高的（严格：不允许任何回撤）
-            # 从转红位置到最新，每个柱子的值都必须 >= 前一个柱子
-            red_phase_hist = hist.iloc[turn_red_idx:]
+            # 检查转红后价格是否连续绝对值上涨（不看比率）
+            # 从转红位置对应的K线开始，到最新，每个交易日的收盘价都必须 > 前一个交易日的收盘价
             
-            if len(red_phase_hist) < 2:
-                return False
+            # 找到hist中turn_red_idx对应的原始closes索引
+            # 由于hist是dropna后的，我们需要找到对应的位置
+            # 简化处理：假设hist和closes在计算后索引对应（去掉前面的NaN）
+            hist_start_idx = len(closes) - len(hist)  # hist在closes中的起始索引
             
-            # 严格检查：每个柱子都必须 >= 前一个柱子（不允许任何减小）
-            for i in range(1, len(red_phase_hist)):
-                current_hist = red_phase_hist.iloc[i]
-                prev_hist = red_phase_hist.iloc[i - 1]
+            # 转红位置在closes中的索引
+            price_start_idx = hist_start_idx + turn_red_idx
+            
+            # 检查从转红位置到最新的价格是否连续上涨
+            if price_start_idx >= len(closes) - 1:
+                return False  # 数据不足
+            
+            # 从转红位置的下一个交易日开始检查（因为转红当天可能还没上涨）
+            # 检查从转红位置到最新，每个价格都必须 > 前一个价格（绝对值上涨，不看比率）
+            for i in range(price_start_idx + 1, len(closes)):
+                current_price = closes.iloc[i]
+                prev_price = closes.iloc[i - 1]
                 
-                # 如果当前柱子比前一个柱子小（有任何回撤），不符合条件
-                if current_hist < prev_hist:
+                if pd.isna(current_price) or pd.isna(prev_price):
+                    return False
+                
+                # 要求绝对值上涨：当前价格必须 > 前一个价格（不看比率）
+                if current_price <= prev_price:
                     return False
             
-            # 所有检查通过：转红后每个柱子都是变高的，没有任何回撤
+            # 所有检查通过：转红后价格连续绝对值上涨
             return True
         
         # 逐只筛选
@@ -1272,12 +1349,15 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     except Exception:
                         ma_ok = False
                 
-                # 价格大于MA筛选（仅在日线数据上判断）
+                # 价格大于MA筛选（仅在日线数据上判断，支持多个MA周期）
                 price_above_ma_ok = True
+                price_above_ma_info = {}  # 记录价格与各MA的关系
                 if keep and volume_ok and ma_ok and enable_price_above_ma and daily_df is not None and not daily_df.empty:
                     try:
                         closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
-                        if len(closes) >= price_above_ma_period:
+                        max_ma_period = max(price_above_ma_periods) if price_above_ma_periods else 60
+                        
+                        if len(closes) >= max_ma_period:
                             # 找到截止日期对应的数据
                             if end_date:
                                 try:
@@ -1287,38 +1367,40 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                                     # 找到截止日期及之前的最后一条记录
                                     filtered_df = daily_df[daily_df['date'] <= end_date_only]
                                     if not filtered_df.empty:
-                                        # 使用截止日期及之前的数据计算MA
                                         closes_for_ma = pd.to_numeric(filtered_df['close'], errors='coerce').dropna()
-                                        if len(closes_for_ma) >= price_above_ma_period:
-                                            ma_value = closes_for_ma.iloc[-price_above_ma_period:].mean()
-                                            current_price = closes_for_ma.iloc[-1]
-                                            if pd.notna(ma_value) and pd.notna(current_price):
-                                                price_above_ma_ok = (current_price > ma_value)
-                                            else:
-                                                price_above_ma_ok = False
-                                        else:
-                                            price_above_ma_ok = False  # 数据不足
+                                        current_price = closes_for_ma.iloc[-1] if len(closes_for_ma) > 0 else None
                                     else:
-                                        price_above_ma_ok = False  # 找不到截止日期的数据
+                                        closes_for_ma = closes
+                                        current_price = closes.iloc[-1]
                                 except Exception:
-                                    # 如果日期解析失败，使用最后一条数据
-                                    ma_value = closes.iloc[-price_above_ma_period:].mean()
+                                    closes_for_ma = closes
                                     current_price = closes.iloc[-1]
-                                    if pd.notna(ma_value) and pd.notna(current_price):
-                                        price_above_ma_ok = (current_price > ma_value)
-                                    else:
-                                        price_above_ma_ok = False
                             else:
-                                # 没有截止日期，使用最后一条数据
-                                ma_value = closes.iloc[-price_above_ma_period:].mean()
+                                closes_for_ma = closes
                                 current_price = closes.iloc[-1]
-                                if pd.notna(ma_value) and pd.notna(current_price):
-                                    price_above_ma_ok = (current_price > ma_value)
-                                else:
-                                    price_above_ma_ok = False
+                            
+                            if pd.notna(current_price) and len(closes_for_ma) >= max_ma_period:
+                                # 检查价格是否大于所有选中的MA周期
+                                for period in price_above_ma_periods:
+                                    if len(closes_for_ma) >= period:
+                                        ma_value = closes_for_ma.iloc[-period:].mean()
+                                        if pd.notna(ma_value):
+                                            is_above = current_price > ma_value
+                                            price_above_ma_info[f'MA{period}'] = {
+                                                'value': float(ma_value) if pd.notna(ma_value) else None,
+                                                'above': bool(is_above)
+                                            }
+                                            if not is_above:
+                                                price_above_ma_ok = False  # 只要有一个不满足就失败
+                                        else:
+                                            price_above_ma_ok = False
+                                    else:
+                                        price_above_ma_ok = False  # 数据不足
+                            else:
+                                price_above_ma_ok = False
                         else:
                             price_above_ma_ok = False  # 数据不足
-                    except Exception:
+                    except Exception as e:
                         price_above_ma_ok = False
                 
                 # 位置筛选（仅在日线数据上判断）
@@ -1355,7 +1437,101 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     except Exception:
                         position_ok = False
                 
-                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok:
+                # 趋势强度筛选
+                trend_strength_ok = True
+                trend_strength_value = None
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and enable_trend_strength and daily_df is not None and not daily_df.empty:
+                    try:
+                        closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                        if len(closes) >= 20:
+                            # 使用线性回归计算20日价格斜率
+                            x = np.arange(len(closes.tail(20)))
+                            y = closes.tail(20).values
+                            if len(x) == len(y) and len(x) > 1:
+                                slope = np.polyfit(x, y, 1)[0]
+                                current_price = closes.iloc[-1]
+                                slope_pct = (slope / current_price * 100) if current_price > 0 else 0
+                                
+                                if slope_pct > 0.05:
+                                    trend_strength_value = 'up'
+                                elif slope_pct < -0.05:
+                                    trend_strength_value = 'down'
+                                else:
+                                    trend_strength_value = 'neutral'
+                                
+                                trend_strength_ok = (trend_strength_value == trend_strength)
+                            else:
+                                trend_strength_ok = False
+                        else:
+                            trend_strength_ok = False
+                    except Exception:
+                        trend_strength_ok = False
+                
+                # 波动性筛选
+                volatility_ok = True
+                volatility_value = None
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and enable_volatility and daily_df is not None and not daily_df.empty:
+                    try:
+                        if len(daily_df) >= 14:
+                            recent_data = daily_df.tail(14)
+                            highs = pd.to_numeric(recent_data['high'], errors='coerce').dropna()
+                            lows = pd.to_numeric(recent_data['low'], errors='coerce').dropna()
+                            closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                            
+                            if len(highs) > 0 and len(lows) > 0 and len(closes) > 0:
+                                atr_simple = (highs - lows).mean()
+                                current_price = closes.iloc[-1]
+                                volatility_pct = (atr_simple / current_price * 100) if current_price > 0 else 0
+                                
+                                if volatility_pct < 2:
+                                    volatility_value = 'low'
+                                elif volatility_pct < 5:
+                                    volatility_value = 'medium'
+                                else:
+                                    volatility_value = 'high'
+                                
+                                volatility_ok = (volatility_value == volatility)
+                            else:
+                                volatility_ok = False
+                        else:
+                            volatility_ok = False
+                    except Exception:
+                        volatility_ok = False
+                
+                # 均线排列筛选
+                ma_alignment_ok = True
+                ma_alignment_value = None
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and volatility_ok and enable_ma_alignment and daily_df is not None and not daily_df.empty:
+                    try:
+                        closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                        if len(closes) >= 120:
+                            # 计算各周期MA
+                            ma5 = closes.rolling(window=5).mean().iloc[-1]
+                            ma10 = closes.rolling(window=10).mean().iloc[-1]
+                            ma20 = closes.rolling(window=20).mean().iloc[-1]
+                            ma30 = closes.rolling(window=30).mean().iloc[-1]
+                            
+                            if pd.notna(ma5) and pd.notna(ma10) and pd.notna(ma20) and pd.notna(ma30):
+                                if ma5 > ma10 > ma20 > ma30:
+                                    ma_alignment_value = 'bullish'
+                                elif ma5 < ma10 < ma20 < ma30:
+                                    ma_alignment_value = 'bearish'
+                                else:
+                                    # 检查是否粘合（MA5与MA20差距<3%）
+                                    if abs(ma5 - ma20) / ma20 < 0.03:
+                                        ma_alignment_value = 'neutral'
+                                    else:
+                                        ma_alignment_value = 'mixed'
+                                
+                                ma_alignment_ok = (ma_alignment_value == ma_alignment)
+                            else:
+                                ma_alignment_ok = False
+                        else:
+                            ma_alignment_ok = False
+                    except Exception:
+                        ma_alignment_ok = False
+                
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and volatility_ok and ma_alignment_ok:
                     # 计算最新价格、日MACD、周MACD
                     latest_price = None
                     daily_macd_value = None
@@ -1418,7 +1594,17 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                             "minPrice": round(float(min_price), 2) if pd.notna(min_price) else None,
                             "maxPrice": round(float(max_price), 2) if pd.notna(max_price) else None,
                             "type": position_type
-                        } if enable_position else None
+                        } if enable_position else None,
+                        "priceAboveMAInfo": price_above_ma_info if enable_price_above_ma else None,
+                        "trendStrengthInfo": {
+                            "value": trend_strength_value
+                        } if enable_trend_strength else None,
+                        "volatilityInfo": {
+                            "value": volatility_value
+                        } if enable_volatility else None,
+                        "maAlignmentInfo": {
+                            "value": ma_alignment_value
+                        } if enable_ma_alignment else None
                     }
                     selected.append(result_item)
                     # 实时更新结果

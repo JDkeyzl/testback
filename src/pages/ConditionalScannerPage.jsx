@@ -40,8 +40,14 @@ export function ConditionalScannerPage() {
   const [maLong, setMaLong] = useState(30) // 长期均线周期
   const [maRelation, setMaRelation] = useState('above') // above=短期在长期上方 | below=短期在长期下方
   const [enablePriceAboveMA, setEnablePriceAboveMA] = useState(false) // 是否启用价格大于MA筛选
-  const [priceAboveMAPeriod, setPriceAboveMAPeriod] = useState(60) // 价格大于MA的周期
+  const [priceAboveMAPeriods, setPriceAboveMAPeriods] = useState([5, 20, 30, 60]) // 价格大于MA的周期列表（多选）
   const [enableFirstRisePhase, setEnableFirstRisePhase] = useState(false) // 是否启用第一次主升段筛选
+  const [enableTrendStrength, setEnableTrendStrength] = useState(false) // 是否启用趋势强度筛选
+  const [trendStrength, setTrendStrength] = useState('up') // up | down | neutral
+  const [enableVolatility, setEnableVolatility] = useState(false) // 是否启用波动性筛选
+  const [volatility, setVolatility] = useState('medium') // low | medium | high
+  const [enableMAAlignment, setEnableMAAlignment] = useState(false) // 是否启用均线排列筛选
+  const [maAlignment, setMaAlignment] = useState('bullish') // bullish | bearish | neutral | mixed
   const [limit, setLimit] = useState(50) // 限制筛选数量，用于测试
   const [isRunning, setIsRunning] = useState(false)
   const [results, setResults] = useState([])
@@ -158,8 +164,15 @@ export function ConditionalScannerPage() {
         if (state.maLong) setMaLong(state.maLong)
         if (state.maRelation) setMaRelation(state.maRelation)
         if (state.enablePriceAboveMA !== undefined) setEnablePriceAboveMA(state.enablePriceAboveMA)
-        if (state.priceAboveMAPeriod) setPriceAboveMAPeriod(state.priceAboveMAPeriod)
+        if (state.priceAboveMAPeriods) setPriceAboveMAPeriods(state.priceAboveMAPeriods)
+        else if (state.priceAboveMAPeriod) setPriceAboveMAPeriods([state.priceAboveMAPeriod]) // 兼容旧数据
         if (state.enableFirstRisePhase !== undefined) setEnableFirstRisePhase(state.enableFirstRisePhase)
+        if (state.enableTrendStrength !== undefined) setEnableTrendStrength(state.enableTrendStrength)
+        if (state.trendStrength) setTrendStrength(state.trendStrength)
+        if (state.enableVolatility !== undefined) setEnableVolatility(state.enableVolatility)
+        if (state.volatility) setVolatility(state.volatility)
+        if (state.enableMAAlignment !== undefined) setEnableMAAlignment(state.enableMAAlignment)
+        if (state.maAlignment) setMaAlignment(state.maAlignment)
         if (state.limit) setLimit(state.limit)
         if (state.endDate) setEndDate(state.endDate)
         if (state.enableDailyMacdPositive !== undefined) setEnableDailyMacdPositive(state.enableDailyMacdPositive)
@@ -183,11 +196,12 @@ export function ConditionalScannerPage() {
         enablePosition, positionType, lookbackDays, priceThreshold,
         enableMA, maShort, maLong, maRelation, limit, results,
         enableDailyMacdPositive, enableWeeklyMacdPositive,
-        enablePriceAboveMA, priceAboveMAPeriod, enableFirstRisePhase,
+        enablePriceAboveMA, priceAboveMAPeriods, enableFirstRisePhase,
+        enableTrendStrength, trendStrength, enableVolatility, volatility, enableMAAlignment, maAlignment,
         taskId, isRunning, status, progress, summary
       }))
     } catch {}
-  }, [direction, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio, enablePosition, positionType, lookbackDays, priceThreshold, enableMA, maShort, maLong, maRelation, limit, results, enableDailyMacdPositive, enableWeeklyMacdPositive, enablePriceAboveMA, priceAboveMAPeriod, enableFirstRisePhase, taskId, isRunning, status, progress, summary])
+  }, [direction, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio, enablePosition, positionType, lookbackDays, priceThreshold, enableMA, maShort, maLong, maRelation, limit, results, enableDailyMacdPositive, enableWeeklyMacdPositive, enablePriceAboveMA, priceAboveMAPeriods, enableFirstRisePhase, enableTrendStrength, trendStrength, enableVolatility, volatility, enableMAAlignment, maAlignment, taskId, isRunning, status, progress, summary])
 
   const runScreen = async () => {
     // 不再强制要求选择方向
@@ -206,7 +220,7 @@ export function ConditionalScannerPage() {
     try {
       // 1. 启动异步任务
       const controller = new AbortController()
-      const fetchTimeoutId = setTimeout(() => controller.abort(), 10000) // 10秒超时
+      const fetchTimeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时（启动任务应该很快，但给足够时间）
       
       const startResp = await fetch('/api/v1/screener/multi-macd-async', {
         method: 'POST',
@@ -234,14 +248,30 @@ export function ConditionalScannerPage() {
           enableDailyMacdPositive,
           enableWeeklyMacdPositive,
           enablePriceAboveMA,
-          priceAboveMAPeriod,
-          enableFirstRisePhase
+          priceAboveMAPeriods: enablePriceAboveMA ? priceAboveMAPeriods : undefined,
+          enableFirstRisePhase,
+          enableTrendStrength,
+          trendStrength,
+          enableVolatility,
+          volatility,
+          enableMAAlignment,
+          maAlignment
         })
       })
       clearTimeout(fetchTimeoutId)
-      const startData = await startResp.json().catch(() => ({}))
-      if (!startResp.ok || !startData?.ok || !startData.taskId) {
-        throw new Error((startData && startData.detail) || '启动任务失败')
+      
+      if (!startResp.ok) {
+        const errorText = await startResp.text().catch(() => '未知错误')
+        throw new Error(`启动任务失败: ${startResp.status} ${errorText}`)
+      }
+      
+      const startData = await startResp.json().catch((e) => {
+        console.error('解析响应失败:', e)
+        return {}
+      })
+      
+      if (!startData?.ok || !startData.taskId) {
+        throw new Error((startData && startData.detail) || '启动任务失败：未返回taskId')
       }
       
       const tid = startData.taskId
@@ -314,7 +344,16 @@ export function ConditionalScannerPage() {
       return () => clearTimeout(timeoutId)
       
     } catch (e) {
-      alert('启动筛选失败：' + (e?.message || e))
+      console.error('启动筛选失败:', e)
+      const errorMsg = e?.message || (typeof e === 'string' ? e : '未知错误')
+      
+      // 如果是取消错误，显示更友好的提示
+      if (e?.name === 'AbortError' || errorMsg.includes('aborted')) {
+        alert('请求被取消或超时，请检查网络连接或稍后重试')
+      } else {
+        alert('启动筛选失败：' + errorMsg)
+      }
+      
       setStatus('')
       setIsRunning(false)
       setTaskId(null)
@@ -645,17 +684,33 @@ export function ConditionalScannerPage() {
             </div>
             {enablePriceAboveMA && (
               <div className="mb-2">
-                <Label className="text-xs">MA周期</Label>
-                <Input
-                  type="number"
-                  value={priceAboveMAPeriod}
-                  onChange={e => setPriceAboveMAPeriod(Number(e.target.value))}
-                  disabled={isRunning}
-                  className="text-xs"
-                  min="1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  截止日期当天的收盘价大于MA{priceAboveMAPeriod}
+                <Label className="text-xs mb-2 block">选择MA周期（可多选）</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[5, 10, 20, 30, 60, 120].map(period => (
+                    <div key={period} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`ma-${period}`}
+                        checked={priceAboveMAPeriods.includes(period)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setPriceAboveMAPeriods([...priceAboveMAPeriods, period].sort((a, b) => a - b))
+                          } else {
+                            setPriceAboveMAPeriods(priceAboveMAPeriods.filter(p => p !== period))
+                          }
+                        }}
+                        disabled={isRunning}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor={`ma-${period}`} className="text-xs cursor-pointer">
+                        MA{period}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  截止日期当天的收盘价大于选中的MA周期
+                  {priceAboveMAPeriods.length > 0 && ` (已选: MA${priceAboveMAPeriods.join(', MA')})`}
                 </p>
               </div>
             )}
@@ -681,6 +736,158 @@ export function ConditionalScannerPage() {
                 只选日线MACD柱状图由绿转红后第一次红柱持续放大形成的主升段，不包含回落后再度放大的再次上涨
               </p>
             )}
+          </div>
+
+          {/* 趋势强度筛选 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableTrendStrength"
+                checked={enableTrendStrength}
+                onChange={e => setEnableTrendStrength(e.target.checked)}
+                disabled={isRunning}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableTrendStrength" className="text-sm font-medium cursor-pointer">
+                启用趋势强度筛选
+              </Label>
+            </div>
+            {enableTrendStrength && (
+              <div className="flex gap-2 mb-2">
+                <Button
+                  size="sm"
+                  variant={trendStrength === 'up' ? 'default' : 'outline'}
+                  onClick={() => setTrendStrength('up')}
+                  disabled={isRunning}
+                >
+                  上涨趋势
+                </Button>
+                <Button
+                  size="sm"
+                  variant={trendStrength === 'down' ? 'default' : 'outline'}
+                  onClick={() => setTrendStrength('down')}
+                  disabled={isRunning}
+                >
+                  下跌趋势
+                </Button>
+                <Button
+                  size="sm"
+                  variant={trendStrength === 'neutral' ? 'default' : 'outline'}
+                  onClick={() => setTrendStrength('neutral')}
+                  disabled={isRunning}
+                >
+                  横盘整理
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {enableTrendStrength ? `20日价格趋势为${trendStrength === 'up' ? '上涨' : trendStrength === 'down' ? '下跌' : '横盘'}` : '不限制趋势强度'}
+            </p>
+          </div>
+
+          {/* 波动性筛选 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableVolatility"
+                checked={enableVolatility}
+                onChange={e => setEnableVolatility(e.target.checked)}
+                disabled={isRunning}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableVolatility" className="text-sm font-medium cursor-pointer">
+                启用波动性筛选
+              </Label>
+            </div>
+            {enableVolatility && (
+              <div className="flex gap-2 mb-2">
+                <Button
+                  size="sm"
+                  variant={volatility === 'low' ? 'default' : 'outline'}
+                  onClick={() => setVolatility('low')}
+                  disabled={isRunning}
+                >
+                  低波动
+                </Button>
+                <Button
+                  size="sm"
+                  variant={volatility === 'medium' ? 'default' : 'outline'}
+                  onClick={() => setVolatility('medium')}
+                  disabled={isRunning}
+                >
+                  中等波动
+                </Button>
+                <Button
+                  size="sm"
+                  variant={volatility === 'high' ? 'default' : 'outline'}
+                  onClick={() => setVolatility('high')}
+                  disabled={isRunning}
+                >
+                  高波动
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {enableVolatility ? `价格波动为${volatility === 'low' ? '低（<2%）' : volatility === 'medium' ? '中等（2%-5%）' : '高（>5%）'}` : '不限制波动性'}
+            </p>
+          </div>
+
+          {/* 均线排列筛选 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableMAAlignment"
+                checked={enableMAAlignment}
+                onChange={e => setEnableMAAlignment(e.target.checked)}
+                disabled={isRunning}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableMAAlignment" className="text-sm font-medium cursor-pointer">
+                启用均线排列筛选
+              </Label>
+            </div>
+            {enableMAAlignment && (
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <Button
+                  size="sm"
+                  variant={maAlignment === 'bullish' ? 'default' : 'outline'}
+                  onClick={() => setMaAlignment('bullish')}
+                  disabled={isRunning}
+                >
+                  多头排列
+                </Button>
+                <Button
+                  size="sm"
+                  variant={maAlignment === 'bearish' ? 'default' : 'outline'}
+                  onClick={() => setMaAlignment('bearish')}
+                  disabled={isRunning}
+                >
+                  空头排列
+                </Button>
+                <Button
+                  size="sm"
+                  variant={maAlignment === 'neutral' ? 'default' : 'outline'}
+                  onClick={() => setMaAlignment('neutral')}
+                  disabled={isRunning}
+                >
+                  均线粘合
+                </Button>
+                <Button
+                  size="sm"
+                  variant={maAlignment === 'mixed' ? 'default' : 'outline'}
+                  onClick={() => setMaAlignment('mixed')}
+                  disabled={isRunning}
+                >
+                  混合排列
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {enableMAAlignment ? `均线排列为${maAlignment === 'bullish' ? '多头（MA5>MA10>MA20>MA30）' : maAlignment === 'bearish' ? '空头（MA5<MA10<MA20<MA30）' : maAlignment === 'neutral' ? '粘合（横盘）' : '混合（趋势不明）'}` : '不限制均线排列'}
+            </p>
           </div>
 
           {/* 方向选择 */}
@@ -893,8 +1100,20 @@ export function ConditionalScannerPage() {
                         价格位置 {sortBy === 'position' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
                     )}
+                    {enablePriceAboveMA && (
+                      <th className="py-2 pr-4">价格与MA</th>
+                    )}
                     {enableMA && (
                       <th className="py-2 pr-4">均线关系</th>
+                    )}
+                    {enableTrendStrength && (
+                      <th className="py-2 pr-4">趋势强度</th>
+                    )}
+                    {enableVolatility && (
+                      <th className="py-2 pr-4">波动性</th>
+                    )}
+                    {enableMAAlignment && (
+                      <th className="py-2 pr-4">均线排列</th>
                     )}
                     <th className="py-2 pr-4">操作</th>
                   </tr>
@@ -971,6 +1190,26 @@ export function ConditionalScannerPage() {
                             )}
                           </td>
                         )}
+                        {enablePriceAboveMA && (
+                          <td className="py-2 pr-4">
+                            {r.priceAboveMAInfo && Object.keys(r.priceAboveMAInfo).length > 0 ? (
+                              <div className="text-xs space-y-1">
+                                {Object.entries(r.priceAboveMAInfo).map(([maKey, maInfo]) => (
+                                  <div key={maKey} className="flex items-center gap-1">
+                                    <span className={maInfo.above ? 'text-green-600 font-medium' : 'text-red-600'}>
+                                      {maInfo.above ? '✓' : '✗'}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {maKey}: {maInfo.value?.toFixed(2) || '-'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                        )}
                         {enableMA && (
                           <td className="py-2 pr-4">
                             {r.maInfo ? (
@@ -982,6 +1221,59 @@ export function ConditionalScannerPage() {
                                   MA{r.maInfo.short}: {r.maInfo.maShort?.toFixed(2) || '-'} | MA{r.maInfo.long}: {r.maInfo.maLong?.toFixed(2) || '-'}
                                 </div>
                               </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                        )}
+                        {enableTrendStrength && (
+                          <td className="py-2 pr-4">
+                            {r.trendStrengthInfo?.value ? (
+                              <span className={
+                                r.trendStrengthInfo.value === 'up' ? 'text-green-600 font-medium' :
+                                r.trendStrengthInfo.value === 'down' ? 'text-red-600 font-medium' :
+                                'text-gray-600'
+                              }>
+                                {r.trendStrengthInfo.value === 'up' ? '📈 上涨' :
+                                 r.trendStrengthInfo.value === 'down' ? '📉 下跌' :
+                                 '➡️ 横盘'}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                        )}
+                        {enableVolatility && (
+                          <td className="py-2 pr-4">
+                            {r.volatilityInfo?.value ? (
+                              <span className={
+                                r.volatilityInfo.value === 'low' ? 'text-green-600' :
+                                r.volatilityInfo.value === 'medium' ? 'text-blue-600' :
+                                'text-orange-600 font-medium'
+                              }>
+                                {r.volatilityInfo.value === 'low' ? '✅ 低' :
+                                 r.volatilityInfo.value === 'medium' ? '➡️ 中' :
+                                 '⚠️ 高'}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                        )}
+                        {enableMAAlignment && (
+                          <td className="py-2 pr-4">
+                            {r.maAlignmentInfo?.value ? (
+                              <span className={
+                                r.maAlignmentInfo.value === 'bullish' ? 'text-green-600 font-medium' :
+                                r.maAlignmentInfo.value === 'bearish' ? 'text-red-600 font-medium' :
+                                r.maAlignmentInfo.value === 'neutral' ? 'text-blue-600' :
+                                'text-gray-600'
+                              }>
+                                {r.maAlignmentInfo.value === 'bullish' ? '📈 多头' :
+                                 r.maAlignmentInfo.value === 'bearish' ? '📉 空头' :
+                                 r.maAlignmentInfo.value === 'neutral' ? '➡️ 粘合' :
+                                 '🔄 混合'}
+                              </span>
                             ) : (
                               <span className="text-muted-foreground text-xs">-</span>
                             )}

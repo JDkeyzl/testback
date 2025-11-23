@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { Loader2, BarChart3, TrendingUp, CheckCircle2, Info, ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { Loader2, BarChart3, TrendingUp, CheckCircle2, Info, ArrowUp, ArrowDown, Minus, ChevronDown, ChevronUp, Eye, Award } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 export function CommonFeaturesAnalysis({ 
@@ -23,6 +23,7 @@ export function CommonFeaturesAnalysis({
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState(null)
   const [error, setError] = useState(null)
+  const [expandedDistributions, setExpandedDistributions] = useState({}) // 记录展开的分布项
 
   // 当props变化时更新state
   useEffect(() => {
@@ -119,22 +120,56 @@ export function CommonFeaturesAnalysis({
     )
   }
 
-  // 渲染分布（可视化版）
-  const renderDistribution = (dist, labels = {}) => {
+  // 切换分布项展开状态
+  const toggleDistribution = (distributionKey, itemKey) => {
+    const key = `${distributionKey}-${itemKey}`
+    setExpandedDistributions(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
+  }
+
+  // 渲染分布（可视化版，支持显示股票列表）
+  const renderDistribution = (dist, labels = {}, distributionKey = '', distWithSymbols = null) => {
     if (!dist || Object.keys(dist).length === 0) return '-'
     const total = analysisResult?.totalStocks || 1
     return (
       <div className="space-y-2">
         {Object.entries(dist)
-          .sort((a, b) => b[1] - a[1]) // 按数量排序
+          .sort((a, b) => {
+            // 如果 dist 的值是对象（包含 count），按 count 排序；否则按值排序
+            const valA = typeof a[1] === 'object' && a[1]?.count !== undefined ? a[1].count : a[1]
+            const valB = typeof b[1] === 'object' && b[1]?.count !== undefined ? b[1].count : b[1]
+            return valB - valA
+          })
           .map(([key, value]) => {
-            const percentage = (value / total) * 100
+            const count = typeof value === 'object' && value?.count !== undefined ? value.count : value
+            const percentage = (count / total) * 100
             const label = labels[key] || key
+            const expandKey = `${distributionKey}-${key}`
+            const isExpanded = expandedDistributions[expandKey]
+            const symbols = distWithSymbols?.[key]?.symbols || []
+            const hasSymbols = symbols.length > 0
+
             return (
-              <div key={key} className="space-y-1">
+              <div key={key} className="space-y-1 border-b border-border/40 pb-2 last:border-0">
                 <div className="flex items-center justify-between text-sm">
-                  <span>{label}</span>
-                  <span className="font-semibold">{value}只 ({formatPercent(percentage)})</span>
+                  <span className="flex-1">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{count}只 ({formatPercent(percentage)})</span>
+                    {hasSymbols && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => toggleDistribution(distributionKey, key)}
+                        title={isExpanded ? '收起股票列表' : '查看股票列表'}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
@@ -142,6 +177,22 @@ export function CommonFeaturesAnalysis({
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
+                {/* 展开的股票列表 */}
+                {isExpanded && hasSymbols && (
+                  <div className="mt-2 p-2 bg-muted/50 rounded-md max-h-48 overflow-y-auto">
+                    <div className="text-xs text-muted-foreground mb-1">包含的股票 ({symbols.length}只):</div>
+                    <div className="flex flex-wrap gap-1">
+                      {symbols.map((symbol, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block px-2 py-0.5 bg-background border border-border rounded text-xs"
+                        >
+                          {symbol}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -149,14 +200,18 @@ export function CommonFeaturesAnalysis({
     )
   }
 
-  // 渲染关键指标卡片
-  const renderKeyMetric = (title, value, description, icon = null, color = 'blue') => {
+  // 渲染关键指标卡片（支持显示股票列表）
+  const renderKeyMetric = (title, value, description, icon = null, color = 'blue', symbols = null, metricKey = '') => {
     const colorClasses = {
       red: 'text-red-600',
       green: 'text-green-600',
       blue: 'text-blue-600',
       orange: 'text-orange-600'
     }
+    const expandKey = `metric-${metricKey}`
+    const isExpanded = expandedDistributions[expandKey]
+    const hasSymbols = symbols && symbols.length > 0
+
     return (
       <div className="p-4 border rounded-lg bg-card">
         <div className="flex items-center justify-between mb-2">
@@ -164,20 +219,50 @@ export function CommonFeaturesAnalysis({
             {icon}
             <span className="text-sm font-medium text-muted-foreground">{title}</span>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <p className="text-xs">{description}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center gap-1">
+            {hasSymbols && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => toggleDistribution('metric', metricKey)}
+                title={isExpanded ? '收起股票列表' : '查看股票列表'}
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </Button>
+            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs">{description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
         <div className={`text-2xl font-bold ${colorClasses[color] || colorClasses.blue}`}>
           {value}
         </div>
+        {/* 展开的股票列表 */}
+        {isExpanded && hasSymbols && (
+          <div className="mt-2 p-2 bg-muted/50 rounded-md max-h-48 overflow-y-auto">
+            <div className="text-xs text-muted-foreground mb-1">包含的股票 ({symbols.length}只):</div>
+            <div className="flex flex-wrap gap-1">
+              {symbols.map((symbol, idx) => (
+                <span
+                  key={idx}
+                  className="inline-block px-2 py-0.5 bg-background border border-border rounded text-xs"
+                >
+                  {symbol}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -266,6 +351,76 @@ export function CommonFeaturesAnalysis({
         {/* 分析结果 */}
         {analysisResult && (
           <div className="space-y-4 mt-4">
+            {/* 股票排名 - 符合维度最多的股票 */}
+            {analysisResult.stockRankings && analysisResult.stockRankings.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Award className="h-5 w-5 text-yellow-600" />
+                    股票排名 - 符合维度最多的股票
+                  </CardTitle>
+                  <CardDescription>
+                    按符合共同特征维度数量排序，显示每只股票符合了哪些维度
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {analysisResult.stockRankings.slice(0, 20).map((stock, index) => (
+                      <div
+                        key={stock.symbol}
+                        className="p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                              index === 0 ? 'bg-yellow-500 text-white' :
+                              index === 1 ? 'bg-gray-400 text-white' :
+                              index === 2 ? 'bg-orange-600 text-white' :
+                              'bg-muted text-foreground'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-lg">{stock.symbol}</div>
+                              <div className="text-xs text-muted-foreground">
+                                符合 {stock.matchCount} 个维度
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">
+                              {stock.matchCount}
+                            </div>
+                            <div className="text-xs text-muted-foreground">个维度</div>
+                          </div>
+                        </div>
+                        {stock.matchedDimensions && stock.matchedDimensions.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-border">
+                            <div className="text-xs text-muted-foreground mb-1">符合的维度:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {stock.matchedDimensions.map((dimension, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded text-xs border border-primary/20"
+                                >
+                                  {dimension}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {analysisResult.stockRankings.length > 20 && (
+                      <div className="text-center text-sm text-muted-foreground pt-2">
+                        还有 {analysisResult.stockRankings.length - 20} 只股票未显示
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* 共同特征总结 */}
             {analysisResult.summary && analysisResult.summary.length > 0 && (
               <Card>
@@ -311,21 +466,27 @@ export function CommonFeaturesAnalysis({
                           <div className="text-sm font-medium mb-2 text-muted-foreground">柱状图颜色</div>
                           {renderDistribution(
                             analysisResult.analysis.macdResonance.daily.histColor,
-                            { red: '🔴 红柱（上涨动能）', green: '🟢 绿柱（下跌动能）' }
+                            { red: '🔴 红柱（上涨动能）', green: '🟢 绿柱（下跌动能）' },
+                            'macd-daily-histColor',
+                            analysisResult.analysis.macdResonance.daily.histColorWithSymbols
                           )}
                         </div>
                         <div>
                           <div className="text-sm font-medium mb-2 text-muted-foreground">柱状图趋势</div>
                           {renderDistribution(
                             analysisResult.analysis.macdResonance.daily.histTrend,
-                            { up: '📈 上升', down: '📉 下降', neutral: '➡️ 持平' }
+                            { up: '📈 上升', down: '📉 下降', neutral: '➡️ 持平' },
+                            'macd-daily-histTrend',
+                            analysisResult.analysis.macdResonance.daily.histTrendWithSymbols
                           )}
                         </div>
                         <div>
                           <div className="text-sm font-medium mb-2 text-muted-foreground">零轴位置</div>
                           {renderDistribution(
                             analysisResult.analysis.macdResonance.daily.zeroAxis,
-                            { above: '⬆️ 零轴上方（强势）', below: '⬇️ 零轴下方（弱势）', near: '➡️ 零轴附近' }
+                            { above: '⬆️ 零轴上方（强势）', below: '⬇️ 零轴下方（弱势）', near: '➡️ 零轴附近' },
+                            'macd-daily-zeroAxis',
+                            analysisResult.analysis.macdResonance.daily.zeroAxisWithSymbols
                           )}
                         </div>
                       </div>
@@ -344,14 +505,18 @@ export function CommonFeaturesAnalysis({
                           <div className="text-sm font-medium mb-2 text-muted-foreground">柱状图颜色</div>
                           {renderDistribution(
                             analysisResult.analysis.macdResonance.weekly.histColor,
-                            { red: '🔴 红柱（上涨动能）', green: '🟢 绿柱（下跌动能）' }
+                            { red: '🔴 红柱（上涨动能）', green: '🟢 绿柱（下跌动能）' },
+                            'macd-weekly-histColor',
+                            analysisResult.analysis.macdResonance.weekly.histColorWithSymbols
                           )}
                         </div>
                         <div>
                           <div className="text-sm font-medium mb-2 text-muted-foreground">柱状图趋势</div>
                           {renderDistribution(
                             analysisResult.analysis.macdResonance.weekly.histTrend,
-                            { up: '📈 上升', down: '📉 下降', neutral: '➡️ 持平' }
+                            { up: '📈 上升', down: '📉 下降', neutral: '➡️ 持平' },
+                            'macd-weekly-histTrend',
+                            analysisResult.analysis.macdResonance.weekly.histTrendWithSymbols
                           )}
                         </div>
                       </div>
@@ -371,28 +536,36 @@ export function CommonFeaturesAnalysis({
                           `${analysisResult.analysis.macdResonance.resonance.bothRed || 0}只`,
                           '日线和周线MACD都是红柱，表示短期和长期都有上涨动能，这是非常强的看涨信号',
                           <TrendingUp className="h-4 w-4 text-red-600" />,
-                          'red'
+                          'red',
+                          analysisResult.analysis.macdResonance.resonance.bothRedSymbols,
+                          'bothRed'
                         )}
                         {renderKeyMetric(
                           '日周都上升',
                           `${analysisResult.analysis.macdResonance.resonance.bothUp || 0}只`,
                           '日线和周线MACD柱状图都在上升，表示上涨动能正在增强',
                           <ArrowUp className="h-4 w-4 text-green-600" />,
-                          'green'
+                          'green',
+                          analysisResult.analysis.macdResonance.resonance.bothUpSymbols,
+                          'bothUp'
                         )}
                         {renderKeyMetric(
                           '趋势同向',
                           `${analysisResult.analysis.macdResonance.resonance.sameDirection || 0}只`,
                           '日线和周线MACD趋势方向一致，表示短期和长期趋势共振',
                           <Minus className="h-4 w-4 text-blue-600" />,
-                          'blue'
+                          'blue',
+                          analysisResult.analysis.macdResonance.resonance.sameDirectionSymbols,
+                          'sameDirection'
                         )}
                         {renderKeyMetric(
                           '持续上升',
                           `${analysisResult.analysis.macdResonance.resonance.bothRising || 0}只`,
                           '日线和周线MACD都在持续上升，表示上涨动能持续增强',
                           <TrendingUp className="h-4 w-4 text-orange-600" />,
-                          'orange'
+                          'orange',
+                          analysisResult.analysis.macdResonance.resonance.bothRisingSymbols,
+                          'bothRising'
                         )}
                       </div>
                     </div>
@@ -423,9 +596,26 @@ export function CommonFeaturesAnalysis({
                             'MA60': '60日均线（长期）',
                             'MA120': '120日均线（超长期）'
                           }
+                          const symbols = analysisResult.analysis.priceMARelation.priceAboveMAWithSymbols?.[ma] || []
+                          const expandKey = `priceAboveMA-${ma}`
+                          const isExpanded = expandedDistributions[expandKey]
+                          const hasSymbols = symbols.length > 0
                           return (
                             <div key={ma} className="p-3 border rounded-lg bg-card">
-                              <div className="text-xs text-muted-foreground mb-1">{maNames[ma] || ma}</div>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="text-xs text-muted-foreground">{maNames[ma] || ma}</div>
+                                {hasSymbols && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 px-1.5 text-xs"
+                                    onClick={() => toggleDistribution('priceAboveMA', ma)}
+                                    title={isExpanded ? '收起股票列表' : '查看股票列表'}
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                               <div className="text-2xl font-bold text-green-600">{count}</div>
                               <div className="text-xs text-muted-foreground mt-1">
                                 {formatPercent(percentage)}
@@ -436,6 +626,22 @@ export function CommonFeaturesAnalysis({
                                   style={{ width: `${percentage}%` }}
                                 />
                               </div>
+                              {/* 展开的股票列表 */}
+                              {isExpanded && hasSymbols && (
+                                <div className="mt-2 p-2 bg-muted/50 rounded-md max-h-32 overflow-y-auto">
+                                  <div className="text-xs text-muted-foreground mb-1">包含的股票 ({symbols.length}只):</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {symbols.map((symbol, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-block px-2 py-0.5 bg-background border border-border rounded text-xs"
+                                      >
+                                        {symbol}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -451,7 +657,9 @@ export function CommonFeaturesAnalysis({
                         neutral: '➡️ 均线粘合（横盘整理）',
                         mixed: '🔄 混合排列（趋势不明）',
                         unknown: '❓ 未知'
-                      }
+                      },
+                      'priceMA-maAlignment',
+                      analysisResult.analysis.priceMARelation.maAlignmentWithSymbols
                     )}
                   </div>
                 </CardContent>
@@ -476,7 +684,9 @@ export function CommonFeaturesAnalysis({
                         '40-60': '➡️ 中部区域（40-60%，正常区间）',
                         '60-80': '⬆️ 中上部（60-80%，相对高位）',
                         '>80': '🔺 顶部区域（80-100%，可能见顶）'
-                      }
+                      },
+                      'pricePosition',
+                      analysisResult.analysis.pricePosition.positionDistributionWithSymbols
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -531,7 +741,9 @@ export function CommonFeaturesAnalysis({
                         '1.5-2': '📈 温和放量（1.5-2倍，资金开始关注）',
                         '2-3': '🔥 明显放量（2-3倍，资金活跃）',
                         '>3': '💥 巨量（3倍以上，资金大量涌入）'
-                      }
+                      },
+                      'volume-distribution',
+                      analysisResult.analysis.volumeRelation.volumeDistributionWithSymbols
                     )}
                   </div>
                   <div>
@@ -544,7 +756,9 @@ export function CommonFeaturesAnalysis({
                         priceUpVolumeDown: '⚠️ 价涨量缩（上涨乏力，可能见顶）',
                         priceDownVolumeUp: '⚠️ 价跌量增（下跌有资金出逃，需警惕）',
                         neutral: '➡️ 量价平衡'
-                      }
+                      },
+                      'volume-priceVolumeRelation',
+                      analysisResult.analysis.volumeRelation.priceVolumeRelationWithSymbols
                     )}
                   </div>
                   <div>
@@ -555,7 +769,9 @@ export function CommonFeaturesAnalysis({
                         up: '📈 成交量上升（资金流入增加）',
                         down: '📉 成交量下降（资金流入减少）',
                         neutral: '➡️ 成交量持平'
-                      }
+                      },
+                      'volume-trend',
+                      analysisResult.analysis.volumeRelation.volumeTrendWithSymbols
                     )}
                   </div>
                   {analysisResult.analysis.volumeRelation.volumeHealth?.volumeRatio && (
@@ -634,7 +850,9 @@ export function CommonFeaturesAnalysis({
                               '30-50': '➡️ 弱势区',
                               '50-70': '📈 强势区',
                               '>70': '⚠️ 超买区（可能回调）'
-                            }
+                            },
+                            'rsi',
+                            analysisResult.analysis.otherIndicators.rsi.distributionWithSymbols
                           )}
                         </div>
                       </div>
@@ -751,7 +969,9 @@ export function CommonFeaturesAnalysis({
                               low: '✅ 低波动（价格稳定）',
                               medium: '➡️ 中等波动（正常）',
                               high: '⚠️ 高波动（价格剧烈）'
-                            }
+                            },
+                            'volatility',
+                            analysisResult.analysis.otherIndicators.volatility.distributionWithSymbols
                           )}
                         </div>
                       </div>
@@ -788,10 +1008,15 @@ export function CommonFeaturesAnalysis({
                           {renderDistribution(
                             analysisResult.analysis.otherIndicators.turnover.distribution,
                             {
-                              low: '📉 低（<1.2倍）',
-                              normal: '➡️ 正常（1.2-2倍）',
-                              high: '🔥 高（>2倍）'
-                            }
+                              '<0.5': '📉 极低（<0.5倍）',
+                              '0.5-0.8': '📉 低（0.5-0.8倍）',
+                              '0.8-1': '➡️ 偏低（0.8-1倍）',
+                              '1-1.2': '➡️ 正常（1-1.2倍）',
+                              '1.2-2': '📈 放量（1.2-2倍）',
+                              '>2': '🔥 巨量（>2倍）'
+                            },
+                            'turnover',
+                            analysisResult.analysis.otherIndicators.turnover.distributionWithSymbols
                           )}
                         </div>
                       </div>
@@ -826,7 +1051,9 @@ export function CommonFeaturesAnalysis({
                               up: '📈 上涨趋势',
                               down: '📉 下跌趋势',
                               neutral: '➡️ 横盘整理'
-                            }
+                            },
+                            'trendStrength',
+                            analysisResult.analysis.otherIndicators.trendStrength.directionWithSymbols
                           )}
                         </div>
                       </div>

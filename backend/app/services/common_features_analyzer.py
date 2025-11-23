@@ -71,6 +71,8 @@ class CommonFeaturesAnalyzer:
                     macd_signal
                 )
                 if features:
+                    # 添加股票代码到特征中
+                    features['symbol'] = symbol
                     stock_features.append(features)
             except Exception as e:
                 logger.error(f"分析股票 {symbol} 失败: {str(e)}")
@@ -89,12 +91,16 @@ class CommonFeaturesAnalyzer:
         # 提取共同特征总结
         summary = self._extract_common_features(analysis_result, len(stock_features))
         
+        # 统计每只股票符合的维度数量并排名
+        stock_rankings = self._calculate_stock_rankings(stock_features, analysis_result)
+        
         return {
             "ok": True,
             "baseDate": base_date_str,
             "totalStocks": len(stock_features),
             "analysis": analysis_result,
             "summary": summary,
+            "stockRankings": stock_rankings,
             "errors": errors[:10] if errors else []
         }
     
@@ -601,12 +607,18 @@ class CommonFeaturesAnalyzer:
                 turnover_proxy = base_volume / avg_volume_20d if avg_volume_20d > 0 else None
                 
                 if turnover_proxy is not None:
-                    if turnover_proxy < 1.2:
-                        turnover_range = 'low'
+                    if turnover_proxy < 0.5:
+                        turnover_range = '<0.5'
+                    elif turnover_proxy < 0.8:
+                        turnover_range = '0.5-0.8'
+                    elif turnover_proxy < 1.0:
+                        turnover_range = '0.8-1'
+                    elif turnover_proxy < 1.2:
+                        turnover_range = '1-1.2'
                     elif turnover_proxy < 2.0:
-                        turnover_range = 'normal'
+                        turnover_range = '1.2-2'
                     else:
-                        turnover_range = 'high'
+                        turnover_range = '>2'
                     
                     indicators['turnover'] = {
                         'rate': float(turnover_proxy),
@@ -673,142 +685,187 @@ class CommonFeaturesAnalyzer:
         
         if daily_macd_list:
             result['macdResonance'] = {
-                'daily': self._stat_macd(daily_macd_list),
-                'weekly': self._stat_macd(weekly_macd_list) if weekly_macd_list else {},
-                'resonance': self._stat_resonance(daily_macd_list, weekly_macd_list)
+                'daily': self._stat_macd(stock_features, 'dailyMacd'),
+                'weekly': self._stat_macd(stock_features, 'weeklyMacd') if weekly_macd_list else {},
+                'resonance': self._stat_resonance(stock_features)
             }
         
         # 2. 价格与MA关系
         ma_relation_list = [f.get('priceMARelation') for f in stock_features if f.get('priceMARelation')]
         if ma_relation_list:
-            result['priceMARelation'] = self._stat_price_ma(ma_relation_list)
+            result['priceMARelation'] = self._stat_price_ma(stock_features)
         
         # 3. 价格位置
         price_position_list = [f.get('pricePosition') for f in stock_features if f.get('pricePosition')]
         if price_position_list:
-            result['pricePosition'] = self._stat_price_position(price_position_list)
+            result['pricePosition'] = self._stat_price_position(stock_features)
         
         # 4. 放量关系
         volume_relation_list = [f.get('volumeRelation') for f in stock_features if f.get('volumeRelation')]
         if volume_relation_list:
-            result['volumeRelation'] = self._stat_volume_relation(volume_relation_list)
+            result['volumeRelation'] = self._stat_volume_relation(stock_features)
         
         # 5. 其他指标
         other_indicators_list = [f.get('otherIndicators') for f in stock_features if f.get('otherIndicators')]
         if other_indicators_list:
-            result['otherIndicators'] = self._stat_other_indicators(other_indicators_list)
+            result['otherIndicators'] = self._stat_other_indicators(stock_features)
         
         return result
     
-    def _stat_macd(self, macd_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _stat_macd(self, stock_features: List[Dict[str, Any]], macd_key: str = 'dailyMacd') -> Dict[str, Any]:
         """统计MACD指标"""
-        difs = [m.get('dif') for m in macd_list if m.get('dif') is not None]
-        deas = [m.get('dea') for m in macd_list if m.get('dea') is not None]
-        hists = [m.get('hist') for m in macd_list if m.get('hist') is not None]
+        difs = []
+        deas = []
+        hists = []
+        hist_colors_with_symbols = []
+        hist_trends_with_symbols = []
+        zero_axes_with_symbols = []
         
-        hist_colors = [m.get('histColor') for m in macd_list if m.get('histColor')]
-        hist_trends = [m.get('histTrend') for m in macd_list if m.get('histTrend')]
-        zero_axes = [m.get('zeroAxis') for m in macd_list if m.get('zeroAxis')]
+        for stock_feature in stock_features:
+            macd = stock_feature.get(macd_key)
+            symbol = stock_feature.get('symbol')
+            if macd and symbol:
+                if macd.get('dif') is not None:
+                    difs.append(macd['dif'])
+                if macd.get('dea') is not None:
+                    deas.append(macd['dea'])
+                if macd.get('hist') is not None:
+                    hists.append(macd['hist'])
+                if macd.get('histColor'):
+                    hist_colors_with_symbols.append((macd['histColor'], symbol))
+                if macd.get('histTrend'):
+                    hist_trends_with_symbols.append((macd['histTrend'], symbol))
+                if macd.get('zeroAxis'):
+                    zero_axes_with_symbols.append((macd['zeroAxis'], symbol))
         
         return {
             'dif': self._calc_stats(difs),
             'dea': self._calc_stats(deas),
             'hist': self._calc_stats(hists),
-            'histColor': self._count_distribution(hist_colors),
-            'histTrend': self._count_distribution(hist_trends),
-            'zeroAxis': self._count_distribution(zero_axes)
+            'histColor': self._count_distribution([c[0] for c in hist_colors_with_symbols]),
+            'histColorWithSymbols': self._count_distribution_with_symbols(hist_colors_with_symbols),
+            'histTrend': self._count_distribution([t[0] for t in hist_trends_with_symbols]),
+            'histTrendWithSymbols': self._count_distribution_with_symbols(hist_trends_with_symbols),
+            'zeroAxis': self._count_distribution([z[0] for z in zero_axes_with_symbols]),
+            'zeroAxisWithSymbols': self._count_distribution_with_symbols(zero_axes_with_symbols)
         }
     
-    def _stat_resonance(
-        self,
-        daily_macd_list: List[Dict[str, Any]],
-        weekly_macd_list: List[Dict[str, Any]]
-    ) -> Dict[str, int]:
+    def _stat_resonance(self, stock_features: List[Dict[str, Any]]) -> Dict[str, Any]:
         """统计共振情况"""
-        # 需要匹配日线和周线数据
-        # 简化处理：统计所有可能的组合
-        both_up = 0
-        both_red = 0
-        both_rising = 0
-        same_direction = 0
+        both_up_symbols = []
+        both_red_symbols = []
+        both_rising_symbols = []
+        same_direction_symbols = []
         
-        min_len = min(len(daily_macd_list), len(weekly_macd_list))
-        for i in range(min_len):
-            daily = daily_macd_list[i]
-            weekly = weekly_macd_list[i] if i < len(weekly_macd_list) else None
+        for stock_feature in stock_features:
+            daily_macd = stock_feature.get('dailyMacd')
+            weekly_macd = stock_feature.get('weeklyMacd')
+            symbol = stock_feature.get('symbol')
             
-            if weekly:
-                daily_trend = daily.get('histTrend')
-                weekly_trend = weekly.get('histTrend')
-                daily_color = daily.get('histColor')
-                weekly_color = weekly.get('histColor')
+            if daily_macd and weekly_macd and symbol:
+                daily_trend = daily_macd.get('histTrend')
+                weekly_trend = weekly_macd.get('histTrend')
+                daily_color = daily_macd.get('histColor')
+                weekly_color = weekly_macd.get('histColor')
                 
                 if daily_trend == 'up' and weekly_trend == 'up':
-                    both_up += 1
+                    both_up_symbols.append(symbol)
                 if daily_color == 'red' and weekly_color == 'red':
-                    both_red += 1
+                    both_red_symbols.append(symbol)
                 if daily_trend == 'up' and weekly_trend == 'up':
-                    both_rising += 1
+                    both_rising_symbols.append(symbol)
                 if (daily_trend == 'up' and weekly_trend == 'up') or (daily_trend == 'down' and weekly_trend == 'down'):
-                    same_direction += 1
+                    same_direction_symbols.append(symbol)
         
         return {
-            'bothUp': both_up,
-            'bothRed': both_red,
-            'bothRising': both_rising,
-            'sameDirection': same_direction
+            'bothUp': len(both_up_symbols),
+            'bothUpSymbols': both_up_symbols,
+            'bothRed': len(both_red_symbols),
+            'bothRedSymbols': both_red_symbols,
+            'bothRising': len(both_rising_symbols),
+            'bothRisingSymbols': both_rising_symbols,
+            'sameDirection': len(same_direction_symbols),
+            'sameDirectionSymbols': same_direction_symbols
         }
     
-    def _stat_price_ma(self, ma_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _stat_price_ma(self, stock_features: List[Dict[str, Any]]) -> Dict[str, Any]:
         """统计价格与MA关系"""
         price_above_ma = {
-            'MA5': 0,
-            'MA10': 0,
-            'MA20': 0,
-            'MA30': 0,
-            'MA60': 0,
-            'MA120': 0
+            'MA5': {'count': 0, 'symbols': []},
+            'MA10': {'count': 0, 'symbols': []},
+            'MA20': {'count': 0, 'symbols': []},
+            'MA30': {'count': 0, 'symbols': []},
+            'MA60': {'count': 0, 'symbols': []},
+            'MA120': {'count': 0, 'symbols': []}
         }
         
-        alignments = []
+        alignments_with_symbols = []
         distances_above = []
         distances_below = []
         
-        for ma in ma_list:
-            price_above = ma.get('priceAboveMA', {})
-            for key in price_above_ma.keys():
-                if price_above.get(key):
-                    price_above_ma[key] += 1
-            
-            alignments.append(ma.get('maAlignment'))
-            
-            distance = ma.get('priceDistanceFromMA', {})
-            if distance.get('aboveMA20') is not None:
-                distances_above.append(distance['aboveMA20'])
-            if distance.get('belowMA20') is not None:
-                distances_below.append(distance['belowMA20'])
+        for stock_feature in stock_features:
+            ma = stock_feature.get('priceMARelation')
+            symbol = stock_feature.get('symbol')
+            if ma and symbol:
+                price_above = ma.get('priceAboveMA', {})
+                for key in price_above_ma.keys():
+                    if price_above.get(key):
+                        price_above_ma[key]['count'] += 1
+                        price_above_ma[key]['symbols'].append(symbol)
+                
+                alignment = ma.get('maAlignment')
+                if alignment:
+                    alignments_with_symbols.append((alignment, symbol))
+                
+                distance = ma.get('priceDistanceFromMA', {})
+                if distance.get('aboveMA20') is not None:
+                    distances_above.append(distance['aboveMA20'])
+                if distance.get('belowMA20') is not None:
+                    distances_below.append(distance['belowMA20'])
+        
+        # 转换 price_above_ma 格式以保持兼容性
+        price_above_ma_count = {k: v['count'] for k, v in price_above_ma.items()}
+        price_above_ma_symbols = {k: v['symbols'] for k, v in price_above_ma.items()}
         
         return {
-            'priceAboveMA': price_above_ma,
-            'maAlignment': self._count_distribution(alignments),
+            'priceAboveMA': price_above_ma_count,
+            'priceAboveMAWithSymbols': price_above_ma_symbols,
+            'maAlignment': self._count_distribution([a[0] for a in alignments_with_symbols]),
+            'maAlignmentWithSymbols': self._count_distribution_with_symbols(alignments_with_symbols),
             'priceDistanceFromMA': {
                 'aboveMA20': self._calc_stats(distances_above) if distances_above else {},
                 'belowMA20': self._calc_stats(distances_below) if distances_below else {}
             }
         }
     
-    def _stat_price_position(self, position_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _stat_price_position(self, stock_features: List[Dict[str, Any]]) -> Dict[str, Any]:
         """统计价格位置"""
-        positions = [p.get('position') for p in position_list if p.get('position') is not None]
-        ranges = [p.get('positionRange') for p in position_list if p.get('positionRange')]
-        highs = [p.get('high60d') for p in position_list if p.get('high60d') is not None]
-        lows = [p.get('low60d') for p in position_list if p.get('low60d') is not None]
-        volatilities = [p.get('volatility') for p in position_list if p.get('volatility') is not None]
+        positions = []
+        ranges_with_symbols = []
+        highs = []
+        lows = []
+        volatilities = []
+        
+        for stock_feature in stock_features:
+            position = stock_feature.get('pricePosition')
+            symbol = stock_feature.get('symbol')
+            if position and symbol:
+                if position.get('position') is not None:
+                    positions.append(position['position'])
+                if position.get('positionRange'):
+                    ranges_with_symbols.append((position['positionRange'], symbol))
+                if position.get('high60d') is not None:
+                    highs.append(position['high60d'])
+                if position.get('low60d') is not None:
+                    lows.append(position['low60d'])
+                if position.get('volatility') is not None:
+                    volatilities.append(position['volatility'])
         
         return {
             'lookbackDays': 60,  # 固定值
             'positionRange': self._calc_stats(positions),
-            'positionDistribution': self._count_distribution(ranges),
+            'positionDistribution': self._count_distribution([r[0] for r in ranges_with_symbols]),
+            'positionDistributionWithSymbols': self._count_distribution_with_symbols(ranges_with_symbols),
             'priceRange': {
                 'high60d': self._calc_stats(highs),
                 'low60d': self._calc_stats(lows),
@@ -816,54 +873,74 @@ class CommonFeaturesAnalyzer:
             }
         }
     
-    def _stat_volume_relation(self, volume_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _stat_volume_relation(self, stock_features: List[Dict[str, Any]]) -> Dict[str, Any]:
         """统计放量关系"""
-        ratios = [v.get('volumeRatio') for v in volume_list if v.get('volumeRatio') is not None]
-        categories = [v.get('volumeCategory') for v in volume_list if v.get('volumeCategory')]
-        trends = [v.get('volumeTrend') for v in volume_list if v.get('volumeTrend')]
-        relations = [v.get('priceVolumeRelation') for v in volume_list if v.get('priceVolumeRelation')]
+        ratios = []
+        categories_with_symbols = []
+        trends_with_symbols = []
+        relations_with_symbols = []
         
         # 成交量健康度
         health_ratios = []
-        for v in volume_list:
-            health = v.get('volumeHealth', {})
-            if health.get('volumeRatio') is not None:
-                health_ratios.append(health['volumeRatio'])
+        
+        for stock_feature in stock_features:
+            volume = stock_feature.get('volumeRelation')
+            symbol = stock_feature.get('symbol')
+            if volume and symbol:
+                if volume.get('volumeRatio') is not None:
+                    ratios.append(volume['volumeRatio'])
+                if volume.get('volumeCategory'):
+                    categories_with_symbols.append((volume['volumeCategory'], symbol))
+                if volume.get('volumeTrend'):
+                    trends_with_symbols.append((volume['volumeTrend'], symbol))
+                if volume.get('priceVolumeRelation'):
+                    relations_with_symbols.append((volume['priceVolumeRelation'], symbol))
+                
+                health = volume.get('volumeHealth', {})
+                if health.get('volumeRatio') is not None:
+                    health_ratios.append(health['volumeRatio'])
         
         return {
             'volumeRatio': self._calc_stats(ratios),
-            'volumeDistribution': self._count_distribution(categories),
-            'volumeTrend': self._count_distribution(trends),
-            'priceVolumeRelation': self._count_distribution(relations),
+            'volumeDistribution': self._count_distribution([c[0] for c in categories_with_symbols]),
+            'volumeDistributionWithSymbols': self._count_distribution_with_symbols(categories_with_symbols),
+            'volumeTrend': self._count_distribution([t[0] for t in trends_with_symbols]),
+            'volumeTrendWithSymbols': self._count_distribution_with_symbols(trends_with_symbols),
+            'priceVolumeRelation': self._count_distribution([r[0] for r in relations_with_symbols]),
+            'priceVolumeRelationWithSymbols': self._count_distribution_with_symbols(relations_with_symbols),
             'volumeHealth': {
                 'volumeRatio': self._calc_stats(health_ratios) if health_ratios else {}
             }
         }
     
-    def _stat_other_indicators(self, indicators_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _stat_other_indicators(self, stock_features: List[Dict[str, Any]]) -> Dict[str, Any]:
         """统计其他指标"""
         result = {}
         
         # RSI
         rsi_values = []
-        rsi_ranges = []
-        for ind in indicators_list:
-            if ind.get('rsi'):
+        rsi_ranges_with_symbols = []
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            symbol = stock_feature.get('symbol')
+            if ind and ind.get('rsi') and symbol:
                 rsi_values.append(ind['rsi'].get('value'))
-                rsi_ranges.append(ind['rsi'].get('range'))
+                rsi_ranges_with_symbols.append((ind['rsi'].get('range'), symbol))
         
         if rsi_values:
             result['rsi'] = {
                 'value': self._calc_stats([v for v in rsi_values if v is not None]),
-                'distribution': self._count_distribution(rsi_ranges)
+                'distribution': self._count_distribution([r[0] for r in rsi_ranges_with_symbols]),
+                'distributionWithSymbols': self._count_distribution_with_symbols(rsi_ranges_with_symbols)
             }
         
         # 价格动量
         change5d_list = []
         change10d_list = []
         change20d_list = []
-        for ind in indicators_list:
-            if ind.get('priceMomentum'):
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            if ind and ind.get('priceMomentum'):
                 pm = ind['priceMomentum']
                 if pm.get('change5d') is not None:
                     change5d_list.append(pm['change5d'])
@@ -883,8 +960,9 @@ class CommonFeaturesAnalyzer:
         vol_change5d_list = []
         vol_change10d_list = []
         vol_ratio_list = []
-        for ind in indicators_list:
-            if ind.get('volumeMomentum'):
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            if ind and ind.get('volumeMomentum'):
                 vm = ind['volumeMomentum']
                 if vm.get('change5d') is not None:
                     vol_change5d_list.append(vm['change5d'])
@@ -904,8 +982,9 @@ class CommonFeaturesAnalyzer:
         yang_count = 0
         yin_count = 0
         body_sizes = []
-        for ind in indicators_list:
-            if ind.get('klinePattern'):
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            if ind and ind.get('klinePattern'):
                 kp = ind['klinePattern']
                 if kp.get('isYang'):
                     yang_count += 1
@@ -924,56 +1003,65 @@ class CommonFeaturesAnalyzer:
         # 波动性
         atr_list = []
         volatility_list = []
-        volatility_ranges = []
-        for ind in indicators_list:
-            if ind.get('volatility'):
+        volatility_ranges_with_symbols = []
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            symbol = stock_feature.get('symbol')
+            if ind and ind.get('volatility') and symbol:
                 vol = ind['volatility']
                 if vol.get('atr') is not None:
                     atr_list.append(vol['atr'])
                 if vol.get('volatility') is not None:
                     volatility_list.append(vol['volatility'])
                 if vol.get('range'):
-                    volatility_ranges.append(vol['range'])
+                    volatility_ranges_with_symbols.append((vol['range'], symbol))
         
         if atr_list or volatility_list:
             result['volatility'] = {
                 'atr': self._calc_stats(atr_list),
                 'volatility': self._calc_stats(volatility_list),
-                'distribution': self._count_distribution(volatility_ranges)
+                'distribution': self._count_distribution([r[0] for r in volatility_ranges_with_symbols]),
+                'distributionWithSymbols': self._count_distribution_with_symbols(volatility_ranges_with_symbols)
             }
         
-        # 换手率
+        # 换手率（成交量比率）
         turnover_rates = []
-        turnover_ranges = []
-        for ind in indicators_list:
-            if ind.get('turnover'):
+        turnover_ranges_with_symbols = []
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            symbol = stock_feature.get('symbol')
+            if ind and ind.get('turnover') and symbol:
                 to = ind['turnover']
                 if to.get('rate') is not None:
                     turnover_rates.append(to['rate'])
                 if to.get('range'):
-                    turnover_ranges.append(to['range'])
+                    turnover_ranges_with_symbols.append((to['range'], symbol))
         
         if turnover_rates:
             result['turnover'] = {
                 'rate': self._calc_stats(turnover_rates),
-                'distribution': self._count_distribution(turnover_ranges)
+                'distribution': self._count_distribution([r[0] for r in turnover_ranges_with_symbols]),
+                'distributionWithSymbols': self._count_distribution_with_symbols(turnover_ranges_with_symbols)
             }
         
         # 趋势强度
         slopes = []
-        directions = []
-        for ind in indicators_list:
-            if ind.get('trendStrength'):
+        directions_with_symbols = []
+        for stock_feature in stock_features:
+            ind = stock_feature.get('otherIndicators')
+            symbol = stock_feature.get('symbol')
+            if ind and ind.get('trendStrength') and symbol:
                 ts = ind['trendStrength']
                 if ts.get('slope20d') is not None:
                     slopes.append(ts['slope20d'])
                 if ts.get('direction'):
-                    directions.append(ts['direction'])
+                    directions_with_symbols.append((ts['direction'], symbol))
         
-        if slopes or directions:
+        if slopes or directions_with_symbols:
             result['trendStrength'] = {
                 'slope20d': self._calc_stats(slopes),
-                'direction': self._count_distribution(directions)
+                'direction': self._count_distribution([d[0] for d in directions_with_symbols]),
+                'directionWithSymbols': self._count_distribution_with_symbols(directions_with_symbols)
             }
         
         return result
@@ -1006,6 +1094,173 @@ class CommonFeaturesAnalyzer:
                 distribution[key] = distribution.get(key, 0) + 1
         
         return distribution
+    
+    def _count_distribution_with_symbols(self, value_symbol_pairs: List[tuple]) -> Dict[str, Dict]:
+        """统计分布并记录每只股票"""
+        if not value_symbol_pairs:
+            return {}
+        
+        distribution = {}
+        for value, symbol in value_symbol_pairs:
+            if value is not None and symbol is not None:
+                key = str(value)
+                if key not in distribution:
+                    distribution[key] = {'count': 0, 'symbols': []}
+                distribution[key]['count'] += 1
+                distribution[key]['symbols'].append(symbol)
+        
+        return distribution
+    
+    def _calculate_stock_rankings(
+        self,
+        stock_features: List[Dict[str, Any]],
+        analysis_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        统计每只股票符合的维度数量并排名
+        统计所有出现过的维度，不仅仅是共同特征
+        
+        Returns:
+            排名列表，每项包含：symbol, matchCount, matchedDimensions
+        """
+        # 定义维度及其对应的股票列表（统计所有维度，不设阈值）
+        all_dimensions = {}
+        
+        # MACD日线
+        macd_daily = analysis_result.get('macdResonance', {}).get('daily', {})
+        if macd_daily:
+            hist_color_symbols = macd_daily.get('histColorWithSymbols', {})
+            for key, data in hist_color_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'日线MACD-{key}'] = data.get('symbols', [])
+            
+            hist_trend_symbols = macd_daily.get('histTrendWithSymbols', {})
+            for key, data in hist_trend_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'日线MACD趋势-{key}'] = data.get('symbols', [])
+            
+            zero_axis_symbols = macd_daily.get('zeroAxisWithSymbols', {})
+            for key, data in zero_axis_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'日线MACD零轴-{key}'] = data.get('symbols', [])
+        
+        # MACD周线
+        macd_weekly = analysis_result.get('macdResonance', {}).get('weekly', {})
+        if macd_weekly:
+            hist_color_symbols = macd_weekly.get('histColorWithSymbols', {})
+            for key, data in hist_color_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'周线MACD-{key}'] = data.get('symbols', [])
+            
+            hist_trend_symbols = macd_weekly.get('histTrendWithSymbols', {})
+            for key, data in hist_trend_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'周线MACD趋势-{key}'] = data.get('symbols', [])
+        
+        # 共振
+        resonance = analysis_result.get('macdResonance', {}).get('resonance', {})
+        if resonance.get('bothRedSymbols'):
+            all_dimensions['日周都红柱'] = resonance.get('bothRedSymbols', [])
+        if resonance.get('bothUpSymbols'):
+            all_dimensions['日周都上升'] = resonance.get('bothUpSymbols', [])
+        if resonance.get('bothRisingSymbols'):
+            all_dimensions['日周都持续上升'] = resonance.get('bothRisingSymbols', [])
+        if resonance.get('sameDirectionSymbols'):
+            all_dimensions['日周趋势同向'] = resonance.get('sameDirectionSymbols', [])
+        
+        # 价格与MA关系
+        price_ma = analysis_result.get('priceMARelation', {})
+        if price_ma:
+            # 价格高于各均线
+            price_above_ma_symbols = price_ma.get('priceAboveMAWithSymbols', {})
+            for key, symbols_list in price_above_ma_symbols.items():
+                if symbols_list:
+                    all_dimensions[f'价格高于{key}'] = symbols_list
+            
+            # 均线排列
+            ma_alignment_symbols = price_ma.get('maAlignmentWithSymbols', {})
+            for key, data in ma_alignment_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'均线排列-{key}'] = data.get('symbols', [])
+        
+        # 价格位置
+        price_position = analysis_result.get('pricePosition', {})
+        if price_position:
+            position_symbols = price_position.get('positionDistributionWithSymbols', {})
+            for key, data in position_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'价格位置-{key}'] = data.get('symbols', [])
+        
+        # 成交量关系
+        volume_relation = analysis_result.get('volumeRelation', {})
+        if volume_relation:
+            volume_symbols = volume_relation.get('volumeDistributionWithSymbols', {})
+            for key, data in volume_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'成交量-{key}'] = data.get('symbols', [])
+            
+            volume_trend_symbols = volume_relation.get('volumeTrendWithSymbols', {})
+            for key, data in volume_trend_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'成交量趋势-{key}'] = data.get('symbols', [])
+            
+            price_vol_symbols = volume_relation.get('priceVolumeRelationWithSymbols', {})
+            for key, data in price_vol_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'量价关系-{key}'] = data.get('symbols', [])
+        
+        # 其他指标
+        other_indicators = analysis_result.get('otherIndicators', {})
+        if other_indicators:
+            rsi = other_indicators.get('rsi', {})
+            if rsi:
+                rsi_symbols = rsi.get('distributionWithSymbols', {})
+                for key, data in rsi_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'RSI-{key}'] = data.get('symbols', [])
+            
+            volatility = other_indicators.get('volatility', {})
+            if volatility:
+                vol_symbols = volatility.get('distributionWithSymbols', {})
+                for key, data in vol_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'波动性-{key}'] = data.get('symbols', [])
+            
+            turnover = other_indicators.get('turnover', {})
+            if turnover:
+                turnover_symbols = turnover.get('distributionWithSymbols', {})
+                for key, data in turnover_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'成交量比率-{key}'] = data.get('symbols', [])
+            
+            trend_strength = other_indicators.get('trendStrength', {})
+            if trend_strength:
+                trend_symbols = trend_strength.get('directionWithSymbols', {})
+                for key, data in trend_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'趋势强度-{key}'] = data.get('symbols', [])
+        
+        # 统计每只股票符合的维度
+        stock_matches = {}
+        for symbol in [f.get('symbol') for f in stock_features if f.get('symbol')]:
+            stock_matches[symbol] = {
+                'symbol': symbol,
+                'matchCount': 0,
+                'matchedDimensions': []
+            }
+        
+        # 遍历所有维度，统计每只股票符合的数量
+        for dimension_name, symbols_list in all_dimensions.items():
+            for symbol in symbols_list:
+                if symbol in stock_matches:
+                    stock_matches[symbol]['matchCount'] += 1
+                    stock_matches[symbol]['matchedDimensions'].append(dimension_name)
+        
+        # 转换为列表并按符合维度数量排序
+        rankings = list(stock_matches.values())
+        rankings.sort(key=lambda x: x['matchCount'], reverse=True)
+        
+        return rankings
     
     def _extract_common_features(
         self,
