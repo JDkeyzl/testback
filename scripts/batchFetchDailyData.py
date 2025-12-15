@@ -10,6 +10,7 @@ import baostock as bs
 import pandas as pd
 import json
 import sys
+import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -24,8 +25,6 @@ if sys.platform == 'win32':
 
 
 def batch_fetch_daily_data(
-    dict_path: str = None,
-    output_dir: str = None,
     days: int = 365,
     limit: int = None
 ):
@@ -33,8 +32,6 @@ def batch_fetch_daily_data(
     批量获取A股日K数据
     
     Args:
-        dict_path: 股票字典路径，默认为 data/stockList/all_pure_stock.json
-        output_dir: 输出目录，默认为 data/stocks
         days: 获取最近N天数据，默认365
         limit: 限制获取数量，用于测试
     
@@ -45,65 +42,44 @@ def batch_fetch_daily_data(
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
     
-    # 默认路径
-    if dict_path is None:
-        dict_path = project_root / 'data' / 'stockList' / 'all_pure_stock.json'
-    else:
-        dict_path = Path(dict_path)
+    # 数据库路径
+    db_path = project_root / 'data' / 'stock.db'
     
-    if output_dir is None:
-        output_dir = project_root / 'data' / 'stocks'
-    else:
-        output_dir = Path(output_dir)
+    def get_db_connection():
+        """
+        获取数据库连接
+        """
+        return sqlite3.connect(db_path)
     
-    # 创建输出目录（直接在主目录下，不再使用子目录）
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # 从数据库获取股票列表
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    # 读取股票字典
-    if not dict_path.exists():
-        raise FileNotFoundError(f"股票字典不存在: {dict_path}")
-    
-    with open(dict_path, 'r', encoding='utf-8') as f:
-        raw_list = json.load(f)
-    
-    if not isinstance(raw_list, list) or len(raw_list) == 0:
-        raise ValueError("股票字典为空或格式错误")
-    
-    # 归一化股票列表
-    def pick(obj, keys):
-        """从对象中提取第一个非空值"""
-        for k in keys:
-            v = obj.get(k)
-            if v is not None and v != '':
-                return str(v)
-        return ''
-    
-    stocks = []
-    for item in raw_list:
-        if not isinstance(item, dict):
-            continue
-        code_raw = pick(item, ['code', 'c', 'symbol', 'ticker', 'code_simple'])
-        name = pick(item, ['code_name', 'name', 'n', 'nameZh', 'displayName', 'stock_name', 'sname'])
+    try:
+        print(f"[批量获取] 正在从数据库获取股票列表...")
         
-        # 提取纯6位数字代码（支持 sh.600000 或 600000 格式）
-        code = None
-        if code_raw:
-            # 如果包含点号，取点号后面的部分
-            if '.' in code_raw:
-                code = code_raw.split('.')[-1]
-            else:
-                code = code_raw
+        # 执行查询
+        cursor.execute('SELECT code, code_name, code_prefix FROM stocks')
+        stock_rows = cursor.fetchall()
         
-        # 验证是否为6位数字
-        if code and len(code) == 6 and code.isdigit():
-            stocks.append({'code': code, 'name': name or code})
-    
-    if limit and isinstance(limit, int) and limit > 0:
-        stocks = stocks[:limit]
-    
-    print(f"[批量获取] 共 {len(stocks)} 只股票待处理")
-    print(f"[批量获取] 数据范围: 最近 {days} 天")
-    print(f"[批量获取] 输出目录: {output_dir}")
+        if not stock_rows:
+            raise ValueError("数据库中没有股票数据，请先运行import_stocks.py导入股票列表")
+        
+        # 转换为股票列表格式
+        stocks = []
+        for row in stock_rows:
+            code, code_name, code_prefix = row
+            stocks.append({'code': code, 'name': code_name or code, 'code_prefix': code_prefix})
+        
+        # 限制获取数量
+        if limit and isinstance(limit, int) and limit > 0:
+            stocks = stocks[:limit]
+        
+        print(f"[批量获取] 共 {len(stocks)} 只股票待处理")
+        print(f"[批量获取] 数据范围: 最近 {days} 天")
+        print(f"[批量获取] 数据将保存到数据库: {db_path}")
+    finally:
+        conn.close()
     
     # 计算日期范围
     end_date = datetime.now()
@@ -135,14 +111,20 @@ def batch_fetch_daily_data(
             code = stock['code']
             name = stock['name']
             
-            # 安全文件名
-            safe_name = "".join(ch for ch in name if ch.isalnum() or ch in ('-', '_', '.', '·', '（', '）')).strip() or "NONAME"
-            
-            # 直接保存到主目录（不再使用子目录）
-            csv_path = output_dir / f"{safe_name}-{code}.csv"
-            
             # baostock 代码格式：sh.600000 或 sz.000001
-            bs_code = f"{'sh' if code.startswith('6') else 'sz'}.{code}"
+            bs_code = f"{stock['code_prefix']}.{code}"
+            
+            # 从数据库获取行业信息
+            industry = ''
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute('SELECT industry FROM stocks WHERE code = ?', (code,))
+                result = cursor.fetchone()
+                if result:
+                    industry = result[0]
+            finally:
+                conn.close()
             
             try:
                 print(f"[{idx}/{len(stocks)}] 正在获取 {name}({code})...", end=' ', flush=True)
@@ -258,11 +240,39 @@ def batch_fetch_daily_data(
                 # 调试：输出最后日期
                 last_date = df['timestamp'].iloc[-1] if len(df) > 0 else 'N/A'
                 
-                # 保存为 CSV
-                df.to_csv(csv_path, index=False, encoding='utf-8')
-                
-                print(f"✓ 成功 ({len(df)} 条, 最后: {last_date})")
-                ok_count += 1
+                # 保存到数据库
+                conn = get_db_connection()
+                try:
+                    # 插入或更新股票基本信息
+                    conn.execute('''
+                        INSERT OR REPLACE INTO stocks (code, code_name, industry)
+                        VALUES (?, ?, ?)
+                    ''', (code, name, industry))
+                    
+                    # 批量插入数据
+                    # 使用参数化查询来提高性能
+                    for _, row in df.iterrows():
+                        try:
+                            conn.execute('''
+                                INSERT OR IGNORE INTO stock_daily_data 
+                                (code, timestamp, open, high, low, close, volume, amount)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (code, row['timestamp'], row['open'], row['high'], 
+                                  row['low'], row['close'], row['volume'], row['amount']))
+                        except Exception as e:
+                            # 单个数据行插入失败，继续处理下一行
+                            print(f"\n[警告] 数据行插入失败: {e}")
+                            continue
+                    
+                    # 提交事务
+                    conn.commit()
+                    
+                    print(f"✓ 成功 ({len(df)} 条, 最后: {last_date})")
+                    ok_count += 1
+                except Exception as e:
+                    raise e
+                finally:
+                    conn.close()
                 
             except Exception as e:
                 error_msg = str(e)
@@ -293,8 +303,6 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='批量获取A股日K数据')
-    parser.add_argument('--dict', type=str, help='股票字典路径')
-    parser.add_argument('--output', type=str, help='输出目录')
     parser.add_argument('--days', type=int, default=365, help='获取最近N天数据')
     parser.add_argument('--limit', type=int, help='限制获取数量（测试用）')
     
@@ -302,8 +310,6 @@ if __name__ == '__main__':
     
     try:
         result = batch_fetch_daily_data(
-            dict_path=args.dict,
-            output_dir=args.output,
             days=args.days,
             limit=args.limit
         )
