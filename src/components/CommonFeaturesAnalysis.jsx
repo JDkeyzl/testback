@@ -17,8 +17,18 @@ export function CommonFeaturesAnalysis({
   endDate: propEndDate = null,
   onAnalysisComplete = null 
 }) {
-  const [startDate, setStartDate] = useState(propStartDate || '')
-  const [endDate, setEndDate] = useState(propEndDate || '')
+  // 计算默认基准日（筛选页面开始日期的前一天）
+  const calculateDefaultBaseDate = (startDate) => {
+    if (!startDate) return ''
+    const date = new Date(startDate)
+    date.setDate(date.getDate() - 1)
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  const [baseDate, setBaseDate] = useState(calculateDefaultBaseDate(propStartDate))
   const [lookbackDays, setLookbackDays] = useState(60)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState(null)
@@ -27,9 +37,12 @@ export function CommonFeaturesAnalysis({
 
   // 当props变化时更新state
   useEffect(() => {
-    if (propStartDate) setStartDate(propStartDate)
-    if (propEndDate) setEndDate(propEndDate)
-  }, [propStartDate, propEndDate])
+    if (propStartDate) {
+      const defaultBaseDate = calculateDefaultBaseDate(propStartDate)
+      // 如果当前baseDate为空，则使用默认值
+      setBaseDate(prev => prev || defaultBaseDate)
+    }
+  }, [propStartDate])
 
   // 执行分析
   const handleAnalyze = async () => {
@@ -38,8 +51,14 @@ export function CommonFeaturesAnalysis({
       return
     }
 
-    if (!startDate || !endDate) {
-      setError('请选择开始日期和结束日期')
+    // 如果没有提供基准日，使用默认值（筛选页面开始日期的前一天）
+    let finalBaseDate = baseDate
+    if (!finalBaseDate && propStartDate) {
+      finalBaseDate = calculateDefaultBaseDate(propStartDate)
+    }
+
+    if (!propStartDate || !propEndDate) {
+      setError('需要筛选页面的开始日期和结束日期来计算收益率')
       return
     }
 
@@ -55,8 +74,9 @@ export function CommonFeaturesAnalysis({
         },
         body: JSON.stringify({
           symbols: symbols,
-          startDate: startDate,
-          endDate: endDate,
+          baseDate: finalBaseDate || undefined, // 可选，如果未提供则后端从startDate计算
+          startDate: propStartDate, // 用于计算收益率
+          endDate: propEndDate, // 用于计算收益率
           lookbackDays: lookbackDays,
           macdFast: 12,
           macdSlow: 26,
@@ -275,31 +295,27 @@ export function CommonFeaturesAnalysis({
           共同特征分析
         </CardTitle>
         <CardDescription>
-          分析前N名股票的共同特征，基于基准日（开始日期前一天）的数据
+          分析前N名股票的共同特征，基于基准日的数据（默认：筛选页面开始日期的前一天）
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 参数配置 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="cf-startDate">开始日期</Label>
+            <Label htmlFor="cf-baseDate">基准日（可选）</Label>
             <Input
-              id="cf-startDate"
+              id="cf-baseDate"
               type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              value={baseDate}
+              onChange={(e) => setBaseDate(e.target.value)}
               disabled={isAnalyzing}
+              placeholder={propStartDate ? calculateDefaultBaseDate(propStartDate) : ''}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cf-endDate">结束日期</Label>
-            <Input
-              id="cf-endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              disabled={isAnalyzing}
-            />
+            <p className="text-xs text-muted-foreground">
+              {propStartDate 
+                ? `默认值：${calculateDefaultBaseDate(propStartDate)}（筛选页面开始日期的前一天）`
+                : '需要筛选页面的开始日期'}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="cf-lookbackDays">价格位置回看天数</Label>
@@ -325,7 +341,7 @@ export function CommonFeaturesAnalysis({
         {/* 分析按钮 */}
         <Button
           onClick={handleAnalyze}
-          disabled={isAnalyzing || !symbols || symbols.length === 0 || !startDate || !endDate}
+          disabled={isAnalyzing || !symbols || symbols.length === 0 || !propStartDate || !propEndDate}
           className="w-full"
         >
           {isAnalyzing ? (
@@ -352,20 +368,51 @@ export function CommonFeaturesAnalysis({
         {analysisResult && (
           <div className="space-y-4 mt-4">
             {/* 股票排名 - 符合维度最多的股票 */}
-            {analysisResult.stockRankings && analysisResult.stockRankings.length > 0 && (
+            {/* 维度统计 */}
+            {analysisResult.dimensionStatistics && analysisResult.dimensionStatistics.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Award className="h-5 w-5 text-yellow-600" />
-                    股票排名 - 符合维度最多的股票
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                    维度出现次数统计
                   </CardTitle>
                   <CardDescription>
-                    按符合共同特征维度数量排序，显示每只股票符合了哪些维度
+                    统计所有股票中各个维度出现的次数，按次数从高到低排序
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {analysisResult.stockRankings.slice(0, 20).map((stock, index) => (
+                    {analysisResult.dimensionStatistics.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="text-sm flex-1">{item.dimension}</span>
+                        <span className="text-sm font-semibold text-primary ml-2">
+                          {item.count} 只股票
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 股票排名 - 按收益率排序 */}
+            {analysisResult.stockRankings && analysisResult.stockRankings.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                    股票排名 - 按区间收益率排序
+                  </CardTitle>
+                  <CardDescription>
+                    按区间收益率从高到低排序，显示每只股票符合的所有维度
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {analysisResult.stockRankings.map((stock, index) => (
                       <div
                         key={stock.symbol}
                         className="p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
@@ -381,22 +428,22 @@ export function CommonFeaturesAnalysis({
                               {index + 1}
                             </div>
                             <div>
-                              <div className="font-semibold text-lg">{stock.symbol}</div>
-                              <div className="text-xs text-muted-foreground">
-                                符合 {stock.matchCount} 个维度
+                              <div className="font-semibold text-lg">
+                                {stock.name} {stock.symbol}
+                                {stock.return !== null && stock.return !== undefined && (
+                                  <span className={`ml-2 text-sm font-normal ${
+                                    stock.return >= 0 ? 'text-red-600' : 'text-green-600'
+                                  }`}>
+                                    ({formatPercent(stock.return)})
+                                  </span>
+                                )}
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-primary">
-                              {stock.matchCount}
-                            </div>
-                            <div className="text-xs text-muted-foreground">个维度</div>
                           </div>
                         </div>
                         {stock.matchedDimensions && stock.matchedDimensions.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-border">
-                            <div className="text-xs text-muted-foreground mb-1">符合的维度:</div>
+                            <div className="text-xs text-muted-foreground mb-1">符合的维度 ({stock.matchedDimensions.length}个):</div>
                             <div className="flex flex-wrap gap-1">
                               {stock.matchedDimensions.map((dimension, idx) => (
                                 <span
@@ -411,11 +458,6 @@ export function CommonFeaturesAnalysis({
                         )}
                       </div>
                     ))}
-                    {analysisResult.stockRankings.length > 20 && (
-                      <div className="text-center text-sm text-muted-foreground pt-2">
-                        还有 {analysisResult.stockRankings.length - 20} 只股票未显示
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1089,4 +1131,5 @@ export function CommonFeaturesAnalysis({
     </Card>
   )
 }
+
 

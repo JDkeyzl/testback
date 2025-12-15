@@ -955,8 +955,28 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
     后台执行筛选任务（同步函数，由BackgroundTasks调用）
     """
     try:
+        # 确保任务开始时清空结果（防止之前的残留数据）
+        with tasks_lock:
+            if task_id in screening_tasks:
+                screening_tasks[task_id]["results"] = []
+                screening_tasks[task_id]["progress"] = {"processed": 0, "total": 0, "matched": 0, "current": ""}
+                screening_tasks[task_id]["errors"] = []
+                screening_tasks[task_id]["status"] = "running"
+        
         timeframes = params.get('timeframes') or ['1d', '1w']
-        direction = (params.get('direction') or 'bull').lower()
+        # 新的方向配置：分别配置日线和周线
+        daily_direction = params.get('dailyDirection', 'any')  # 'up' | 'down' | 'any'
+        weekly_direction = params.get('weeklyDirection', 'any')  # 'up' | 'down' | 'any'
+        resonance_mode = params.get('resonanceMode', 'any')  # 'resonance' | 'no-resonance' | 'any'
+        # 兼容旧版本
+        if 'direction' in params and daily_direction == 'any' and weekly_direction == 'any':
+            old_direction = (params.get('direction') or 'bull').lower()
+            if old_direction == 'bull':
+                daily_direction = 'up'
+                weekly_direction = 'up'
+            elif old_direction == 'bear':
+                daily_direction = 'down'
+                weekly_direction = 'down'
         fast = int(params.get('fast') or 12)
         slow = int(params.get('slow') or 26)
         signal_period = int(params.get('signal') or 9)
@@ -972,8 +992,16 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
         ma_short = int(params.get('maShort') or 20)
         ma_long = int(params.get('maLong') or 30)
         ma_relation = str(params.get('maRelation') or 'above')  # above | below
-        enable_daily_macd_positive = bool(params.get('enableDailyMacdPositive', False))  # 日线MACD>0
-        enable_weekly_macd_positive = bool(params.get('enableWeeklyMacdPositive', False))  # 周线MACD>0
+        # 新的MACD值配置：可选择>0/<0/不限制
+        daily_macd_condition = params.get('dailyMacdCondition', 'any')  # 'positive' | 'negative' | 'any'
+        weekly_macd_condition = params.get('weeklyMacdCondition', 'any')  # 'positive' | 'negative' | 'any'
+        # 兼容旧版本
+        if 'enableDailyMacdPositive' in params and daily_macd_condition == 'any':
+            if params.get('enableDailyMacdPositive'):
+                daily_macd_condition = 'positive'
+        if 'enableWeeklyMacdPositive' in params and weekly_macd_condition == 'any':
+            if params.get('enableWeeklyMacdPositive'):
+                weekly_macd_condition = 'positive'
         enable_price_above_ma = bool(params.get('enablePriceAboveMA', False))  # 价格大于MA
         # 支持多个MA周期（新版本）或单个周期（兼容旧版本）
         price_above_ma_periods = params.get('priceAboveMAPeriods')
@@ -997,6 +1025,11 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
         volatility = str(params.get('volatility') or 'medium')  # low | medium | high
         enable_ma_alignment = bool(params.get('enableMAAlignment', False))  # 均线排列筛选
         ma_alignment = str(params.get('maAlignment') or 'bullish')  # bullish | bearish | neutral | mixed
+        enable_rsi = bool(params.get('enableRSI', False))  # RSI筛选
+        rsi_condition = str(params.get('rsiCondition') or 'any')  # 'oversold' | 'weak' | 'strong' | 'overbought' | 'any'
+        rsi_period = int(params.get('rsiPeriod') or 14)  # RSI周期，默认14
+        enable_golden_cross = bool(params.get('enableGoldenCross', False))  # 金叉筛选
+        golden_cross_lookback = int(params.get('goldenCrossLookback') or 5)  # 金叉回看天数
         end_date = params.get('endDate')  # 数据截止日期（YYYY-MM-DD），None表示使用全部数据
         
         # 候选标的
@@ -1132,6 +1165,101 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
             last_dif = dif.iloc[-1]
             return float(last_dif) if pd.notna(last_dif) else None
         
+        def calculate_rsi(closes: pd.Series, period: int = 14) -> Optional[float]:
+            """计算RSI指标"""
+            try:
+                if len(closes) < period + 1:
+                    return None
+                delta = closes.diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+                
+                if len(gain) == 0 or len(loss) == 0:
+                    return None
+                
+                rs = gain.iloc[-1] / loss.iloc[-1] if loss.iloc[-1] != 0 else None
+                if rs is None:
+                    return None
+                
+                rsi = 100 - (100 / (1 + rs))
+                return float(rsi) if pd.notna(rsi) else None
+            except Exception:
+                return None
+        
+        def check_golden_cross(df: pd.DataFrame, lookback_days: int = 5, end_date_str: str = None) -> bool:
+            """
+            检查从截止日期往前N个交易日内是否发生MACD金叉（DIF上穿DEA）
+            金叉定义：DIF从下方穿过DEA（前一天DIF<=DEA，当天DIF>DEA）
+            
+            Args:
+                df: 数据DataFrame
+                lookback_days: 回看天数（交易日）
+                end_date_str: 截止日期（YYYY-MM-DD），从这个日期的数据往前回看
+            
+            注意：
+            1. 如果截止日期没有数据（如周末），会使用该日期之前的最后一个交易日
+            2. 如果数据不够新（最新数据距离截止日期超过 lookback_days+5 个日历日），
+               说明数据太旧，不符合"最近N天"的要求，返回False
+            """
+            if df is None or df.empty or 'close' not in df.columns:
+                return False
+            
+            # 先过滤截止日期之前的数据
+            df_work = df.copy()
+            df_work['date_parsed'] = pd.to_datetime(df_work['timestamp'])
+            
+            if end_date_str:
+                try:
+                    end_dt = pd.to_datetime(end_date_str)
+                    # 只使用截止日期及之前的数据
+                    df_work = df_work[df_work['date_parsed'].dt.date <= end_dt.date()]
+                    if df_work.empty:
+                        return False
+                    
+                    # 检查数据新鲜度：最新数据日期不应距离截止日期太远
+                    latest_data_date = df_work['date_parsed'].max()
+                    days_diff = (end_dt - latest_data_date).days
+                    
+                    # 如果最新数据距离截止日期超过 lookback_days+5 天（考虑周末），说明数据太旧
+                    # 例如：回看5天，但最新数据是2周前的，那"最近5天"就不适用了
+                    if days_diff > lookback_days + 5:
+                        return False
+                    
+                except Exception:
+                    df_work = df  # 如果过滤失败，使用全部数据
+            
+            closes = pd.to_numeric(df_work['close'], errors='coerce').dropna()
+            if len(closes) < max(slow, signal_period) + lookback_days:
+                return False
+            
+            # 计算MACD指标
+            ema_fast = closes.ewm(span=fast, adjust=False).mean()
+            ema_slow = closes.ewm(span=slow, adjust=False).mean()
+            dif = ema_fast - ema_slow  # DIF线（快线）
+            dea = dif.ewm(span=signal_period, adjust=False).mean()  # DEA线（慢线/信号线）
+            
+            # 只看最近 lookback_days+1 个交易日的数据（需要前一天的数据来判断是否穿越）
+            # 注意：这里的"最近N天"是指最近N个交易日，不是日历天数
+            recent_dif = dif.iloc[-(lookback_days+1):]
+            recent_dea = dea.iloc[-(lookback_days+1):]
+            
+            if len(recent_dif) < 2 or len(recent_dea) < 2:
+                return False
+            
+            # 检查最近 lookback_days 个交易日内是否发生金叉
+            for i in range(1, len(recent_dif)):
+                prev_dif = recent_dif.iloc[i-1]
+                curr_dif = recent_dif.iloc[i]
+                prev_dea = recent_dea.iloc[i-1]
+                curr_dea = recent_dea.iloc[i]
+                
+                if pd.notna(prev_dif) and pd.notna(curr_dif) and pd.notna(prev_dea) and pd.notna(curr_dea):
+                    # 金叉：前一天DIF<=DEA，当天DIF>DEA
+                    if prev_dif <= prev_dea and curr_dif > curr_dea:
+                        return True
+            
+            return False
+        
         def get_macd_hist(df: pd.DataFrame) -> float:
             """获取MACD柱状图值（hist = DIF - DEA），用于判断MACD柱状图是否为红色（>0）"""
             if df is None or df.empty or 'close' not in df.columns:
@@ -1250,47 +1378,66 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                         continue
                     tf_results[tf] = macd_trend(df)
                 
-                # 判定是否同向
-                signs = [s for s in tf_results.values() if s in ('bull', 'bear')]
-                if len(signs) != len(timeframes):
-                    processed += 1
-                    continue
+                # 获取日线和周线的方向
+                daily_sign = tf_results.get('1d', 'neutral')
+                weekly_sign = tf_results.get('1w', 'neutral')
                 
-                all_bull = all(s == 'bull' for s in signs)
-                all_bear = all(s == 'bear' for s in signs)
-                keep = False
-                if direction == 'bull':
-                    keep = all_bull
-                elif direction == 'bear':
-                    keep = all_bear
-                # 不再支持 'both' 方向
+                # 检查日线方向
+                daily_ok = False
+                if daily_direction == 'any':
+                    daily_ok = True
+                elif daily_direction == 'up' and daily_sign == 'bull':
+                    daily_ok = True
+                elif daily_direction == 'down' and daily_sign == 'bear':
+                    daily_ok = True
                 
-                # MACD值筛选（日线和周线MACD>0）
+                # 检查周线方向
+                weekly_ok = False
+                if weekly_direction == 'any':
+                    weekly_ok = True
+                elif weekly_direction == 'up' and weekly_sign == 'bull':
+                    weekly_ok = True
+                elif weekly_direction == 'down' and weekly_sign == 'bear':
+                    weekly_ok = True
+                
+                # 检查共振模式
+                resonance_ok = True
+                if resonance_mode != 'any':
+                    is_resonance = (daily_sign == weekly_sign and daily_sign in ('bull', 'bear'))
+                    if resonance_mode == 'resonance':
+                        resonance_ok = is_resonance
+                    elif resonance_mode == 'no-resonance':
+                        resonance_ok = not is_resonance
+                
+                keep = daily_ok and weekly_ok and resonance_ok
+                
+                # MACD值筛选（日线和周线MACD值条件）
                 if keep:
-                    # 检查日线MACD>0（柱状图为红色，即hist>0）
-                    if enable_daily_macd_positive:
+                    # 检查日线MACD值条件
+                    if daily_macd_condition != 'any':
                         if daily_df is None or daily_df.empty:
                             keep = False
                         else:
                             daily_hist = get_macd_hist(daily_df)
-                            if daily_hist is None or daily_hist <= 0:
+                            if daily_hist is None:
+                                keep = False
+                            elif daily_macd_condition == 'positive' and daily_hist <= 0:
+                                keep = False
+                            elif daily_macd_condition == 'negative' and daily_hist >= 0:
                                 keep = False
                     
-                    # 检查周线MACD>0（柱状图为红色，即hist>0）
-                    if keep and enable_weekly_macd_positive:
+                    # 检查周线MACD值条件
+                    if keep and weekly_macd_condition != 'any':
                         if weekly_df is None or weekly_df.empty:
                             keep = False
-                            print(f"[周线MACD>0] {sym}: 周线数据为空或加载失败")
                         else:
                             weekly_hist = get_macd_hist(weekly_df)
                             if weekly_hist is None:
                                 keep = False
-                                print(f"[周线MACD>0] {sym}: 周线MACD柱状图计算失败（数据不足）")
-                            elif weekly_hist <= 0:
+                            elif weekly_macd_condition == 'positive' and weekly_hist <= 0:
                                 keep = False
-                                print(f"[周线MACD>0] {sym}: 周线MACD柱状图={weekly_hist:.4f} <= 0（绿柱），不符合条件")
-                            else:
-                                print(f"[周线MACD>0] {sym}: 周线MACD柱状图={weekly_hist:.4f} > 0（红柱），符合条件")
+                            elif weekly_macd_condition == 'negative' and weekly_hist >= 0:
+                                keep = False
                     
                     # 检查第一次主升段
                     if keep and enable_first_rise_phase:
@@ -1467,10 +1614,45 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     except Exception:
                         trend_strength_ok = False
                 
+                # 金叉筛选
+                golden_cross_ok = True
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and enable_golden_cross and daily_df is not None and not daily_df.empty:
+                    try:
+                        golden_cross_ok = check_golden_cross(daily_df, golden_cross_lookback, end_date)
+                    except Exception:
+                        golden_cross_ok = False
+                
+                # RSI筛选
+                rsi_ok = True
+                rsi_value = None
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and golden_cross_ok and enable_rsi and daily_df is not None and not daily_df.empty:
+                    try:
+                        closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
+                        if len(closes) >= rsi_period + 1:
+                            rsi_value = calculate_rsi(closes, rsi_period)
+                            if rsi_value is not None:
+                                # 判断RSI区间
+                                if rsi_condition == 'oversold':
+                                    rsi_ok = (rsi_value < 30)
+                                elif rsi_condition == 'weak':
+                                    rsi_ok = (30 <= rsi_value < 50)
+                                elif rsi_condition == 'strong':
+                                    rsi_ok = (50 <= rsi_value < 70)
+                                elif rsi_condition == 'overbought':
+                                    rsi_ok = (rsi_value >= 70)
+                                else:  # 'any'
+                                    rsi_ok = True
+                            else:
+                                rsi_ok = False  # 无法计算RSI
+                        else:
+                            rsi_ok = False  # 数据不足
+                    except Exception:
+                        rsi_ok = False
+                
                 # 波动性筛选
                 volatility_ok = True
                 volatility_value = None
-                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and enable_volatility and daily_df is not None and not daily_df.empty:
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and golden_cross_ok and rsi_ok and enable_volatility and daily_df is not None and not daily_df.empty:
                     try:
                         if len(daily_df) >= 14:
                             recent_data = daily_df.tail(14)
@@ -1501,7 +1683,7 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                 # 均线排列筛选
                 ma_alignment_ok = True
                 ma_alignment_value = None
-                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and volatility_ok and enable_ma_alignment and daily_df is not None and not daily_df.empty:
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and golden_cross_ok and volatility_ok and enable_ma_alignment and daily_df is not None and not daily_df.empty:
                     try:
                         closes = pd.to_numeric(daily_df['close'], errors='coerce').dropna()
                         if len(closes) >= 120:
@@ -1531,7 +1713,7 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                     except Exception:
                         ma_alignment_ok = False
                 
-                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and volatility_ok and ma_alignment_ok:
+                if keep and volume_ok and ma_ok and price_above_ma_ok and position_ok and trend_strength_ok and golden_cross_ok and rsi_ok and volatility_ok and ma_alignment_ok:
                     # 计算最新价格、日MACD、周MACD
                     latest_price = None
                     daily_macd_value = None
@@ -1604,13 +1786,25 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                         } if enable_volatility else None,
                         "maAlignmentInfo": {
                             "value": ma_alignment_value
-                        } if enable_ma_alignment else None
+                        } if enable_ma_alignment else None,
+                        "rsiInfo": {
+                            "value": round(float(rsi_value), 1) if rsi_value is not None else None
+                        } if enable_rsi else None,
+                        "goldenCrossInfo": {
+                            "detected": True,
+                            "lookback": golden_cross_lookback
+                        } if enable_golden_cross else None
                     }
                     selected.append(result_item)
-                    # 实时更新结果
+                    # 实时更新结果（先去重，基于code字段）
                     with tasks_lock:
-                        screening_tasks[task_id]["results"].append(result_item)
-                        screening_tasks[task_id]["progress"]["matched"] = len(selected)
+                        current_results = screening_tasks[task_id]["results"]
+                        # 移除同code的旧结果（如果存在）
+                        current_results = [r for r in current_results if r.get("code") != sym]
+                        # 添加新结果
+                        current_results.append(result_item)
+                        screening_tasks[task_id]["results"] = current_results
+                        screening_tasks[task_id]["progress"]["matched"] = len(current_results)
             
             except Exception as e:
                 errors.append({"symbol": sym, "error": str(e)})
@@ -1713,8 +1907,27 @@ def _run_screening_task(task_id: str, params: Dict[str, Any]):
                 print(f"[筛选统计] 计算涨跌幅失败: {e}")
                 print(traceback.format_exc())
         
+        # 最终去重（确保没有重复的股票，基于code字段）
+        seen_codes = {}
+        deduplicated_selected = []
+        for item in selected:
+            code = item.get('code')
+            if code and code not in seen_codes:
+                seen_codes[code] = True
+                deduplicated_selected.append(item)
+        selected = deduplicated_selected
+        
         # 任务完成
         with tasks_lock:
+            # 最终结果也要去重
+            final_results = []
+            seen_final_codes = {}
+            for item in screening_tasks[task_id]["results"]:
+                code = item.get("code") if isinstance(item, dict) else None
+                if code and code not in seen_final_codes:
+                    seen_final_codes[code] = True
+                    final_results.append(item)
+            screening_tasks[task_id]["results"] = final_results
             screening_tasks[task_id]["status"] = "completed"
             screening_tasks[task_id]["errors"] = errors[:100]
             if summary_stats:

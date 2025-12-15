@@ -82,21 +82,13 @@ class StockDataLoader:
             for f in os.listdir(self.data_dir):
                 if f.lower().endswith('.csv') and symbol in f:
                     candidates.append(os.path.join(self.data_dir, f))
-        # 批量日K目录（支持子目录结构：stocks_0, stocks_1, ..., stocks_9）
+        # 批量日K目录（所有文件直接在 stocks/ 目录下）
         stocks_dir = os.path.join(self.data_dir, 'stocks')
         if os.path.isdir(stocks_dir):
-            # 先检查 stocks 目录下的直接文件（兼容旧格式）
+            # 只检查 stocks 目录下的直接文件
             for f in os.listdir(stocks_dir):
                 if f.lower().endswith('.csv') and symbol in f:
                     candidates.append(os.path.join(stocks_dir, f))
-            
-            # 检查子目录 stocks_0 到 stocks_9
-            for subdir_idx in range(10):
-                subdir = os.path.join(stocks_dir, f'stocks_{subdir_idx}')
-                if os.path.isdir(subdir):
-                    for f in os.listdir(subdir):
-                        if f.lower().endswith('.csv') and symbol in f:
-                            candidates.append(os.path.join(subdir, f))
         # 期货目录
         futures_dir = os.path.join(self.data_dir, 'features')
         if os.path.isdir(futures_dir):
@@ -384,13 +376,8 @@ class StockDataLoader:
             if os.path.isdir(stock_dir):
                 all_files.extend([os.path.join(stock_dir, f) for f in os.listdir(stock_dir) if f.lower().endswith('.csv')])
             if os.path.isdir(stocks_subdir):
-                # 先检查 stocks 目录下的直接文件（兼容旧格式）
+                # 只检查 stocks 目录下的直接文件（不再使用子目录）
                 all_files.extend([os.path.join(stocks_subdir, f) for f in os.listdir(stocks_subdir) if f.lower().endswith('.csv')])
-                # 检查子目录 stocks_0 到 stocks_9
-                for subdir_idx in range(10):
-                    subdir_path = os.path.join(stocks_subdir, f'stocks_{subdir_idx}')
-                    if os.path.isdir(subdir_path):
-                        all_files.extend([os.path.join(subdir_path, f) for f in os.listdir(subdir_path) if f.lower().endswith('.csv')])
             if os.path.isdir(futures_dir):
                 all_files.extend([os.path.join(futures_dir, f) for f in os.listdir(futures_dir) if f.lower().endswith('.csv')])
 

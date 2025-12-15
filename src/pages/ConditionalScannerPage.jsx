@@ -5,11 +5,13 @@ import { Button } from '../components/ui/button'
 import { Label } from '../components/ui/label'
 import { Input } from '../components/ui/input'
 import { Filter, Loader2, TrendingUp, TrendingDown, ArrowRight, Eye, Download } from 'lucide-react'
+import { useSymbolPageState } from '../store/symbolPageStateStore'
 
 const PERSIST_KEY = 'conditional-screener-state'
 
 export function ConditionalScannerPage() {
   const navigate = useNavigate()
+  const { setState: setSymbolPg } = useSymbolPageState()
   
   // 获取今天的日期（YYYY-MM-DD格式）
   const getToday = () => {
@@ -21,12 +23,14 @@ export function ConditionalScannerPage() {
   }
 
   // 日线+周线MACD共振筛选
-  const [direction, setDirection] = useState('bull') // bull | bear
+  const [dailyDirection, setDailyDirection] = useState('any') // 'up' | 'down' | 'any' - 日线方向（向上/向下/不限制）
+  const [weeklyDirection, setWeeklyDirection] = useState('any') // 'up' | 'down' | 'any' - 周线方向（向上/向下/不限制）
+  const [resonanceMode, setResonanceMode] = useState('any') // 'resonance' | 'no-resonance' | 'any' - 共振模式
   const [fast, setFast] = useState(12)
   const [slow, setSlow] = useState(26)
   const [signal, setSignal] = useState(9)
-  const [enableDailyMacdPositive, setEnableDailyMacdPositive] = useState(false) // 日线MACD>0
-  const [enableWeeklyMacdPositive, setEnableWeeklyMacdPositive] = useState(false) // 周线MACD>0
+  const [dailyMacdCondition, setDailyMacdCondition] = useState('any') // 'positive' | 'negative' | 'any' - 日线MACD条件
+  const [weeklyMacdCondition, setWeeklyMacdCondition] = useState('any') // 'positive' | 'negative' | 'any' - 周线MACD条件
   const [endDate, setEndDate] = useState(getToday()) // 数据截止日期，默认今天
   const [enableVolume, setEnableVolume] = useState(true) // 是否启用放量筛选
   const [volumePeriod, setVolumePeriod] = useState(20) // 均量周期
@@ -48,6 +52,11 @@ export function ConditionalScannerPage() {
   const [volatility, setVolatility] = useState('medium') // low | medium | high
   const [enableMAAlignment, setEnableMAAlignment] = useState(false) // 是否启用均线排列筛选
   const [maAlignment, setMaAlignment] = useState('bullish') // bullish | bearish | neutral | mixed
+  const [enableRSI, setEnableRSI] = useState(false) // 是否启用RSI筛选
+  const [rsiCondition, setRsiCondition] = useState('any') // 'oversold' | 'weak' | 'strong' | 'overbought' | 'any' - RSI条件
+  const [rsiPeriod, setRsiPeriod] = useState(14) // RSI周期，默认14
+  const [enableGoldenCross, setEnableGoldenCross] = useState(false) // 是否启用金叉筛选
+  const [goldenCrossLookback, setGoldenCrossLookback] = useState(5) // 金叉回看天数（判断最近N天内发生金叉）
   const [limit, setLimit] = useState(50) // 限制筛选数量，用于测试
   const [isRunning, setIsRunning] = useState(false)
   const [results, setResults] = useState([])
@@ -70,10 +79,48 @@ export function ConditionalScannerPage() {
 
   // 恢复筛选任务轮询（如果页面刷新时任务还在运行）
   useEffect(() => {
-    // 如果taskId存在且isRunning为true，重新启动轮询
+    // 页面刷新后，如果有 taskId，先检查任务状态
+    if (taskId && !pollIntervalId && !isRunning) {
+      console.log(`检查任务状态: taskId=${taskId}`)
+      
+      // 先检查一次任务状态，如果是 running 才启动轮询
+      fetch(`/api/v1/screener/status/${taskId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.ok && data.task) {
+            const task = data.task
+            if (task.status === 'running') {
+              // 任务还在运行，启动轮询
+              setIsRunning(true)
+              setStatus('恢复筛选任务...')
+            } else if (task.status === 'completed') {
+              // 任务已完成
+              const prog = task.progress || {}
+              setResults(Array.isArray(task.results) ? task.results : [])
+              setProgress(prog)
+              setStatus(`✅ 筛选完成：共筛选 ${prog.total} 只，找到 ${prog.matched} 只符合条件的股票`)
+              if (task.summary) setSummary(task.summary)
+              setTaskId(null)
+            } else {
+              // 任务出错或其他状态
+              setStatus('')
+              setTaskId(null)
+            }
+          } else {
+            // 任务不存在或已过期
+            setStatus('')
+            setTaskId(null)
+          }
+        })
+        .catch(err => {
+          console.error('检查任务状态失败', err)
+          setTaskId(null)
+        })
+    }
+    
+    // 如果taskId存在且isRunning为true，启动轮询
     if (taskId && isRunning && !pollIntervalId) {
-      console.log(`恢复筛选任务轮询: taskId=${taskId}`)
-      setStatus('正在恢复筛选任务...')
+      console.log(`启动筛选任务轮询: taskId=${taskId}`)
       
       const intervalId = setInterval(async () => {
         try {
@@ -148,7 +195,22 @@ export function ConditionalScannerPage() {
       const saved = localStorage.getItem(PERSIST_KEY)
       if (saved) {
         const state = JSON.parse(saved)
-        if (state.direction) setDirection(state.direction)
+        if (state.dailyDirection) setDailyDirection(state.dailyDirection)
+        if (state.weeklyDirection) setWeeklyDirection(state.weeklyDirection)
+        if (state.resonanceMode) setResonanceMode(state.resonanceMode)
+        if (state.dailyMacdCondition) setDailyMacdCondition(state.dailyMacdCondition)
+        if (state.weeklyMacdCondition) setWeeklyMacdCondition(state.weeklyMacdCondition)
+        // 兼容旧版本
+        if (state.direction && !state.dailyDirection) {
+          setDailyDirection(state.direction === 'bull' ? 'up' : state.direction === 'bear' ? 'down' : 'any')
+          setWeeklyDirection(state.direction === 'bull' ? 'up' : state.direction === 'bear' ? 'down' : 'any')
+        }
+        if (state.enableDailyMacdPositive !== undefined && !state.dailyMacdCondition) {
+          setDailyMacdCondition(state.enableDailyMacdPositive ? 'positive' : 'any')
+        }
+        if (state.enableWeeklyMacdPositive !== undefined && !state.weeklyMacdCondition) {
+          setWeeklyMacdCondition(state.enableWeeklyMacdPositive ? 'positive' : 'any')
+        }
         if (state.fast) setFast(state.fast)
         if (state.slow) setSlow(state.slow)
         if (state.signal) setSignal(state.signal)
@@ -173,14 +235,25 @@ export function ConditionalScannerPage() {
         if (state.volatility) setVolatility(state.volatility)
         if (state.enableMAAlignment !== undefined) setEnableMAAlignment(state.enableMAAlignment)
         if (state.maAlignment) setMaAlignment(state.maAlignment)
+        if (state.enableRSI !== undefined) setEnableRSI(state.enableRSI)
+        if (state.rsiCondition) setRsiCondition(state.rsiCondition)
+        if (state.rsiPeriod) setRsiPeriod(state.rsiPeriod)
+        if (state.enableGoldenCross !== undefined) setEnableGoldenCross(state.enableGoldenCross)
+        if (state.goldenCrossLookback) setGoldenCrossLookback(state.goldenCrossLookback)
         if (state.limit) setLimit(state.limit)
         if (state.endDate) setEndDate(state.endDate)
-        if (state.enableDailyMacdPositive !== undefined) setEnableDailyMacdPositive(state.enableDailyMacdPositive)
-        if (state.enableWeeklyMacdPositive !== undefined) setEnableWeeklyMacdPositive(state.enableWeeklyMacdPositive)
+        if (state.dailyMacdCondition) setDailyMacdCondition(state.dailyMacdCondition)
+        if (state.weeklyMacdCondition) setWeeklyMacdCondition(state.weeklyMacdCondition)
         if (Array.isArray(state.results)) setResults(state.results)
-        // 恢复筛选进度状态
+        // 恢复筛选进度状态（但不恢复 isRunning，避免刷新后卡在运行中状态）
         if (state.taskId) setTaskId(state.taskId)
-        if (state.isRunning !== undefined) setIsRunning(state.isRunning)
+        // 刷新后不恢复 isRunning 状态，避免页面卡在"筛选中"
+        // if (state.isRunning !== undefined) setIsRunning(state.isRunning)
+        // 如果有未完成的任务，尝试恢复（通过 taskId 触发轮询恢复）
+        if (state.taskId && state.isRunning) {
+          // 不直接恢复 isRunning，而是先检查任务状态
+          // 让轮询恢复 useEffect 去处理
+        }
         if (state.status) setStatus(state.status)
         if (state.progress) setProgress(state.progress)
         if (state.summary) setSummary(state.summary)
@@ -192,30 +265,37 @@ export function ConditionalScannerPage() {
   useEffect(() => {
     try {
       localStorage.setItem(PERSIST_KEY, JSON.stringify({
-        direction, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio,
+        dailyDirection, weeklyDirection, resonanceMode, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio,
         enablePosition, positionType, lookbackDays, priceThreshold,
         enableMA, maShort, maLong, maRelation, limit, results,
-        enableDailyMacdPositive, enableWeeklyMacdPositive,
+        dailyMacdCondition, weeklyMacdCondition,
         enablePriceAboveMA, priceAboveMAPeriods, enableFirstRisePhase,
         enableTrendStrength, trendStrength, enableVolatility, volatility, enableMAAlignment, maAlignment,
+        enableRSI, rsiCondition, rsiPeriod, enableGoldenCross, goldenCrossLookback,
         taskId, isRunning, status, progress, summary
       }))
     } catch {}
-  }, [direction, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio, enablePosition, positionType, lookbackDays, priceThreshold, enableMA, maShort, maLong, maRelation, limit, results, enableDailyMacdPositive, enableWeeklyMacdPositive, enablePriceAboveMA, priceAboveMAPeriods, enableFirstRisePhase, enableTrendStrength, trendStrength, enableVolatility, volatility, enableMAAlignment, maAlignment, taskId, isRunning, status, progress, summary])
+  }, [dailyDirection, weeklyDirection, resonanceMode, fast, slow, signal, endDate, enableVolume, volumePeriod, volumeRatio, enablePosition, positionType, lookbackDays, priceThreshold, enableMA, maShort, maLong, maRelation, limit, results, dailyMacdCondition, weeklyMacdCondition, enablePriceAboveMA, priceAboveMAPeriods, enableFirstRisePhase, enableTrendStrength, trendStrength, enableVolatility, volatility, enableMAAlignment, maAlignment, enableRSI, rsiCondition, rsiPeriod, taskId, isRunning, status, progress, summary])
 
   const runScreen = async () => {
     // 不再强制要求选择方向
-    // 清除旧的轮询
+    
+    // 1. 先清空旧的轮询和状态，确保完全清空
     if (pollIntervalId) {
       clearInterval(pollIntervalId)
       setPollIntervalId(null)
     }
+    
+    // 2. 清空所有结果和状态（必须在启动新任务前完成）
+    setResults([])  // 清空筛选结果
+    setProgress({ processed: 0, total: 0, matched: 0, current: '' })  // 清空进度
+    setSummary(null)  // 重置概括统计
+    setStatus('')  // 清空状态文本
+    setTaskId(null)  // 清除旧的taskId
+    
+    // 3. 设置运行状态
     setIsRunning(true)
     setStatus('正在启动筛选任务...')
-    setResults([])
-    setProgress({ processed: 0, total: 0, matched: 0, current: '' })
-    setSummary(null)  // 重置概括统计
-    setTaskId(null)  // 清除旧的taskId
     
     try {
       // 1. 启动异步任务
@@ -228,7 +308,9 @@ export function ConditionalScannerPage() {
         signal: controller.signal,
         body: JSON.stringify({
           timeframes: ['1d', '1w'],
-          direction,
+          dailyDirection,
+          weeklyDirection,
+          resonanceMode,
           fast,
           slow,
           signal,
@@ -245,8 +327,8 @@ export function ConditionalScannerPage() {
           maShort,
           maLong,
           maRelation,
-          enableDailyMacdPositive,
-          enableWeeklyMacdPositive,
+          dailyMacdCondition,
+          weeklyMacdCondition,
           enablePriceAboveMA,
           priceAboveMAPeriods: enablePriceAboveMA ? priceAboveMAPeriods : undefined,
           enableFirstRisePhase,
@@ -255,7 +337,12 @@ export function ConditionalScannerPage() {
           enableVolatility,
           volatility,
           enableMAAlignment,
-          maAlignment
+          maAlignment,
+          enableRSI,
+          rsiCondition,
+          rsiPeriod,
+          enableGoldenCross,
+          goldenCrossLookback
         })
       })
       clearTimeout(fetchTimeoutId)
@@ -364,11 +451,28 @@ export function ConditionalScannerPage() {
     }
   }
 
-  // 排序结果
+  // 排序结果（先去重，再排序）
   const sortedResults = useMemo(() => {
     if (!Array.isArray(results) || results.length === 0) return []
     
-    const sorted = [...results].sort((a, b) => {
+    // 先去重（基于code字段），保留最后一次出现的结果
+    const uniqueResults = []
+    const seenCodes = new Map() // 使用Map记录每个code的最新索引
+    for (let i = 0; i < results.length; i++) {
+      const item = results[i]
+      const code = item?.code
+      if (code) {
+        seenCodes.set(code, i) // 记录每个code的最新索引
+      }
+    }
+    
+    // 根据Map中的索引构建去重后的结果
+    for (const [code, index] of seenCodes.entries()) {
+      uniqueResults.push(results[index])
+    }
+    
+    // 排序
+    const sorted = [...uniqueResults].sort((a, b) => {
       let valA, valB
       
       if (sortBy === 'volume') {
@@ -410,10 +514,10 @@ export function ConditionalScannerPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            条件选股 - 日线+周线MACD共振
+            条件选股 - MACD多维度筛选
           </CardTitle>
           <CardDescription>
-            筛选日K与周K的MACD柱状图变化方向一致的股票（柱子同时上升或下降，数据源：data/stocks/）
+            基于日线和周线MACD的灵活筛选：可配置方向（向上/向下/不限制）、共振模式（共振/不共振/不限制）、MACD值条件（&gt;0/&lt;0/不限制），数据源：data/stocks/
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -890,62 +994,322 @@ export function ConditionalScannerPage() {
             </p>
           </div>
 
-          {/* 方向选择 */}
-          <div>
-            <Label className="text-sm mb-2 block">MACD方向</Label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={direction === 'bull' ? 'default' : 'outline'}
-                onClick={() => setDirection('bull')}
+          {/* 金叉筛选 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableGoldenCross"
+                checked={enableGoldenCross}
+                onChange={e => setEnableGoldenCross(e.target.checked)}
                 disabled={isRunning}
-                className="flex items-center gap-1"
-              >
-                <TrendingUp className="h-4 w-4" />
-                柱子上升（动能增强）
-              </Button>
-              <Button
-                size="sm"
-                variant={direction === 'bear' ? 'default' : 'outline'}
-                onClick={() => setDirection('bear')}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableGoldenCross" className="text-sm font-medium cursor-pointer">
+                启用金叉筛选
+              </Label>
+            </div>
+            {enableGoldenCross && (
+              <div className="mb-2">
+                <Label className="text-xs mb-2 block">MACD金叉参数（使用页面设置的MACD参数）</Label>
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="block">快线周期</span>
+                    <span className="text-lg font-medium">{fast}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="block">慢线周期</span>
+                    <span className="text-lg font-medium">{slow}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="block">信号线周期</span>
+                    <span className="text-lg font-medium">{signal}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-2 block">金叉回看天数</Label>
+                  <Input
+                    type="number"
+                    value={goldenCrossLookback}
+                    onChange={e => setGoldenCrossLookback(Number(e.target.value))}
+                    disabled={isRunning}
+                    className="text-xs max-w-[120px]"
+                    min="1"
+                    max="30"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    判断最近{goldenCrossLookback}天内是否发生MACD金叉（DIF上穿DEA）
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RSI筛选 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="enableRSI"
+                checked={enableRSI}
+                onChange={e => setEnableRSI(e.target.checked)}
                 disabled={isRunning}
-                className="flex items-center gap-1"
-              >
-                <TrendingDown className="h-4 w-4" />
-                柱子下降（动能减弱）
-              </Button>
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableRSI" className="text-sm font-medium cursor-pointer">
+                启用RSI筛选
+              </Label>
+            </div>
+            {enableRSI && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label className="text-xs mb-2 block">RSI周期</Label>
+                    <Input
+                      type="number"
+                      value={rsiPeriod}
+                      onChange={e => setRsiPeriod(Number(e.target.value))}
+                      disabled={isRunning}
+                      className="text-xs"
+                      min="1"
+                      max="30"
+                    />
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <Label className="text-xs mb-2 block">RSI区间</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant={rsiCondition === 'oversold' ? 'default' : 'outline'}
+                      onClick={() => setRsiCondition('oversold')}
+                      disabled={isRunning}
+                      className="text-green-600"
+                    >
+                      ✅ 超卖（&lt;30）
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rsiCondition === 'weak' ? 'default' : 'outline'}
+                      onClick={() => setRsiCondition('weak')}
+                      disabled={isRunning}
+                    >
+                      ➡️ 弱势（30-50）
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rsiCondition === 'strong' ? 'default' : 'outline'}
+                      onClick={() => setRsiCondition('strong')}
+                      disabled={isRunning}
+                    >
+                      📈 强势（50-70）
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rsiCondition === 'overbought' ? 'default' : 'outline'}
+                      onClick={() => setRsiCondition('overbought')}
+                      disabled={isRunning}
+                      className="text-red-600"
+                    >
+                      ⚠️ 超买（&gt;70）
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rsiCondition === 'any' ? 'default' : 'outline'}
+                      onClick={() => setRsiCondition('any')}
+                      disabled={isRunning}
+                      className="col-span-2"
+                    >
+                      不限制
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {enableRSI ? (
+                rsiCondition === 'oversold' ? 'RSI &lt; 30（超卖区，可能反弹）' :
+                rsiCondition === 'weak' ? 'RSI 30-50（弱势区）' :
+                rsiCondition === 'strong' ? 'RSI 50-70（强势区）' :
+                rsiCondition === 'overbought' ? 'RSI &gt; 70（超买区，可能回调）' :
+                '不限制RSI区间'
+              ) : '不限制RSI'}
+            </p>
+          </div>
+
+          {/* MACD方向配置 */}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <Label className="text-sm font-medium mb-3 block">MACD方向配置</Label>
+            
+            {/* 日线方向 */}
+            <div className="mb-3">
+              <Label className="text-xs mb-2 block">日线方向（柱子变化）</Label>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={dailyDirection === 'up' ? 'default' : 'outline'}
+                  onClick={() => setDailyDirection('up')}
+                  disabled={isRunning}
+                  className="flex items-center gap-1"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  向上（柱子上升）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={dailyDirection === 'down' ? 'default' : 'outline'}
+                  onClick={() => setDailyDirection('down')}
+                  disabled={isRunning}
+                  className="flex items-center gap-1"
+                >
+                  <TrendingDown className="h-4 w-4" />
+                  向下（柱子下降）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={dailyDirection === 'any' ? 'default' : 'outline'}
+                  onClick={() => setDailyDirection('any')}
+                  disabled={isRunning}
+                >
+                  不限制
+                </Button>
+              </div>
+            </div>
+
+            {/* 周线方向 */}
+            <div className="mb-3">
+              <Label className="text-xs mb-2 block">周线方向（柱子变化）</Label>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={weeklyDirection === 'up' ? 'default' : 'outline'}
+                  onClick={() => setWeeklyDirection('up')}
+                  disabled={isRunning}
+                  className="flex items-center gap-1"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  向上（柱子上升）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={weeklyDirection === 'down' ? 'default' : 'outline'}
+                  onClick={() => setWeeklyDirection('down')}
+                  disabled={isRunning}
+                  className="flex items-center gap-1"
+                >
+                  <TrendingDown className="h-4 w-4" />
+                  向下（柱子下降）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={weeklyDirection === 'any' ? 'default' : 'outline'}
+                  onClick={() => setWeeklyDirection('any')}
+                  disabled={isRunning}
+                >
+                  不限制
+                </Button>
+              </div>
+            </div>
+
+            {/* 共振模式 */}
+            <div>
+              <Label className="text-xs mb-2 block">共振模式</Label>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={resonanceMode === 'resonance' ? 'default' : 'outline'}
+                  onClick={() => setResonanceMode('resonance')}
+                  disabled={isRunning}
+                >
+                  共振（日周同向）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={resonanceMode === 'no-resonance' ? 'default' : 'outline'}
+                  onClick={() => setResonanceMode('no-resonance')}
+                  disabled={isRunning}
+                >
+                  不共振（日周不同向）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={resonanceMode === 'any' ? 'default' : 'outline'}
+                  onClick={() => setResonanceMode('any')}
+                  disabled={isRunning}
+                >
+                  不限制
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* MACD值筛选 */}
-          <div>
-            <Label className="text-sm mb-2 block">MACD值筛选（非必选）</Label>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="enableDailyMacdPositive"
-                  checked={enableDailyMacdPositive}
-                  onChange={(e) => setEnableDailyMacdPositive(e.target.checked)}
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <Label className="text-sm font-medium mb-3 block">MACD值筛选（非必选）</Label>
+            
+            {/* 日线MACD值 */}
+            <div className="mb-3">
+              <Label className="text-xs mb-2 block">日线MACD值</Label>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={dailyMacdCondition === 'positive' ? 'default' : 'outline'}
+                  onClick={() => setDailyMacdCondition('positive')}
                   disabled={isRunning}
-                  className="w-4 h-4"
-                />
-                <Label htmlFor="enableDailyMacdPositive" className="text-sm cursor-pointer">
-                  日线MACD &gt; 0
-                </Label>
+                  className="text-red-600"
+                >
+                  &gt; 0（红柱）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={dailyMacdCondition === 'negative' ? 'default' : 'outline'}
+                  onClick={() => setDailyMacdCondition('negative')}
+                  disabled={isRunning}
+                  className="text-green-600"
+                >
+                  &lt; 0（绿柱）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={dailyMacdCondition === 'any' ? 'default' : 'outline'}
+                  onClick={() => setDailyMacdCondition('any')}
+                  disabled={isRunning}
+                >
+                  不限制
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="enableWeeklyMacdPositive"
-                  checked={enableWeeklyMacdPositive}
-                  onChange={(e) => setEnableWeeklyMacdPositive(e.target.checked)}
+            </div>
+
+            {/* 周线MACD值 */}
+            <div>
+              <Label className="text-xs mb-2 block">周线MACD值</Label>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={weeklyMacdCondition === 'positive' ? 'default' : 'outline'}
+                  onClick={() => setWeeklyMacdCondition('positive')}
                   disabled={isRunning}
-                  className="w-4 h-4"
-                />
-                <Label htmlFor="enableWeeklyMacdPositive" className="text-sm cursor-pointer">
-                  周线MACD &gt; 0
-                </Label>
+                  className="text-red-600"
+                >
+                  &gt; 0（红柱）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={weeklyMacdCondition === 'negative' ? 'default' : 'outline'}
+                  onClick={() => setWeeklyMacdCondition('negative')}
+                  disabled={isRunning}
+                  className="text-green-600"
+                >
+                  &lt; 0（绿柱）
+                </Button>
+                <Button
+                  size="sm"
+                  variant={weeklyMacdCondition === 'any' ? 'default' : 'outline'}
+                  onClick={() => setWeeklyMacdCondition('any')}
+                  disabled={isRunning}
+                >
+                  不限制
+                </Button>
               </div>
             </div>
           </div>
@@ -1003,7 +1367,9 @@ export function ConditionalScannerPage() {
           {/* 说明 */}
           <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
             <p>• 数据源：优先使用 data/stocks/ 下的日K数据（可在首页"🚀点火 启动!"批量获取）</p>
-            <p>• 共振条件：日线与周线的MACD柱状图（hist = DIF - DEA）变化方向一致</p>
+            <p>• 方向配置：可分别配置日线和周线的MACD柱状图变化方向（向上/向下/不限制）</p>
+            <p>• 共振模式：可选择共振（日周同向）、不共振（日周不同向）或不限制</p>
+            <p>• MACD值筛选：可选择MACD&gt;0（红柱）、MACD&lt;0（绿柱）或不限制</p>
             <p>• 柱子上升 = hist[-1] &gt; hist[-2]，表示动能增强；柱子下降 = hist[-1] &lt; hist[-2]，表示动能减弱</p>
             <p>• 筛选结果可直接"去回测"进一步验证策略效果</p>
           </div>
@@ -1031,7 +1397,9 @@ export function ConditionalScannerPage() {
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         results: sortedResults,  // 使用排序后的结果
-                        direction,
+                        dailyDirection,
+                        weeklyDirection,
+                        resonanceMode,
                         fast,
                         slow,
                         signal,
@@ -1115,18 +1483,27 @@ export function ConditionalScannerPage() {
                     {enableMAAlignment && (
                       <th className="py-2 pr-4">均线排列</th>
                     )}
+                    {enableRSI && (
+                      <th className="py-2 pr-4">RSI</th>
+                    )}
+                    {enableGoldenCross && (
+                      <th className="py-2 pr-4">金叉</th>
+                    )}
                     <th className="py-2 pr-4">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedResults.map((r, idx) => {
+                    // 确保每个结果都有 code，没有 code 的跳过
+                    if (!r.code) return null
+                    
                     const dailyDir = r.directions?.['1d'] || 'neutral'
                     const weeklyDir = r.directions?.['1w'] || 'neutral'
                     const dailyIcon = dailyDir === 'bull' ? '📈' : (dailyDir === 'bear' ? '📉' : '➖')
                     const weeklyIcon = weeklyDir === 'bull' ? '📈' : (weeklyDir === 'bear' ? '📉' : '➖')
                     
                     return (
-                      <tr key={r.code || idx} className="border-b last:border-0 hover:bg-muted/30">
+                      <tr key={r.code} className="border-b last:border-0 hover:bg-muted/30">
                         <td className="py-2 pr-4">
                           <div className="font-medium">{r.name || r.code}</div>
                           <div className="text-xs text-muted-foreground">{r.code}</div>
@@ -1274,6 +1651,39 @@ export function ConditionalScannerPage() {
                                  r.maAlignmentInfo.value === 'neutral' ? '➡️ 粘合' :
                                  '🔄 混合'}
                               </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                        )}
+                        {enableRSI && (
+                          <td className="py-2 pr-4">
+                            {r.rsiInfo?.value != null ? (
+                              <div className="text-xs">
+                                <div className={
+                                  r.rsiInfo.value < 30 ? 'text-green-600 font-medium' :
+                                  r.rsiInfo.value < 50 ? 'text-blue-600' :
+                                  r.rsiInfo.value < 70 ? 'text-orange-600' :
+                                  'text-red-600 font-medium'
+                                }>
+                                  {r.rsiInfo.value < 30 ? '✅ 超卖' :
+                                   r.rsiInfo.value < 50 ? '➡️ 弱势' :
+                                   r.rsiInfo.value < 70 ? '📈 强势' :
+                                   '⚠️ 超买'}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  RSI: {r.rsiInfo.value.toFixed(1)}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                        )}
+                        {enableGoldenCross && (
+                          <td className="py-2 pr-4">
+                            {r.goldenCrossInfo?.detected ? (
+                              <span className="text-green-600 font-medium">✓ 金叉</span>
                             ) : (
                               <span className="text-muted-foreground text-xs">-</span>
                             )}

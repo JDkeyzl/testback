@@ -29,6 +29,7 @@ class CommonFeaturesAnalyzer:
         symbols: List[str],
         start_date: str,
         end_date: str,
+        base_date: Optional[str] = None,
         lookback_days: int = 60,
         macd_fast: int = 12,
         macd_slow: int = 26,
@@ -39,8 +40,9 @@ class CommonFeaturesAnalyzer:
         
         Args:
             symbols: 股票代码列表
-            start_date: 大浪淘沙开始日期 (YYYY-MM-DD)
-            end_date: 大浪淘沙结束日期 (YYYY-MM-DD)
+            start_date: 大浪淘沙开始日期 (YYYY-MM-DD)，用于计算收益率
+            end_date: 大浪淘沙结束日期 (YYYY-MM-DD)，用于计算收益率
+            base_date: 基准日 (YYYY-MM-DD)，可选，默认为start_date前一天
             lookback_days: 价格位置回看天数，默认60
             macd_fast: MACD快线周期，默认12
             macd_slow: MACD慢线周期，默认26
@@ -49,10 +51,14 @@ class CommonFeaturesAnalyzer:
         Returns:
             分析结果字典
         """
-        # 计算基准日
-        start_dt = pd.to_datetime(start_date)
-        base_date = start_dt - timedelta(days=1)
-        base_date_str = base_date.strftime('%Y-%m-%d')
+        # 计算基准日：如果未提供，则使用start_date前一天
+        if base_date:
+            base_date_dt = pd.to_datetime(base_date)
+            base_date_str = base_date
+        else:
+            start_dt = pd.to_datetime(start_date)
+            base_date_dt = start_dt - timedelta(days=1)
+            base_date_str = base_date_dt.strftime('%Y-%m-%d')
         
         logger.info(f"开始分析 {len(symbols)} 只股票的共同特征，基准日：{base_date_str}")
         
@@ -64,7 +70,7 @@ class CommonFeaturesAnalyzer:
             try:
                 features = self._analyze_single_stock(
                     symbol,
-                    base_date,
+                    base_date_dt,
                     lookback_days,
                     macd_fast,
                     macd_slow,
@@ -91,8 +97,16 @@ class CommonFeaturesAnalyzer:
         # 提取共同特征总结
         summary = self._extract_common_features(analysis_result, len(stock_features))
         
-        # 统计每只股票符合的维度数量并排名
-        stock_rankings = self._calculate_stock_rankings(stock_features, analysis_result)
+        # 计算每只股票的收益率和维度信息
+        stock_rankings = self._calculate_stock_rankings_with_return(
+            stock_features, 
+            analysis_result,
+            start_date,
+            end_date
+        )
+        
+        # 统计所有维度出现的次数
+        dimension_stats = self._calculate_dimension_statistics(analysis_result)
         
         return {
             "ok": True,
@@ -101,6 +115,7 @@ class CommonFeaturesAnalyzer:
             "analysis": analysis_result,
             "summary": summary,
             "stockRankings": stock_rankings,
+            "dimensionStatistics": dimension_stats,  # 维度统计
             "errors": errors[:10] if errors else []
         }
     
@@ -1261,6 +1276,331 @@ class CommonFeaturesAnalyzer:
         rankings.sort(key=lambda x: x['matchCount'], reverse=True)
         
         return rankings
+    
+    def _calculate_stock_rankings_with_return(
+        self,
+        stock_features: List[Dict[str, Any]],
+        analysis_result: Dict[str, Any],
+        start_date: str,
+        end_date: str
+    ) -> List[Dict[str, Any]]:
+        """
+        计算每只股票的收益率和维度信息，按收益率排序
+        
+        Returns:
+            排名列表，每项包含：symbol, name, return, matchedDimensions
+        """
+        # 收集所有维度及其对应的股票列表
+        all_dimensions = {}
+        
+        # MACD日线
+        macd_daily = analysis_result.get('macdResonance', {}).get('daily', {})
+        if macd_daily:
+            hist_color_symbols = macd_daily.get('histColorWithSymbols', {})
+            for key, data in hist_color_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'日线MACD-{key}'] = data.get('symbols', [])
+            
+            hist_trend_symbols = macd_daily.get('histTrendWithSymbols', {})
+            for key, data in hist_trend_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'日线MACD趋势-{key}'] = data.get('symbols', [])
+            
+            zero_axis_symbols = macd_daily.get('zeroAxisWithSymbols', {})
+            for key, data in zero_axis_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'日线MACD零轴-{key}'] = data.get('symbols', [])
+        
+        # MACD周线
+        macd_weekly = analysis_result.get('macdResonance', {}).get('weekly', {})
+        if macd_weekly:
+            hist_color_symbols = macd_weekly.get('histColorWithSymbols', {})
+            for key, data in hist_color_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'周线MACD-{key}'] = data.get('symbols', [])
+            
+            hist_trend_symbols = macd_weekly.get('histTrendWithSymbols', {})
+            for key, data in hist_trend_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'周线MACD趋势-{key}'] = data.get('symbols', [])
+        
+        # 共振
+        resonance = analysis_result.get('macdResonance', {}).get('resonance', {})
+        if resonance.get('bothRedSymbols'):
+            all_dimensions['日周都红柱'] = resonance.get('bothRedSymbols', [])
+        if resonance.get('bothUpSymbols'):
+            all_dimensions['日周都上升'] = resonance.get('bothUpSymbols', [])
+        if resonance.get('bothRisingSymbols'):
+            all_dimensions['日周都持续上升'] = resonance.get('bothRisingSymbols', [])
+        if resonance.get('sameDirectionSymbols'):
+            all_dimensions['日周趋势同向'] = resonance.get('sameDirectionSymbols', [])
+        
+        # 价格与MA关系
+        price_ma = analysis_result.get('priceMARelation', {})
+        if price_ma:
+            price_above_ma_symbols = price_ma.get('priceAboveMAWithSymbols', {})
+            for key, symbols_list in price_above_ma_symbols.items():
+                if symbols_list:
+                    all_dimensions[f'价格高于{key}'] = symbols_list
+            
+            ma_alignment_symbols = price_ma.get('maAlignmentWithSymbols', {})
+            for key, data in ma_alignment_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'均线排列-{key}'] = data.get('symbols', [])
+        
+        # 价格位置
+        price_position = analysis_result.get('pricePosition', {})
+        if price_position:
+            position_symbols = price_position.get('positionDistributionWithSymbols', {})
+            for key, data in position_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'价格位置-{key}'] = data.get('symbols', [])
+        
+        # 成交量关系
+        volume_relation = analysis_result.get('volumeRelation', {})
+        if volume_relation:
+            volume_symbols = volume_relation.get('volumeDistributionWithSymbols', {})
+            for key, data in volume_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'成交量-{key}'] = data.get('symbols', [])
+            
+            volume_trend_symbols = volume_relation.get('volumeTrendWithSymbols', {})
+            for key, data in volume_trend_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'成交量趋势-{key}'] = data.get('symbols', [])
+            
+            price_vol_symbols = volume_relation.get('priceVolumeRelationWithSymbols', {})
+            for key, data in price_vol_symbols.items():
+                if data.get('symbols'):
+                    all_dimensions[f'量价关系-{key}'] = data.get('symbols', [])
+        
+        # 其他指标
+        other_indicators = analysis_result.get('otherIndicators', {})
+        if other_indicators:
+            rsi = other_indicators.get('rsi', {})
+            if rsi:
+                rsi_symbols = rsi.get('distributionWithSymbols', {})
+                for key, data in rsi_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'RSI-{key}'] = data.get('symbols', [])
+            
+            volatility = other_indicators.get('volatility', {})
+            if volatility:
+                vol_symbols = volatility.get('distributionWithSymbols', {})
+                for key, data in vol_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'波动性-{key}'] = data.get('symbols', [])
+            
+            turnover = other_indicators.get('turnover', {})
+            if turnover:
+                turnover_symbols = turnover.get('distributionWithSymbols', {})
+                for key, data in turnover_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'成交量比率-{key}'] = data.get('symbols', [])
+            
+            trend_strength = other_indicators.get('trendStrength', {})
+            if trend_strength:
+                trend_symbols = trend_strength.get('directionWithSymbols', {})
+                for key, data in trend_symbols.items():
+                    if data.get('symbols'):
+                        all_dimensions[f'趋势强度-{key}'] = data.get('symbols', [])
+        
+        # 统计每只股票符合的维度并计算收益率
+        stock_results = []
+        for sf in stock_features:
+            symbol = sf.get('symbol')
+            if not symbol:
+                continue
+            
+            # 收集该股票符合的所有维度
+            matched_dimensions = []
+            for dimension_name, symbols_list in all_dimensions.items():
+                if symbol in symbols_list:
+                    matched_dimensions.append(dimension_name)
+            
+            # 计算收益率
+            try:
+                daily_df = self.data_loader.load_stock_data(symbol, timeframe='1d', end_date=end_date)
+                if daily_df is not None and not daily_df.empty:
+                    daily_df = daily_df.sort_values('timestamp').reset_index(drop=True)
+                    start_dt = pd.to_datetime(start_date)
+                    end_dt = pd.to_datetime(end_date)
+                    
+                    # 找到开始日期和结束日期的数据
+                    start_data = daily_df[daily_df['timestamp'] >= start_dt]
+                    end_data = daily_df[daily_df['timestamp'] <= end_dt]
+                    
+                    if not start_data.empty and not end_data.empty:
+                        start_price = pd.to_numeric(start_data.iloc[0]['close'], errors='coerce')
+                        end_price = pd.to_numeric(end_data.iloc[-1]['close'], errors='coerce')
+                        
+                        if pd.notna(start_price) and pd.notna(end_price) and start_price > 0:
+                            stock_return = (end_price - start_price) / start_price * 100
+                        else:
+                            stock_return = None
+                    else:
+                        stock_return = None
+                else:
+                    stock_return = None
+            except Exception as e:
+                logger.error(f"计算股票 {symbol} 收益率失败: {str(e)}")
+                stock_return = None
+            
+            # 获取股票名称
+            try:
+                entries = self.data_loader.list_symbols()
+                name = symbol
+                for entry in entries:
+                    if isinstance(entry, dict) and entry.get('symbol') == symbol:
+                        name = entry.get('name', symbol)
+                        break
+            except Exception:
+                name = symbol
+            
+            stock_results.append({
+                'symbol': symbol,
+                'name': name,
+                'return': stock_return,
+                'matchedDimensions': matched_dimensions
+            })
+        
+        # 按收益率排序（从高到低）
+        stock_results.sort(key=lambda x: x['return'] if x['return'] is not None else float('-inf'), reverse=True)
+        
+        return stock_results
+    
+    def _calculate_dimension_statistics(
+        self,
+        analysis_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        统计所有维度出现的次数，按次数排序
+        
+        Returns:
+            维度统计列表，每项包含：dimension, count
+        """
+        dimension_counts = {}
+        
+        # MACD日线
+        macd_daily = analysis_result.get('macdResonance', {}).get('daily', {})
+        if macd_daily:
+            hist_color_symbols = macd_daily.get('histColorWithSymbols', {})
+            for key, data in hist_color_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'日线MACD-{key}'] = len(data.get('symbols', []))
+            
+            hist_trend_symbols = macd_daily.get('histTrendWithSymbols', {})
+            for key, data in hist_trend_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'日线MACD趋势-{key}'] = len(data.get('symbols', []))
+            
+            zero_axis_symbols = macd_daily.get('zeroAxisWithSymbols', {})
+            for key, data in zero_axis_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'日线MACD零轴-{key}'] = len(data.get('symbols', []))
+        
+        # MACD周线
+        macd_weekly = analysis_result.get('macdResonance', {}).get('weekly', {})
+        if macd_weekly:
+            hist_color_symbols = macd_weekly.get('histColorWithSymbols', {})
+            for key, data in hist_color_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'周线MACD-{key}'] = len(data.get('symbols', []))
+            
+            hist_trend_symbols = macd_weekly.get('histTrendWithSymbols', {})
+            for key, data in hist_trend_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'周线MACD趋势-{key}'] = len(data.get('symbols', []))
+        
+        # 共振
+        resonance = analysis_result.get('macdResonance', {}).get('resonance', {})
+        if resonance.get('bothRedSymbols'):
+            dimension_counts['日周都红柱'] = len(resonance.get('bothRedSymbols', []))
+        if resonance.get('bothUpSymbols'):
+            dimension_counts['日周都上升'] = len(resonance.get('bothUpSymbols', []))
+        if resonance.get('bothRisingSymbols'):
+            dimension_counts['日周都持续上升'] = len(resonance.get('bothRisingSymbols', []))
+        if resonance.get('sameDirectionSymbols'):
+            dimension_counts['日周趋势同向'] = len(resonance.get('sameDirectionSymbols', []))
+        
+        # 价格与MA关系
+        price_ma = analysis_result.get('priceMARelation', {})
+        if price_ma:
+            price_above_ma_symbols = price_ma.get('priceAboveMAWithSymbols', {})
+            for key, symbols_list in price_above_ma_symbols.items():
+                if symbols_list:
+                    dimension_counts[f'价格高于{key}'] = len(symbols_list)
+            
+            ma_alignment_symbols = price_ma.get('maAlignmentWithSymbols', {})
+            for key, data in ma_alignment_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'均线排列-{key}'] = len(data.get('symbols', []))
+        
+        # 价格位置
+        price_position = analysis_result.get('pricePosition', {})
+        if price_position:
+            position_symbols = price_position.get('positionDistributionWithSymbols', {})
+            for key, data in position_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'价格位置-{key}'] = len(data.get('symbols', []))
+        
+        # 成交量关系
+        volume_relation = analysis_result.get('volumeRelation', {})
+        if volume_relation:
+            volume_symbols = volume_relation.get('volumeDistributionWithSymbols', {})
+            for key, data in volume_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'成交量-{key}'] = len(data.get('symbols', []))
+            
+            volume_trend_symbols = volume_relation.get('volumeTrendWithSymbols', {})
+            for key, data in volume_trend_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'成交量趋势-{key}'] = len(data.get('symbols', []))
+            
+            price_vol_symbols = volume_relation.get('priceVolumeRelationWithSymbols', {})
+            for key, data in price_vol_symbols.items():
+                if data.get('symbols'):
+                    dimension_counts[f'量价关系-{key}'] = len(data.get('symbols', []))
+        
+        # 其他指标
+        other_indicators = analysis_result.get('otherIndicators', {})
+        if other_indicators:
+            rsi = other_indicators.get('rsi', {})
+            if rsi:
+                rsi_symbols = rsi.get('distributionWithSymbols', {})
+                for key, data in rsi_symbols.items():
+                    if data.get('symbols'):
+                        dimension_counts[f'RSI-{key}'] = len(data.get('symbols', []))
+            
+            volatility = other_indicators.get('volatility', {})
+            if volatility:
+                vol_symbols = volatility.get('distributionWithSymbols', {})
+                for key, data in vol_symbols.items():
+                    if data.get('symbols'):
+                        dimension_counts[f'波动性-{key}'] = len(data.get('symbols', []))
+            
+            turnover = other_indicators.get('turnover', {})
+            if turnover:
+                turnover_symbols = turnover.get('distributionWithSymbols', {})
+                for key, data in turnover_symbols.items():
+                    if data.get('symbols'):
+                        dimension_counts[f'成交量比率-{key}'] = len(data.get('symbols', []))
+            
+            trend_strength = other_indicators.get('trendStrength', {})
+            if trend_strength:
+                trend_symbols = trend_strength.get('directionWithSymbols', {})
+                for key, data in trend_symbols.items():
+                    if data.get('symbols'):
+                        dimension_counts[f'趋势强度-{key}'] = len(data.get('symbols', []))
+        
+        # 转换为列表并按次数排序（从高到低）
+        dimension_stats = [
+            {'dimension': dim, 'count': count}
+            for dim, count in dimension_counts.items()
+        ]
+        dimension_stats.sort(key=lambda x: x['count'], reverse=True)
+        
+        return dimension_stats
     
     def _extract_common_features(
         self,
